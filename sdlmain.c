@@ -4,18 +4,12 @@
 #define ___VERSION 406006
 #include <gambit.h>
 
-#include "testlib.h"
-
 #define SCHEME_LIBRARY_LINKER ____20_scmlib__
 ___BEGIN_C_LINKAGE
 extern ___mod_or_lnk SCHEME_LIBRARY_LINKER (___global_state_struct*);
 ___END_C_LINKAGE
 
-int real_main(int argc, char ** argv) {
-  enum_object(42);
-  return 0;
-}
-
+extern int real_main(int argc, char ** argv);
 
 int main(int argc, char ** argv) {
   if ( SDL_Init(SDL_INIT_AUDIO|SDL_INIT_VIDEO) < 0 ) {
