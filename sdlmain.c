@@ -6,7 +6,7 @@
 
 #include "testlib.h"
 
-#define SCHEME_LIBRARY_LINKER ____20_test__
+#define SCHEME_LIBRARY_LINKER ____20_scmlib__
 ___BEGIN_C_LINKAGE
 extern ___mod_or_lnk SCHEME_LIBRARY_LINKER (___global_state_struct*);
 ___END_C_LINKAGE

@@ -1,5 +1,5 @@
 C_SRC=testlib.c
-SCM_SRC=test.scm
+SCM_SRC=scmlib.scm
 GSC=gsc
 
 GAMBIT_ROOT=/usr/local/Gambit-C
@@ -9,24 +9,23 @@ LDFLAGS=$(SDL_LIBS) -L$(GAMBIT_ROOT)/lib
 
 SCM_VERSION ?= 1
 
-all: scmlib.o$(SCM_VERSION) sdlmain
+all: sdlmain
 
 SCMLIB=scmlib.o$(SCM_VERSION)
-SCM_C=$(patsubst %.scm,%.c,$(SCM_SRC))
-SCM_OBJ=$(patsubst %.scm,%.o,$(SCM_SRC))
+SCM_C=$(patsubst %.scm,%.c,$(SCM_SRC)) \
+	$(patsubst %.scm,%_.c,$(SCM_SRC))
+
+SCM_OBJ=$(patsubst %.c,%.o,$(SCM_C))
 C_OBJS=$(patsubst %.c,%.o,$(C_SRC))
 
-$(SCMLIB).c: $(SCM_SRC)
-	$(GSC) -link -flat -o $@ $(SCM_SRC)
+$(SCM_C): $(SCM_SRC)
+	$(GSC) -f -link $(SCM_SRC)
 
-$(SCMLIB).o: scmlib.o$(SCM_VERSION).c
-	$(GSC) -cc-options "-D___DYNAMIC" -obj $(SCM_C) scmlib.o$(SCM_VERSION).c
+$(SCM_OBJ): $(SCM_C)
+	$(GSC) -cc-options "-D___DYNAMIC" -obj $(SCM_C)
 
-$(SCMLIB): scmlib.o$(SCM_VERSION).o $(C_OBJS)
-	gcc -bundle $(SCM_OBJ) $(SCMLIB).o $(C_OBJS) -o $@
-
-sdlmain: sdlmain.c
-	$(CC) $(CFLAGS) -o $@ $< $(C_OBJS) $(SCMLIB).o $(SCM_OBJ) $(LDFLAGS) -lgambc
+sdlmain: sdlmain.c $(SCM_OBJ) $(C_OBJS)
+	$(CC) $(CFLAGS) -o $@ $< $(C_OBJS) $(SCM_OBJ) $(LDFLAGS) -lgambc
 
 clean:
 	rm -f *.o* $(SCM_C) sdlmain
