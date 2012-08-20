@@ -8,54 +8,30 @@
 c-declare-end
 )
 
-(define fopen
-  (c-lambda (nonnull-char-string nonnull-char-string)
-            (pointer "FILE")
-            "fopen"))
+(define-macro (when test . body)
+  `(if ,test
+       (begin . ,body)
+       '()))
 
-(define fclose
-  (c-lambda ((pointer "FILE"))
-            int
-            "fclose"))
+(define load-image 
+  (c-lambda (nonnull-char-string)
+            (pointer "SDL_Surface")
+            "load_image"))
 
-(define fgetc
-  (c-lambda ((pointer "FILE"))
-            int
-            "fgetc"))
-
-(define feof
-  (c-lambda ((pointer "FILE"))
-            int
-            "feof"))
-
-(define (eof? file)
-  (not (= (feof file) 0)))
-
-(define stdin
-  ((c-lambda () (pointer "FILE") "___result_voidstar = stdin;")))
-
-(define printf
-  (c-lambda (nonnull-char-string  nonnull-char-string)
-            int
-            "printf"))
-
-(define (slurp fname)
-  (define (iter f res)
-    (if (eof? f)
-        res
-        (iter f (cons (fgetc f) res))))
-
-  (let* ((f (fopen fname "r"))
-         (r (iter f '())))
-    (fclose f)
-    r))
-
-(define fib
-  (c-lambda (int)
-            int
-            "fib"))
+(define blit-image
+  (c-lambda ((pointer "SDL_Surface") (pointer "SDL_Surface") int int)
+            void
+            "blit_image"))
 
 
-(c-define (enum-object x) (int) void "enum_object" ""
-          (write x)
-          (newline))
+(c-define (set-screen scr) ((pointer "SDL_Surface")) void "set_screen" ""
+          (set! *screen* scr)
+          (set! *test-image* (load-image "test.png")))
+
+(c-define (step) () void "step" ""
+          (when *test-image*
+                (blit-image *screen* *test-image* 50 50))
+          (display "stepping") (newline))
+
+(c-define (terminate) () void "terminate" ""
+          (display "terminating") (newline))

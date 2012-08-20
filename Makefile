@@ -3,8 +3,8 @@ SCM_SRC=scmlib.scm
 GSC=gsc
 
 GAMBIT_ROOT=/usr/local/Gambit-C
-CFLAGS=-I$(GAMBIT_ROOT)/include
-SDL_LIBS=`pkg-config --libs sdl`
+CFLAGS:=-I$(GAMBIT_ROOT)/include `sdl-config --cflags`
+SDL_LIBS:=`sdl-config --libs` -lSDL_image
 LDFLAGS=$(SDL_LIBS) -L$(GAMBIT_ROOT)/lib
 
 all: sdlmain
@@ -22,7 +22,7 @@ $(SCM_OBJ): $(SCM_C)
 	$(GSC) -cc-options "-D___DYNAMIC" -obj $(SCM_C)
 
 sdlmain: $(SCM_OBJ) $(C_OBJS)
-	$(CC) $(CFLAGS) -o $@ $(C_OBJS) -g $(SCM_OBJ) $(LDFLAGS) -lgambc
+	$(CC) $(CFLAGS) -o $@ $(C_OBJS) $(SCM_OBJ) $(LDFLAGS) -lgambc
 
 clean:
 	rm -f *.o* $(SCM_C) sdlmain
