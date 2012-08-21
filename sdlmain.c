@@ -27,7 +27,7 @@ int main(int argc, char ** argv) {
   atexit(shutdown);
 
   SDL_Surface *screen;
-  screen = SDL_SetVideoMode(640, 480, 16, SDL_SWSURFACE);
+  screen = SDL_SetVideoMode(640, 480, 16, SDL_HWSURFACE);
   if(screen == NULL) {
     fprintf(stderr, "Unable to set 640x480 video: %s\n", SDL_GetError());
     exit(1);

@@ -1,9 +1,9 @@
 C_SRC=testlib.c sdlmain.c realmain.c
 SCM_SRC=scmlib.scm
-GSC=gsc
 
-GAMBIT_ROOT=/usr/local/Gambit-C
-CFLAGS:=-I$(GAMBIT_ROOT)/include `sdl-config --cflags`
+GAMBIT_ROOT?=/usr/local/Gambit-C
+GSC=$(GAMBIT_ROOT)/bin/gsc
+CFLAGS+=-I$(GAMBIT_ROOT)/include `sdl-config --cflags`
 SDL_LIBS:=`sdl-config --libs` -lSDL_image
 LDFLAGS=$(SDL_LIBS) -L$(GAMBIT_ROOT)/lib
 
@@ -26,5 +26,11 @@ sdlmain: $(SCM_OBJ) $(C_OBJS)
 
 clean:
 	rm -f *.o* $(SCM_C) sdlmain
+
+test_bin: testlib.o testlib_test.o
+	$(CC) $(CFLAGS) -o $@ testlib.o testlib_test.o $(LDFLAGS)
+
+test: test_bin
+	./test_bin
 
 .phony: all
