@@ -5,7 +5,7 @@
 #define ___VERSION 406006
 #include <gambit.h>
 
-#define SCHEME_LIBRARY_LINKER ____20_scmlib__
+#define SCHEME_LIBRARY_LINKER ____20_link__
 ___BEGIN_C_LINKAGE
 extern ___mod_or_lnk SCHEME_LIBRARY_LINKER (___global_state_struct*);
 ___END_C_LINKAGE

@@ -45,7 +45,6 @@ Clock clock_make();
 void clock_free(Clock clock);
 void clock_update(Clock clock, float delta); /* time in seconds */
 long clock_get_time(Clock clock); /* time in cycles */
-void clock_pause(Clock clock, int paused);
 
 float clock_cycles_to_seconds(long cycles);
 long clock_seconds_to_cycles(float seconds);
