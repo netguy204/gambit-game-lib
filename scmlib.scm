@@ -1,59 +1,6 @@
-#!/usr/bin/env gsc-script
+(##include "math.scm")
+(##include "common.scm")
 
-(c-declare #<<c-declare-end
-
-#include <stdio.h>
-#include <libxml/tree.h>
-#include <libxml/parser.h>
-#include "testlib.h"
-
-c-declare-end
-)
-
-(define-macro (when test . body)
-  `(if ,test
-       (begin . ,body)
-       '()))
-
-(define-macro (comment . body)
-  ''())
-
-(define-structure vector x y)
-
-(define (vector-add-into! r a b)
-  (let ((xa (vector-x a))
-        (xb (vector-x b))
-        (ya (vector-y a))
-        (yb (vector-y b)))
-   (vector-x-set! r (+ xa xb))
-   (vector-y-set! r (+ ya yb))
-   r))
-
-(define (vector-sub-into! r a b)
-  (let ((xa (vector-x a))
-        (xb (vector-x b))
-        (ya (vector-y a))
-        (yb (vector-y b)))
-   (vector-x-set! r (- xa xb))
-   (vector-y-set! r (- ya yb))
-   r))
-
-(define (vector-scale-into! r a s)
-  (let ((xa (vector-x a))
-        (ya (vector-y a)))
-   (vector-x-set! r (* xa s))
-   (vector-y-set! r (* ya s))
-   r))
-
-(define (vector-scale-both-into! r a sx sy)
-  (let ((xa (vector-x a))
-        (ya (vector-y a)))
-   (vector-x-set! r (* xa sx))
-   (vector-y-set! r (* ya sy))
-   r))
-
-(define (vector-scale a s)
-  (vector-scale-into! (make-vector 0 0) a s))
 
 (define-structure particle r dr)
 

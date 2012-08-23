@@ -1,0 +1,22 @@
+GAMBIT_ROOT?=/usr/local/Gambit-C
+GSC=$(GAMBIT_ROOT)/bin/gsc
+
+SCM_VERSION?=1
+SCMLIB=$(OUTPUT).o$(SCM_VERSION)
+SCM_C=$(patsubst %.scm,%.c,$(SCM_SRC)) $(SCMLIB).c
+SCM_O=$(patsubst %.c,%.o,$(SCM_C))
+
+all: $(SCMLIB)
+
+$(SCM_C): $(SCM_SRC)
+	$(GSC) -link -flat -o $(SCMLIB).c $(SCM_SRC)
+
+$(SCM_O): $(SCM_C)
+	$(GSC) -cc-options "-D___DYNAMIC $(CFLAGS)" -obj $(SCM_C)
+
+$(SCMLIB): $(SCM_O)
+	$(CC) -bundle $(SCM_O) -o $(SCMLIB) $(LDFLAGS)
+
+
+clean:
+	rm -rf $(SCMLIB) $(SCM_C) $(SCM_O)

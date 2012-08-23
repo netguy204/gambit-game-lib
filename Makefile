@@ -8,7 +8,10 @@ CFLAGS+=-I$(GAMBIT_ROOT)/include `sdl-config --cflags` $(XML_INCLUDE)
 SDL_LIBS:=`sdl-config --libs` -lSDL_image
 LDFLAGS=$(SDL_LIBS) -L$(GAMBIT_ROOT)/lib -lxml2
 
-all: sdlmain
+MKMOD=make -f Mkmod
+MAKE_XML2=$(MKMOD) SCM_SRC=xml2.scm OUTPUT=xml2 CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)"
+
+all: sdlmain xml2.o1.o
 
 SCM_LIB_C=$(patsubst %.scm,%.c,$(SCM_LIB_SRC)) \
 	$(patsubst %.scm,%_.c,$(SCM_LIB_SRC))
@@ -27,6 +30,7 @@ sdlmain: $(SCM_OBJ) $(C_OBJS)
 
 clean:
 	rm -f *.o* $(SCM_LIB_C) sdlmain
+	$(MAKE_XML2) clean
 
 test_bin: testlib.o testlib_test.o
 	$(CC) $(CFLAGS) -o $@ testlib.o testlib_test.o $(LDFLAGS)
@@ -34,4 +38,8 @@ test_bin: testlib.o testlib_test.o
 test: test_bin
 	./test_bin
 
+xml2.o1.o: xml2.scm
+	$(MAKE_XML2)
+
 .phony: all
+
