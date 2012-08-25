@@ -1,16 +1,19 @@
+(declare
+ (standard-bindings)
+ (block))
 
 (define-structure particle r dr)
 
 (define (particle-x p)
-  (vector-x (particle-r p)))
+  (vect-x (particle-r p)))
 
 (define (particle-y p)
-  (vector-y (particle-r p)))
+  (vect-y (particle-r p)))
 
 (define (particle-integrate p dt)
-  (vector-add-into! (particle-r p)
-                    (particle-r p) (vector-scale (particle-dr p)
-                                                 dt)))
+  (vect-add-into! (particle-r p)
+                  (particle-r p)
+                  (vect-scale (particle-dr p) dt)))
 
 (define (repeatedly fn n)
   (let loop ((result '())
@@ -24,8 +27,8 @@
   (+ min (random-integer (- max min))))
 
 (define (random-particle)
-  (make-particle (make-vector (random-integer 640) (random-integer 480))
-                 (make-vector (rand-in-range -100 100) (rand-in-range -100 100))))
+  (make-particle (make-vect (random-integer 640) (random-integer 480))
+                 (make-vect (rand-in-range -100 100) (rand-in-range -100 100))))
 
 (define *ps* (repeatedly random-particle 1000))
 (define *test-image* #f)
@@ -49,9 +52,9 @@
                (sprite (frame/make-sprite)))
       
           (if (or (>= x 640) (<= x 0))
-                (vector-scale-both-into! dr dr -1 1))
+                (vect-scale-both-into! dr dr -1 1))
           (if (or (>= y 480) (<= y 0))
-                (vector-scale-both-into! dr dr 1 -1))
+                (vect-scale-both-into! dr dr 1 -1))
       
           (particle-integrate p dt)
           (sprite-resource-set! sprite *test-image*)
