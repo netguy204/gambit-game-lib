@@ -1,11 +1,24 @@
 #ifndef TEST_H
 #define TEST_H
 
+
+#define MAX_NUM_CLOCKS 20
+#define MAX_NUM_IMAGES 20
+
+#define USE_SDL
+
+#ifdef USE_SDL
 #include <SDL/SDL.h>
-#include <SDL/SDL_image.h>
+#endif
+
+/* initialize the internal allocators for the library. Must be called
+   before other functions */
+void lib_init();
+void begin_frame();
+void end_frame();
 
 /* exported by test.scm */
-void set_screen(void*);
+void scm_init();
 void step(int);
 void terminate();
 
@@ -21,9 +34,6 @@ typedef struct StackAllocator_ {
   void* stack_max;
 } *StackAllocator;
 
-SDL_Surface* load_image(char * file);
-void blit_image(SDL_Surface* target, SDL_Surface* src, int x, int y);
-
 FixedAllocator fixed_allocator_make(size_t obj_size, unsigned int n);
 void* fixed_allocator_alloc(FixedAllocator allocator);
 void fixed_allocator_free(FixedAllocator allocator, void *obj);
@@ -32,21 +42,54 @@ StackAllocator stack_allocator_make(size_t stack_size);
 void* stack_allocator_alloc(StackAllocator allocator, size_t size);
 void stack_allocator_freeall(StackAllocator allocator);
 
-#define MAX_NUM_CLOCKS 20
-
 typedef struct Clock_ {
   long cycles; /* msecs */
   float time_scale;
   int paused;
 } *Clock;
 
-void clock_init();
 Clock clock_make();
 void clock_free(Clock clock);
-void clock_update(Clock clock, float delta); /* time in seconds */
-long clock_get_time(Clock clock); /* time in cycles */
+float clock_update(Clock clock, float delta); /* time in seconds */
+long clock_time(Clock clock); /* time in cycles */
 
 float clock_cycles_to_seconds(long cycles);
 long clock_seconds_to_cycles(float seconds);
+
+typedef struct LLNode_* LLNode;
+
+#define LL_FOREACH(type, var, head) for(type var = head; var != NULL; var = (type)(((LLNode)var)->next))
+
+struct LLNode_ {
+  LLNode next;
+};
+
+typedef struct ImageResource_ {
+  struct LLNode_ node;
+#ifdef USE_SDL
+  SDL_Surface* surface;
+#endif
+} *ImageResource;
+
+ImageResource load_image(char * file);
+void render_image_to_screen(ImageResource src, float x, float y);
+
+typedef struct Sprite_ {
+  ImageResource resource;
+  float angle;
+  float displayX;
+  float displayY;
+} *Sprite;
+
+Sprite frame_make_sprite();
+
+typedef struct SpriteList_ {
+  struct LLNode_ node;
+  Sprite sprite;
+} *SpriteList;
+
+SpriteList frame_spritelist_append(SpriteList list, Sprite sprite);
+
+void render_spritelist_to_screen(SpriteList list);
 
 #endif

@@ -1,6 +1,6 @@
 C_SRC=testlib.c sdlmain.c realmain.c
-SCM_LIB_SRC=link.scm
-SCM_MOD_SRC=scmlib.scm
+SCM_LIB_SRC=scmlib.scm link.scm
+
 GAMBIT_ROOT?=/usr/local/Gambit-C
 GSC=$(GAMBIT_ROOT)/bin/gsc
 XML_INCLUDE:=-I/usr/include/libxml2
@@ -14,13 +14,13 @@ MAKE_XML2=$(MKMOD) SCM_SRC=xml2.scm OUTPUT=xml2 CFLAGS="$(CFLAGS)" LDFLAGS="$(LD
 all: sdlmain xml2.o1.o
 
 SCM_LIB_C=$(patsubst %.scm,%.c,$(SCM_LIB_SRC)) \
-	$(patsubst %.scm,%_.c,$(SCM_LIB_SRC))
+	link_.c
 
 SCM_OBJ=$(patsubst %.c,%.o,$(SCM_LIB_C))
 C_OBJS=$(patsubst %.c,%.o,$(C_SRC))
 
 $(SCM_LIB_C): $(SCM_LIB_SRC)
-	$(GSC) -f -link $(SCM_LIB_SRC)
+	$(GSC) -f -link -track-scheme $(SCM_LIB_SRC)
 
 $(SCM_OBJ): $(SCM_LIB_C)
 	$(GSC) -cc-options "-D___DYNAMIC $(CFLAGS)" -obj $(SCM_LIB_C)

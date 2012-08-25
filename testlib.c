@@ -6,6 +6,42 @@
 #define NEXT_ALIGNED_SIZE(x) ((x + 8 - 1) & ~(8 - 1))
 #define SAFETY(x) x
 
+static FixedAllocator clock_allocator;
+static FixedAllocator image_resource_allocator;
+static StackAllocator frame_allocator;
+
+void* fail_exit(char * message) {
+  fprintf(stderr, "FAIL_EXIT: %s\n", message);
+  fflush(stderr);
+  exit(1);
+  return NULL;
+}
+
+void lib_init() {
+  clock_allocator = fixed_allocator_make(sizeof(struct Clock_), MAX_NUM_CLOCKS);
+  image_resource_allocator = fixed_allocator_make(sizeof(struct ImageResource_), MAX_NUM_IMAGES);
+  frame_allocator = stack_allocator_make(1024 * 1024);
+
+  scm_init();
+}
+
+#ifdef USE_SDL
+extern SDL_Surface* screen;
+#endif
+
+void begin_frame() {
+  stack_allocator_freeall(frame_allocator);
+#ifdef USE_SDL
+  SDL_FillRect(screen, NULL, 0);
+#endif
+}
+
+void end_frame() {
+#ifdef USE_SDL
+  SDL_Flip(screen);
+#endif
+}
+
 /**
  * FixedAllocator's are used to quickly allocate and free objects of
  * fixed size. They opporate in constant time but cannot allocate more
@@ -35,7 +71,7 @@ FixedAllocator fixed_allocator_make(size_t obj_size, unsigned int n) {
 }
 
 void* fixed_allocator_alloc(FixedAllocator allocator) {
-  SAFETY(if(!allocator->first_free) return NULL);
+  SAFETY(if(!allocator->first_free) return fail_exit("fixed_allocator failed"));
 
   void * mem = allocator->first_free;
   allocator->first_free = *(void**)allocator->first_free;
@@ -60,7 +96,7 @@ StackAllocator stack_allocator_make(size_t stack_size) {
 
 void* stack_allocator_alloc(StackAllocator allocator, size_t size) {
   size = NEXT_ALIGNED_SIZE(size);
-  SAFETY(if((char*)allocator->stack_top + size > (char*)allocator->stack_max) return NULL);
+  SAFETY(if((char*)allocator->stack_top + size > (char*)allocator->stack_max) return fail_exit("stack_allocator failed"));
   void* mem = allocator->stack_top;
   allocator->stack_top = (char*)allocator->stack_top + size;
   return mem;
@@ -68,12 +104,6 @@ void* stack_allocator_alloc(StackAllocator allocator, size_t size) {
 
 void stack_allocator_freeall(StackAllocator allocator) {
   allocator->stack_top = allocator->stack_bottom;
-}
-
-static FixedAllocator clock_allocator;
-
-void clock_init() {
-  clock_allocator = fixed_allocator_make(sizeof(struct Clock_), MAX_NUM_CLOCKS);
 }
 
 Clock clock_make() {
@@ -88,13 +118,17 @@ void clock_free(Clock clock) {
   fixed_allocator_free(clock_allocator, clock);
 }
 
-void clock_update(Clock clock, float delta) {
+float clock_update(Clock clock, float delta) {
   if(!clock->paused) {
-    clock->cycles += clock_seconds_to_cycles(delta * clock->time_scale);
+    float scaled = delta * clock->time_scale;
+    clock->cycles += clock_seconds_to_cycles(scaled);
+    return scaled;
+  } else {
+    return 0.0f;
   }
 }
 
-long clock_get_time(Clock clock) {
+long clock_time(Clock clock) {
   return clock->cycles;
 }
 
@@ -106,23 +140,58 @@ long clock_seconds_to_cycles(float seconds) {
   return roundf(seconds * 1000.0f);
 }
 
-SDL_Surface* load_image(char * file) {
+static LLNode last_resource = NULL;
+
+#ifdef USE_SDL
+#include <SDL/SDL_image.h>
+
+ImageResource load_image(char * file) {
   SDL_Surface *image;
+  SDL_Surface *optimized;
+
   image = IMG_Load(file);
   if(image == NULL) {
     fprintf(stderr, "failed to load %s\n", file);
     return NULL;
   }
 
-  return SDL_DisplayFormatAlpha(image);
+  optimized = SDL_DisplayFormatAlpha(image);
+  SDL_FreeSurface(image);
+
+  ImageResource resource = (ImageResource)fixed_allocator_alloc(image_resource_allocator);
+  resource->surface = optimized;
+  resource->node.next = last_resource;
+  last_resource = (LLNode)resource;
+
+  return resource;
 }
 
-void blit_image(SDL_Surface* target, SDL_Surface* src, int x, int y) {
+void render_image_to_screen(ImageResource img, float x, float y) {
+  SDL_Surface* src = img->surface;
   SDL_Rect dest;
-  dest.x = x;
-  dest.y = y;
+  dest.x = (int)roundf(x);
+  dest.y = (int)roundf(y);
   dest.w = src->w;
   dest.h = src->h;
-  SDL_BlitSurface(src, NULL, target, &dest);
-  SDL_UpdateRects(target, 1, &dest);
+  SDL_BlitSurface(src, NULL, screen, &dest);
+}
+#endif
+
+Sprite frame_make_sprite() {
+  Sprite sprite = stack_allocator_alloc(frame_allocator, sizeof(struct Sprite_));
+  return sprite;
+}
+
+SpriteList frame_spritelist_append(SpriteList rest, Sprite sprite) {
+  SpriteList list = stack_allocator_alloc(frame_allocator, sizeof(struct SpriteList_));
+  list->node.next = (LLNode)rest;
+  list->sprite = sprite;
+  return list;
+}
+
+void render_spritelist_to_screen(SpriteList list) {
+  LL_FOREACH(SpriteList, element, list) {
+    Sprite sprite = element->sprite;
+    render_image_to_screen(sprite->resource, sprite->displayX, sprite->displayY);
+  }
 }

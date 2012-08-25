@@ -5,14 +5,18 @@
 #define ___VERSION 406006
 #include <gambit.h>
 
+/* required by testlib */
+SDL_Surface* screen = NULL;
+
 #define SCHEME_LIBRARY_LINKER ____20_link__
 ___BEGIN_C_LINKAGE
 extern ___mod_or_lnk SCHEME_LIBRARY_LINKER (___global_state_struct*);
 ___END_C_LINKAGE
 
-extern int real_main(int argc, char ** argv, SDL_Surface* screen);
+extern int real_main(int argc, char ** argv);
 
 void shutdown() {
+  ___cleanup();
   IMG_Quit();
   SDL_Quit();
 }
@@ -26,8 +30,7 @@ int main(int argc, char ** argv) {
 
   atexit(shutdown);
 
-  SDL_Surface *screen;
-  screen = SDL_SetVideoMode(640, 480, 16, SDL_HWSURFACE);
+  screen = SDL_SetVideoMode(640, 480, 16, SDL_HWSURFACE|SDL_DOUBLEBUF);
   if(screen == NULL) {
     fprintf(stderr, "Unable to set 640x480 video: %s\n", SDL_GetError());
     exit(1);
@@ -41,9 +44,7 @@ int main(int argc, char ** argv) {
 
   ___setup(&setup_params);
 
-  int result = real_main(argc, argv, screen);
-
-  ___cleanup();
+  int result = real_main(argc, argv);
 
   return result;
 }

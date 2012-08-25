@@ -4,6 +4,7 @@
 
 int last_time;
 int min_time = 18;
+int max_time = 100;
 
 void loop_once() {
   SDL_Event event;
@@ -26,14 +27,21 @@ void loop_once() {
     new_time = SDL_GetTicks();
   }
 
-  step(new_time - last_time);
+  float delta = new_time - last_time;
+  if(delta > max_time) {
+    delta = max_time;
+  }
+
+  begin_frame();
+  step(delta);
+  end_frame();
+
   last_time = new_time;
 }
 
-int real_main(int argc, char ** argv, SDL_Surface* screen) {
+int real_main(int argc, char ** argv) {
   int last_time = SDL_GetTicks();
-
-  set_screen(screen);
+  lib_init();
 
   while(1) {
     loop_once();

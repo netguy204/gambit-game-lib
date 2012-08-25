@@ -26,16 +26,16 @@ int main(int argc, char ** argv) {
   clock_init();
 
   Clock clock = clock_make();
-  ASSERT(clock_get_time(clock) == 0);
+  ASSERT(clock_time(clock) == 0);
   clock_update(clock, 1.0);
-  ASSERT(clock_get_time(clock) == 1000);
+  ASSERT(clock_time(clock) == 1000);
   clock->paused = 1;
   clock_update(clock, 1.0);
-  ASSERT(clock_get_time(clock) == 1000);
+  ASSERT(clock_time(clock) == 1000);
   clock->paused = 0;
   clock->time_scale = -1.0f;
   clock_update(clock, 0.5);
-  ASSERT(clock_get_time(clock) == 500);
+  ASSERT(clock_time(clock) == 500);
   clock_free(clock);
 
   END_MAIN();
