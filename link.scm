@@ -5,8 +5,9 @@
 c-declare-end
 )
 
-(##include "scmlib.scm")
-(load "statprof.scm")
+(load "math")
+(load "common")
+(load "scmlib")
 
 (c-define-type ImageResource (pointer (struct "ImageResource_")))
 (c-define-type Clock (pointer (struct "Clock_")))
@@ -104,14 +105,12 @@ c-declare-end
 (c-define (scm-init) () void "scm_init" ""
           (set! *game-clock* (clock-make))
           ;;(clock-time-scale-set! *game-clock* 2.0)
-          (ensure-resources)
-          (profile-start!))
+          (display "initializing") (newline)
+          (ensure-resources))
 
 (c-define (step msecs) (int) void "step" ""
           (update-view (clock-update *game-clock* (/ msecs 1000.0))))
 
 (c-define (terminate) () void "terminate" ""
-          (display "terminating") (newline)
-          (profile-stop!)
-          (write-profile-report "report"))
+          (display "terminating") (newline))
 

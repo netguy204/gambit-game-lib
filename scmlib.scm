@@ -1,6 +1,3 @@
-(##include "math.scm")
-(##include "common.scm")
-
 
 (define-structure particle r dr)
 
@@ -30,11 +27,11 @@
   (make-particle (make-vector (random-integer 640) (random-integer 480))
                  (make-vector (rand-in-range -100 100) (rand-in-range -100 100))))
 
-(define *ps* (repeatedly random-particle 100))
+(define *ps* (repeatedly random-particle 1000))
 (define *test-image* #f)
 
 (define (ensure-resources)
-  (when (not *test-image*)
+  (if (not *test-image*)
     (set! *test-image* (load-image "test.png"))))
 
 (define (update-view dt)
@@ -51,9 +48,9 @@
                (dr (particle-dr p))
                (sprite (frame/make-sprite)))
       
-          (when (or (>= x 640) (<= x 0))
+          (if (or (>= x 640) (<= x 0))
                 (vector-scale-both-into! dr dr -1 1))
-          (when (or (>= y 480) (<= y 0))
+          (if (or (>= y 480) (<= y 0))
                 (vector-scale-both-into! dr dr 1 -1))
       
           (particle-integrate p dt)
