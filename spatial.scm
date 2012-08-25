@@ -1,0 +1,80 @@
+(load "object")
+(load "rect")
+
+(define (spatial-calc-cell width x y)
+  (+ x (* y width)))
+
+(define (spatial-cell obj x y)
+  (spatial-calc-cell (obj-field obj 'width) x y))
+
+(define (spatial-rect->cells obj rect)
+  (let ((width (obj-field obj 'width))
+        (minx (floor (rect-minx rect)))
+        (maxx (ceiling (rect-maxx rect)))
+        (miny (floor (rect-miny rect)))
+        (maxy (ceiling (rect-maxy rect)))
+        (result '()))
+    (let loopy ((y miny))
+      (if (< y maxy)
+          (let loopx ((x minx))
+            (if (< x maxx)
+                (begin
+                  (set! result (cons (spatial-calc-cell width x y) result))
+                  (loopx (+ x 1)))
+                (loopy (+ y 1))))
+          result))))
+
+(define (spatial-append-unique-pred pred new old)
+  (let loop ((new new)
+             (old old))
+    (if (null? new)
+        old
+        (if (some? (lambda (x) (pred x (car new))) old)
+            (loop (cdr new) old)
+            (loop (cdr new) (cons (car new) old))))))
+
+(define (spatial-rect obj rect)
+  (let ((idxs (spatial-rect->cells obj rect))
+        (cell->objs (obj-field obj 'cell->objs)))
+
+    (let loop ((idxs idxs)
+               (result '()))
+      (if (null? idxs)
+          result
+          (loop (cdr idxs)
+                (spatial-append-unique-pred eq?
+                  (table-ref cell->objs (car idxs) '())
+                  result))))))
+
+(define (spatial-delete! obj value)
+  (let* ((obj->cells (obj-field obj 'obj->cells))
+         (cell->objs (obj-field obj 'cell->objs))
+         (idxs (table-ref obj->cells obj '())))
+    (let loop ((idxs idxs))
+      (if (not (null? idxs))
+          ;; remove this object from the index table
+          (let* ((objs (table-ref cell->objs (car idx)))
+                 (objs (remove-if (lambda (o) (eq? o obj)) objs)))
+            (if (null? objs)
+                (table-set! cell->objs (car idx))
+                (table-set! cell->objs (car idx) objs))
+            (loop (cdr idxs)))))
+    ;; remove this object from the object table
+    (table-set! obj->cells obj)))
+
+(define (spatial-update! obj value rect)
+  (spatial-delete! obj value)
+  (let ((idxs (spatial-rect->cells obj rect))
+        (obj->cells (obj-field obj 'obj->cells))
+        (cell->objs (obj-field obj 'cell->objs)))
+    (table-set! obj->cells value idxs)
+    (let loop ((idxs idxs))
+      (if (not (null? idxs))
+          (let ((values (table-ref cell->objs (car idxs) '())))
+            (table-set! cell->objs (car idxs) (cons value values))
+            (loop (cdr idxs)))))))
+
+(define (spatial-make width)
+  (obj-make fields: (list 'obj->cells (make-table test: eq?)
+                          'cell->objs (make-table)
+                          'width width)))

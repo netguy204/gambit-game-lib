@@ -6,6 +6,8 @@
 c-declare-end
 )
 
+(load "common")
+
 (define xml:parse-file
   (c-lambda (nonnull-char-string)
             (pointer "xmlDoc")
@@ -130,23 +132,12 @@ c-declare-end
 
 (define (xml:exp-children exp) (cddr exp))
 
-(define (xml:filter pred lst)
-  (let loop ((result '())
-             (lst lst))
-    (if (null? lst)
-        (reverse result)
-        (if (pred (car lst))
-            (loop (cons (car lst) result)
-                  (cdr lst))
-            (loop result
-                  (cdr lst))))))
-
 (define (xml:node->sexp-internal node)
   (map (lambda (node)
          (xml:exp-make (xml:node-name node)
                        (xml:node->attr-alist node)
                        (xml:node->sexp-internal (xml:node-children node))))
-       (xml:filter xml:element? (xml:node->list node))))
+       (filter xml:element? (xml:node->list node))))
 
 (define (xml:node->sexp node)
   (car (xml:node->sexp-internal node)))

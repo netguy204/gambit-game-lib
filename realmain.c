@@ -15,6 +15,7 @@ void loop_once() {
     switch(event.type) {
     case SDL_QUIT:
       terminate();
+      images_free();
       exit(0);
       break;
     }

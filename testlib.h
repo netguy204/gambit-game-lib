@@ -71,8 +71,11 @@ typedef struct ImageResource_ {
 #endif
 } *ImageResource;
 
-ImageResource load_image(char * file);
-void render_image_to_screen(ImageResource src, float x, float y);
+ImageResource image_load(char * file);
+int image_width(ImageResource resource);
+int image_height(ImageResource resource);
+void images_free();
+void image_render_to_screen(ImageResource src, float x, float y);
 
 typedef struct Sprite_ {
   ImageResource resource;
@@ -90,6 +93,6 @@ typedef struct SpriteList_ {
 
 SpriteList frame_spritelist_append(SpriteList list, Sprite sprite);
 
-void render_spritelist_to_screen(SpriteList list);
+void spritelist_render_to_screen(SpriteList list);
 
 #endif

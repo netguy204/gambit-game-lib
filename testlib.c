@@ -145,7 +145,7 @@ static LLNode last_resource = NULL;
 #ifdef USE_SDL
 #include <SDL/SDL_image.h>
 
-ImageResource load_image(char * file) {
+ImageResource image_load(char * file) {
   SDL_Surface *image;
   SDL_Surface *optimized;
 
@@ -166,7 +166,28 @@ ImageResource load_image(char * file) {
   return resource;
 }
 
-void render_image_to_screen(ImageResource img, float x, float y) {
+int image_width(ImageResource resource) {
+  return resource->surface->w;
+}
+
+int image_height(ImageResource resource) {
+  return resource->surface->h;
+}
+
+void images_free() {
+  LLNode head = last_resource;
+  LLNode next;
+  while(head) {
+    ImageResource resource = (ImageResource)head;
+    SDL_FreeSurface(resource->surface);
+    next = head->next;
+    fixed_allocator_free(image_resource_allocator, resource);
+    head = next;
+  }
+  last_resource = NULL;
+}
+
+void image_render_to_screen(ImageResource img, float x, float y) {
   SDL_Surface* src = img->surface;
   SDL_Rect dest;
   dest.x = (int)roundf(x);
@@ -189,9 +210,9 @@ SpriteList frame_spritelist_append(SpriteList rest, Sprite sprite) {
   return list;
 }
 
-void render_spritelist_to_screen(SpriteList list) {
+void spritelist_render_to_screen(SpriteList list) {
   LL_FOREACH(SpriteList, element, list) {
     Sprite sprite = element->sprite;
-    render_image_to_screen(sprite->resource, sprite->displayX, sprite->displayY);
+    image_render_to_screen(sprite->resource, sprite->displayX, sprite->displayY);
   }
 }

@@ -5,8 +5,6 @@
 c-declare-end
 )
 
-(load "math")
-(load "common")
 (load "scmlib")
 
 (c-define-type ImageResource (pointer (struct "ImageResource_")))
@@ -14,15 +12,25 @@ c-declare-end
 (c-define-type Sprite (pointer (struct "Sprite_")))
 (c-define-type SpriteList (pointer (struct "SpriteList_")))
 
-(define load-image 
+(define image-load
   (c-lambda (nonnull-char-string)
             ImageResource
-            "load_image"))
+            "image_load"))
 
-(define render-image-to-screen!
+(define image-render-to-screen!
   (c-lambda (ImageResource float float)
             void
-            "render_image_to_screen"))
+            "image_render_to_screen"))
+
+(define image-width
+  (c-lambda (ImageResource)
+            int
+            "image_width"))
+
+(define image-height
+  (c-lambda (ImageResource)
+            int
+            "image_height"))
 
 (define clock-free
   (c-lambda (Clock)
@@ -94,10 +102,10 @@ c-declare-end
             SpriteList
             "frame_spritelist_append"))
 
-(define render-spritelist-to-screen!
+(define spritelist-render-to-screen!
   (c-lambda (SpriteList)
             void
-            "render_spritelist_to_screen"))
+            "spritelist_render_to_screen"))
 
 ;;
 (define *game-clock* #f)

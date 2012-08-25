@@ -1,3 +1,5 @@
+(load "math")
+
 (declare
  (standard-bindings)
  (block))
@@ -27,39 +29,46 @@
   (+ min (random-integer (- max min))))
 
 (define (random-particle)
-  (make-particle (make-vect (random-integer 640) (random-integer 480))
-                 (make-vect (rand-in-range -100 100) (rand-in-range -100 100))))
+  (let ((img-w (image-width *test-image*))
+        (img-h (image-height *test-image*)))
+    (make-particle (make-vect (random-integer (- 640 img-w))
+                              (random-integer (- 480 img-h)))
+                   (make-vect (rand-in-range -100 100)
+                              (rand-in-range -100 100)))))
 
-(define *ps* (repeatedly random-particle 1000))
+(define *ps* #f)
 (define *test-image* #f)
 
 (define (ensure-resources)
   (if (not *test-image*)
-    (set! *test-image* (load-image "test.png"))))
+      (begin
+        (set! *test-image* (image-load "test.png"))
+        (set! *ps* (repeatedly random-particle 100)))))
 
 (define (update-view dt)
-
-  (let loop ((ps *ps*)
-             (sprite-list #f))
-    (if (null? ps)
-        (if sprite-list
-            (render-spritelist-to-screen! sprite-list))
-        
-        (let* ((p (car ps))
-               (x (particle-x p))
-               (y (particle-y p))
-               (dr (particle-dr p))
-               (sprite (frame/make-sprite)))
-      
-          (if (or (>= x 640) (<= x 0))
+  (let ((test-w (- 640 (image-width *test-image*)))
+        (test-h (- 480 (image-height *test-image*))))
+    (let loop ((ps *ps*)
+               (sprite-list #f))
+      (if (null? ps)
+          (if sprite-list
+              (spritelist-render-to-screen! sprite-list))
+          
+          (let* ((p (car ps))
+                 (x (particle-x p))
+                 (y (particle-y p))
+                 (dr (particle-dr p))
+                 (sprite (frame/make-sprite)))
+            
+            (if (or (>= x test-w) (<= x 0))
                 (vect-scale-both-into! dr dr -1 1))
-          (if (or (>= y 480) (<= y 0))
+            (if (or (>= y test-h) (<= y 0))
                 (vect-scale-both-into! dr dr 1 -1))
-      
-          (particle-integrate p dt)
-          (sprite-resource-set! sprite *test-image*)
-          (sprite-x-set! sprite (exact->inexact (particle-x p)))
-          (sprite-y-set! sprite (exact->inexact (particle-y p)))
-
-          (loop (cdr ps) (frame/spritelist-append sprite-list sprite))))))
+            
+            (particle-integrate p dt)
+            (sprite-resource-set! sprite *test-image*)
+            (sprite-x-set! sprite (exact->inexact (particle-x p)))
+            (sprite-y-set! sprite (exact->inexact (particle-y p)))
+            
+            (loop (cdr ps) (frame/spritelist-append sprite-list sprite)))))))
 
