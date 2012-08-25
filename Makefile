@@ -1,8 +1,10 @@
 C_SRC=testlib.c sdlmain.c realmain.c
 SCM_LIB_SRC=link.scm
-SCM_DYNLIB_SRC=math.scm common.scm scmlib.scm
+SCM_GAMBIT_SRC=math.scm common.scm scmlib.scm
+SCM_R5_SRC=common.scm
+
 GAMBIT_ROOT?=/usr/local/Gambit-C
-GSC=$(GAMBIT_ROOT)/bin/gsc -:s
+GSC=$(GAMBIT_ROOT)/bin/gsc
 XML_INCLUDE:=-I/usr/include/libxml2
 CFLAGS+=-I$(GAMBIT_ROOT)/include `sdl-config --cflags` $(XML_INCLUDE)
 SDL_LIBS:=`sdl-config --libs` -lSDL_image
@@ -17,7 +19,8 @@ SCM_LIB_C=$(patsubst %.scm,%.c,$(SCM_LIB_SRC)) \
 
 SCM_OBJ=$(patsubst %.c,%.o,$(SCM_LIB_C))
 C_OBJS=$(patsubst %.c,%.o,$(C_SRC))
-SCM_DYN_OBJ=$(patsubst %.scm,%.o1,$(SCM_DYNLIB_SRC))
+SCM_GAMBIT_OBJ=$(patsubst %.scm,%.o1,$(SCM_GAMBIT_SRC))
+SCM_R5_OBJ=$(patsubst %.scm,%.o1,$(SCM_R5_SRC))
 
 all: sdlmain xml2.o1.o $(SCM_DYN_OBJ)
 
@@ -28,7 +31,10 @@ $(SCM_LIB_C): $(SCM_LIB_SRC)
 $(SCM_OBJ): $(SCM_LIB_C)
 	$(GSC) -cc-options "-D___DYNAMIC $(CFLAGS)" -obj $(SCM_LIB_C)
 
-%.o1: %.scm
+$(SCM_R5_OBJ): $(SCM_R5_SRC)
+	$(GSC) -:s -o $@ $<
+
+$(SCM_GAMBIT_OBJ): $(SCM_GAMBIT_SRC)
 	$(GSC) -o $@ $<
 
 sdlmain: $(SCM_OBJ) $(C_OBJS)

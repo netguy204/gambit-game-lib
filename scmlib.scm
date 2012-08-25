@@ -1,4 +1,5 @@
 (load "math")
+(load "common")
 
 (declare
  (standard-bindings)
@@ -16,14 +17,6 @@
   (vect-add-into! (particle-r p)
                   (particle-r p)
                   (vect-scale (particle-dr p) dt)))
-
-(define (repeatedly fn n)
-  (let loop ((result '())
-             (n n))
-    (if (> n 0)
-        (loop (cons (fn) result)
-              (- n 1))
-        (reverse result))))
 
 (define (rand-in-range min max)
   (+ min (random-integer (- max min))))

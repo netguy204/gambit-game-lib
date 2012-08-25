@@ -1,3 +1,4 @@
+
 (define-syntax when
   (syntax-rules ()
     ((when test . body) (if test (begin . body) #f))))
@@ -26,3 +27,12 @@
      ((null? lst) #f)
      ((pred (car lst)) #t)
      (#t (loop (cdr lst))))))
+
+(define (repeatedly fn n)
+  (let loop ((result '())
+             (n n))
+    (if (> n 0)
+        (loop (cons (fn) result)
+              (- n 1))
+        (reverse result))))
+
