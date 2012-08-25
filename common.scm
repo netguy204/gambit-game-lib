@@ -36,3 +36,5 @@
               (- n 1))
         (reverse result))))
 
+(define (identity o) o)
+
