@@ -33,11 +33,11 @@ void lib_init() {
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-  glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+  glClearColor(0.8f, 0.8f, 0.8f, 0.0f);
   glViewport(0, 0, 640, 480);
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
-  glOrtho(0.0f, 640, 480, 0.0f, -1.0f, 1.0f);
+  glOrtho(0.0f, 640, 0.0f, 480.0f, -1.0f, 1.0f);
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();
 }
@@ -124,30 +124,42 @@ void images_free() {
   resources_released();
 }
 
-void image_render_to_screen(ImageResource img, float angle, float x, float y) {
+void image_render_to_screen(ImageResource img, float angle,
+                            float cx, float cy,
+                            float x, float y) {
   glBindTexture(GL_TEXTURE_2D, img->texture);
+  glPushMatrix();
+
+  glTranslatef(x, y, 0.0f);
+
+  glRotatef(angle, 0.0f, 0.0f, 1.0f);
+  //glTranslatef(-2.0f * cx, -2.0f * cy, 0.0f);
+  glTranslatef(-cx, -cy, 0.0f);
+
   glBegin(GL_QUADS);
   
-  glTexCoord2i(0, 0);
-  glVertex3f(x, y, 0.0f);
-
-  glTexCoord2i(1, 0);
-  glVertex3f(x + img->w, y, 0.0f);
+  glTexCoord2i(0, 1);
+  glVertex3f(0, 0, 0.0f);
 
   glTexCoord2i(1, 1);
-  glVertex3f(x + img->w, y + img->h, 0.0f);
+  glVertex3f(img->w, 0, 0.0f);
 
-  glTexCoord2i(0, 1);
-  glVertex3f(x, y + img->h, 0.0f);
+  glTexCoord2i(1, 0);
+  glVertex3f(img->w, img->h, 0.0f);
+
+  glTexCoord2i(0, 0);
+  glVertex3f(0, img->h, 0.0f);
 
   glEnd();
+
+  glPopMatrix();
 }
 
 /* portable implementation */
 
 /**
  * FixedAllocator's are used to quickly allocate and free objects of
- * fixed size. They opporate in constant time but cannot allocate more
+ * fixed size. They operrate in constant time but cannot allocate more
  * objects than they were initially designed to hold. This makes them
  * appropriate for holding things like resource handles (since the
  * number of resources in the system is finite), timelines, and other
@@ -246,6 +258,8 @@ long clock_seconds_to_cycles(float seconds) {
 Sprite frame_make_sprite() {
   Sprite sprite = stack_allocator_alloc(frame_allocator, sizeof(struct Sprite_));
   sprite->angle = 0.0f;
+  sprite->originX = 0.0f;
+  sprite->originY = 0.0f;
   return sprite;
 }
 
@@ -260,6 +274,7 @@ void spritelist_render_to_screen(SpriteList list) {
   LL_FOREACH(SpriteList, element, list) {
     Sprite sprite = element->sprite;
     image_render_to_screen(sprite->resource, sprite->angle,
+                           sprite->originX, sprite->originY,
                            sprite->displayX, sprite->displayY);
   }
 }

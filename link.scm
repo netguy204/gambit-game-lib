@@ -98,6 +98,16 @@ c-declare-end
             void
             "___arg1->displayY = ___arg2;"))
 
+(define sprite-origin-x-set!
+  (c-lambda (Sprite float)
+            void
+            "___arg1->originX = ___arg2;"))
+
+(define sprite-origin-y-set!
+  (c-lambda (Sprite float)
+            void
+            "___arg1->originY = ___arg2;"))
+
 (define sprite-angle-set!
   (c-lambda (Sprite float)
             void

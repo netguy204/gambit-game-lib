@@ -79,15 +79,16 @@
          (h (image-height image))
          (w (image-width image))
          (px-img-offset (* (tkey-cx tkey) w))
-         (py-img-offset (- h (* (tkey-cy tkey) h)))
+         (py-img-offset (* (tkey-cy tkey) h))
          (piv-x (+ ox (tkey-x tkey)))
-         (piv-y (+ oy (- 480 (tkey-y tkey))))
-         (x (- piv-x px-img-offset))
-         (y (- piv-y py-img-offset)))
+         (piv-y (+ oy (tkey-y tkey))))
 
     (sprite-resource-set! sprite image)
-    (sprite-x-set! sprite (exact->inexact x))
-    (sprite-y-set! sprite (exact->inexact y))
+    (sprite-x-set! sprite (exact->inexact piv-x))
+    (sprite-y-set! sprite (exact->inexact piv-y))
+    (sprite-origin-x-set! sprite (exact->inexact px-img-offset))
+    (sprite-origin-y-set! sprite (exact->inexact py-img-offset))
+
     (sprite-angle-set! sprite (exact->inexact (tkey-angle tkey)))
     sprite))
 
@@ -103,6 +104,27 @@
                                               1000.0)))
          (anim-cycle (modulo (clock-time *game-clock*) cycles-for-anim))
          (anim-time (cycles->seconds anim-cycle))
-         (sprite-list (add-animation #f *anim* anim-time 320 -30)))
+         (sprite-list (add-animation #f *anim* anim-time 320 30)))
 
     (spritelist-render-to-screen! sprite-list)))
+
+
+(define (update-view-test dt)
+  (spritelist-render-to-screen!
+   (frame/spritelist-append
+    #f
+    (let* ((sprite (frame/make-sprite))
+           (cycles-per-rot (seconds->cycles 2.0))
+           (rot-cycle (modulo (clock-time *game-clock*) cycles-per-rot))
+           (angle (* 360.0 (/ rot-cycle cycles-per-rot)))
+           (img (image-load "test.png"))
+           (w (image-width img))
+           (h (image-height img)))
+
+      (sprite-resource-set! sprite img)
+      (sprite-x-set! sprite (exact->inexact 320))
+      (sprite-y-set! sprite (exact->inexact 240))
+      (sprite-origin-x-set! sprite (exact->inexact w))
+      (sprite-origin-y-set! sprite (exact->inexact h))
+      (sprite-angle-set! sprite (exact->inexact angle))
+      sprite))))

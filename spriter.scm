@@ -65,7 +65,7 @@
                   (sml:attr obj "pivot_x")
                   (sml:attr obj "pivot_y")
                   (sml:attr obj "angle")
-                  (sml:attr obj "spin")))))
+                  (sml:attr key "spin")))))
        (timeline->keys-markup timeline-markup)))
 
 (define (timelines-parse timelines resources)
@@ -154,7 +154,7 @@
       (if (< (- b a) 0)
           (lerp a ta (+ 360 b) tb t)
           (lerp a ta b tb t))
-      (if (>= (- b a) 0)
+      (if (> (- b a) 0)
           (lerp a ta (- b 360) tb t)
           (lerp a ta b tb t))))
 
