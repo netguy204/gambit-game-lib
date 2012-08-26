@@ -76,7 +76,7 @@ ImageResource image_load(char * file);
 int image_width(ImageResource resource);
 int image_height(ImageResource resource);
 void images_free();
-void image_render_to_screen(ImageResource src, float x, float y);
+void image_render_to_screen(ImageResource src, float angle, float x, float y);
 
 typedef struct Sprite_ {
   ImageResource resource;

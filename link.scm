@@ -19,7 +19,7 @@ c-declare-end
             "image_load"))
 
 (define image-render-to-screen!
-  (c-lambda (ImageResource float float)
+  (c-lambda (ImageResource float float float)
             void
             "image_render_to_screen"))
 
@@ -68,7 +68,7 @@ c-declare-end
             long
             "clock_time"))
 
-(define cycles->seonds
+(define cycles->seconds
   (c-lambda (long)
             float
             "clock_cycles_to_seconds"))
@@ -97,6 +97,11 @@ c-declare-end
   (c-lambda (Sprite float)
             void
             "___arg1->displayY = ___arg2;"))
+
+(define sprite-angle-set!
+  (c-lambda (Sprite float)
+            void
+            "___arg1->angle = ___arg2;"))
 
 (define frame/spritelist-append
   (c-lambda (SpriteList Sprite)

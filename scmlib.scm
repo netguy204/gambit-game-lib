@@ -1,5 +1,6 @@
 (##include "math.scm")
 (##include "common.scm")
+(##include "spriter.scm")
 
 (define *test-image* (make-parameter #f))
 
@@ -27,16 +28,20 @@
                    (make-vect (rand-in-range -100 100)
                               (rand-in-range -100 100)))))
 
-(define *ps* #f)
-
 (define (call-with-resources fn)
   (parameterize ((*test-image* (image-load "test.png")))
     (fn)))
 
+(define *ps* #f)
+(define *anim* #f)
+
 (define (ensure-resources)
   (call-with-resources
    (lambda ()
-     (set! *ps* (repeatedly random-particle 100)))))
+     (set! *ps* (repeatedly random-particle 100))
+     (set! *anim* (animation (entity (scml-load "monster/Example.SCML")
+                                     "0")
+                             "Posture")))))
 
 (define (update-particle sprite-list p dt w h)
   (let* ((x (particle-x p))
@@ -55,7 +60,7 @@
     (sprite-y-set! sprite (exact->inexact (particle-y p)))
     (frame/spritelist-append sprite-list sprite)))
 
-(define (update-view dt)
+(define (update-view-old dt)
   (call-with-resources
    (lambda ()
      (let ((w (- 640 (image-width (*test-image*))))
@@ -64,5 +69,29 @@
                   (sprite-list #f))
          (if (null? ps)
              (if sprite-list (spritelist-render-to-screen! sprite-list))
-             (loop (cdr ps) (update-particle sprite-list (car ps) dt w h))))))))
+             (loop (cdr ps)
+                   (update-particle sprite-list
+                                    (car ps) dt w h))))))))
 
+(define (tkey->sprite tkey ox oy)
+  (let* ((image (image-load (tkey-name tkey)))
+         (sprite (frame/make-sprite)))
+    (sprite-resource-set! sprite image)
+    (sprite-x-set! sprite (exact->inexact (+ ox (tkey-x tkey))))
+    (sprite-y-set! sprite (exact->inexact (+ oy (- 480 (tkey-y tkey)))))
+    (sprite-angle-set! sprite (exact->inexact (tkey-angle tkey)))
+    sprite))
+
+(define (add-animation sprite-list anim time ox oy)
+  (reduce (lambda (sprite-list tkey)
+            (frame/spritelist-append sprite-list
+                                     (tkey->sprite tkey ox oy)))
+          #f
+          (reverse (interp-anim anim time))))
+
+(define (update-view dt)
+  (let* ((cycles-for-anim (seconds->cycles 2.0))
+         (anim-cycle (modulo (clock-time *game-clock*) cycles-for-anim))
+         (anim-time (cycles->seconds anim-cycle))
+         (sprite-list (add-animation #f *anim* anim-time 320 0)))
+    (spritelist-render-to-screen! sprite-list)))

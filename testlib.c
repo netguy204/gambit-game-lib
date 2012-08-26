@@ -144,6 +144,7 @@ static LLNode last_resource = NULL;
 
 #ifdef USE_SDL
 #include <SDL/SDL_image.h>
+#include <SDL/SDL_rotozoom.h>
 
 ImageResource image_load(char * file) {
   SDL_Surface *image;
@@ -188,19 +189,28 @@ void images_free() {
   resources_released();
 }
 
-void image_render_to_screen(ImageResource img, float x, float y) {
+void image_render_to_screen(ImageResource img, float angle, float x, float y) {
   SDL_Surface* src = img->surface;
   SDL_Rect dest;
   dest.x = (int)roundf(x);
   dest.y = (int)roundf(y);
   dest.w = src->w;
   dest.h = src->h;
-  SDL_BlitSurface(src, NULL, screen, &dest);
+
+  if(angle != 0) {
+    // have to make a new surface in SW
+    SDL_Surface* new_src = rotozoomSurface(src, angle, 1.0, 1);
+    SDL_BlitSurface(new_src, NULL, screen, &dest);
+    SDL_FreeSurface(new_src);
+  } else {
+    SDL_BlitSurface(src, NULL, screen, &dest);
+  }
 }
 #endif
 
 Sprite frame_make_sprite() {
   Sprite sprite = stack_allocator_alloc(frame_allocator, sizeof(struct Sprite_));
+  sprite->angle = 0.0f;
   return sprite;
 }
 
@@ -214,6 +224,7 @@ SpriteList frame_spritelist_append(SpriteList rest, Sprite sprite) {
 void spritelist_render_to_screen(SpriteList list) {
   LL_FOREACH(SpriteList, element, list) {
     Sprite sprite = element->sprite;
-    image_render_to_screen(sprite->resource, sprite->displayX, sprite->displayY);
+    image_render_to_screen(sprite->resource, sprite->angle,
+                           sprite->displayX, sprite->displayY);
   }
 }

@@ -44,3 +44,10 @@
 
 (define (mapcat fn lst)
   (concat (map fn lst)))
+
+(define (reduce fn init lst)
+  (let loop ((result init)
+             (lst lst))
+    (if (null? lst) result
+        (loop (fn result (car lst))
+              (cdr lst)))))
