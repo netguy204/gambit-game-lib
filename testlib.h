@@ -3,7 +3,7 @@
 
 
 #define MAX_NUM_CLOCKS 20
-#define MAX_NUM_IMAGES 20
+#define MAX_NUM_IMAGES 40
 
 #define USE_SDL
 

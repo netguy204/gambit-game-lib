@@ -41,7 +41,7 @@
      (set! *ps* (repeatedly random-particle 100))
      (set! *anim* (animation (entity (scml-load "monster/Example.SCML")
                                      "0")
-                             "Posture")))))
+                             "Idle")))))
 
 (define (update-particle sprite-list p dt w h)
   (let* ((x (particle-x p))
@@ -75,10 +75,19 @@
 
 (define (tkey->sprite tkey ox oy)
   (let* ((image (image-load (tkey-name tkey)))
-         (sprite (frame/make-sprite)))
+         (sprite (frame/make-sprite))
+         (h (image-height image))
+         (w (image-width image))
+         (px-img-offset (* (tkey-cx tkey) w))
+         (py-img-offset (- h (* (tkey-cy tkey) h)))
+         (piv-x (+ ox (tkey-x tkey)))
+         (piv-y (+ oy (- 480 (tkey-y tkey))))
+         (x (- piv-x px-img-offset))
+         (y (- piv-y py-img-offset)))
+
     (sprite-resource-set! sprite image)
-    (sprite-x-set! sprite (exact->inexact (+ ox (tkey-x tkey))))
-    (sprite-y-set! sprite (exact->inexact (+ oy (- 480 (tkey-y tkey)))))
+    (sprite-x-set! sprite (exact->inexact x))
+    (sprite-y-set! sprite (exact->inexact y))
     (sprite-angle-set! sprite (exact->inexact (tkey-angle tkey)))
     sprite))
 
@@ -90,8 +99,10 @@
           (reverse (interp-anim anim time))))
 
 (define (update-view dt)
-  (let* ((cycles-for-anim (seconds->cycles 2.0))
+  (let* ((cycles-for-anim (seconds->cycles (/ (animation-length *anim*)
+                                              1000.0)))
          (anim-cycle (modulo (clock-time *game-clock*) cycles-for-anim))
          (anim-time (cycles->seconds anim-cycle))
-         (sprite-list (add-animation #f *anim* anim-time 320 0)))
+         (sprite-list (add-animation #f *anim* anim-time 320 -30)))
+
     (spritelist-render-to-screen! sprite-list)))

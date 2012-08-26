@@ -135,7 +135,7 @@
               (nkeys (if (null? mainline) '()
                          (cdr mainline))))
       (cond
-       ((null? nkeys) (error "time exceeded max " time))
+       ((null? nkeys) keys)
        ((and (>= time (caar keys)) (<= time (caar nkeys))) keys)
        (#t (loop (cdr keys)
                  (cddr keys)))))))
@@ -149,30 +149,14 @@
         (d (- b a)))
     (lerp-internal a s d)))
 
-(define (signed-circular-dist a1 a2 d)
-  (if (= d 1)
-      (if (> a2 a1)
-          (- a2 a1)
-          (+ a2 (- 360 a1)))
-      (if (< a2 a1)
-          (- a2 a1)
-          (- (+ a1 (- 360 a2))))))
-
-(define (angle-restricted angle)
-  (cond
-   ((< angle 0)
-    (+ 360 angle))
-   
-   ((>= angle 360)
-    (- angle 360))
-   
-   (#t angle)))
-
 (define (clerp a ta b tb d t)
-  (let ((s (/ (- t ta)
-              (- tb ta)))
-        (d (signed-circular-dist a b d)))
-    (angle-restricted (lerp-internal a s d))))
+  (if (= d 1)
+      (if (< (- b a) 0)
+          (lerp a ta (+ 360 b) tb t)
+          (lerp a ta b tb t))
+      (if (>= (- b a) 0)
+          (lerp a ta (- b 360) tb t)
+          (lerp a ta b tb t))))
 
 (define (interp-objects obj1 obj2 t)
   (let ((t1 (tkey-time obj1))
@@ -181,22 +165,29 @@
                (tkey-name obj1)
                (lerp (tkey-x obj1) t1 (tkey-x obj2) t2 t)
                (lerp (tkey-y obj1) t1 (tkey-y obj2) t2 t)
-               (lerp (tkey-cx obj1) t1 (tkey-cx obj2) t2 t)
-               (lerp (tkey-cy obj1) t1 (tkey-cy obj2) t2 t)
+               (tkey-cx obj1)
+               (tkey-cy obj1)
                (clerp (tkey-angle obj1) t1 (tkey-angle obj2) t2
                       (tkey-spin obj1) t)
                (tkey-spin obj1))))
 
 (define (interp-anim anim t)
-  (let* ((frames (find-frame anim t))
-         (f1 (cdar frames))
-         (f2 (cdadr frames)))
-    (map (lambda (f)
-           (let* ((id (car f))
-                  (obj1 (cdr f))
-                  (obj2 (cdr (assoc id f2))))
-             (interp-objects obj1 obj2 t)))
-         f1)))
+  (let* ((t (* 1000 t))
+         (frames (find-frame anim t))
+         (f1 (cdar frames)))
+
+    (if (null? (cdr frames))
+        ;; no need to interpolate
+        (map cdr f1)
+
+        ;; need to interpolate
+        (let ((f2 (cdadr frames)))
+          (map (lambda (f)
+                 (let* ((id (car f))
+                        (obj1 (cdr f))
+                        (obj2 (cdr (assoc id f2))))
+                   (interp-objects obj1 obj2 t)))
+               f1)))))
 
 ;(define timeline (car (animation->timelines-markup (car (entity->animations-markup (car (entities-markup sml)))))))
 

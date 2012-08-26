@@ -199,7 +199,8 @@ void image_render_to_screen(ImageResource img, float angle, float x, float y) {
 
   if(angle != 0) {
     // have to make a new surface in SW
-    SDL_Surface* new_src = rotozoomSurface(src, angle, 1.0, 1);
+    angle = -M_PI * (angle / 180.0);
+    SDL_Surface* new_src = rotozoomSurface(src, angle, 1.0, 0);
     SDL_BlitSurface(new_src, NULL, screen, &dest);
     SDL_FreeSurface(new_src);
   } else {

@@ -127,6 +127,7 @@ c-declare-end
 
 (c-define (scm-init) () void "scm_init" ""
           (set! *game-clock* (clock-make))
+          ;(clock-time-scale-set! *game-clock* 0.2)
           (display "initializing") (newline)
           (ensure-resources))
 
