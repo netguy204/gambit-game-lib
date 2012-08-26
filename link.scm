@@ -19,7 +19,7 @@ c-declare-end
             "image_load"))
 
 (define image-render-to-screen!
-  (c-lambda (ImageResource float float float)
+  (c-lambda (ImageResource float float float float float)
             void
             "image_render_to_screen"))
 

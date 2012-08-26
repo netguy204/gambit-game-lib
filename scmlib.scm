@@ -41,7 +41,7 @@
      (set! *ps* (repeatedly random-particle 100))
      (set! *anim* (animation (entity (scml-load "monster/Example.SCML")
                                      "0")
-                             "Idle")))))
+                             "Posture")))))
 
 (define (update-particle sprite-list p dt w h)
   (let* ((x (particle-x p))
