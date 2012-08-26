@@ -1,7 +1,5 @@
 C_SRC=testlib.c sdlmain.c realmain.c
 SCM_LIB_SRC=link.scm
-SCM_GAMBIT_SRC=math.scm common.scm scmlib.scm
-SCM_R5_SRC=common.scm
 
 GAMBIT_ROOT?=/usr/local/Gambit-C
 GSC=$(GAMBIT_ROOT)/bin/gsc
@@ -22,7 +20,7 @@ C_OBJS=$(patsubst %.c,%.o,$(C_SRC))
 SCM_GAMBIT_OBJ=$(patsubst %.scm,%.o1,$(SCM_GAMBIT_SRC))
 SCM_R5_OBJ=$(patsubst %.scm,%.o1,$(SCM_R5_SRC))
 
-all: sdlmain xml2.o1.o $(SCM_DYN_OBJ)
+all: sdlmain xml2.o1.o $(SCM_GAMBIT_OBJ) $(SCM_R5_OBJ)
 
 
 $(SCM_LIB_C): $(SCM_LIB_SRC)

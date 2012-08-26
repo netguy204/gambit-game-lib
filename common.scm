@@ -1,12 +1,4 @@
 
-(define-syntax when
-  (syntax-rules ()
-    ((when test . body) (if test (begin . body) #f))))
-
-(define-syntax comment
-  (syntax-rules ()
-    ((comment . body) '())))
-
 (define (filter pred lst)
   (let loop ((result '())
              (lst lst))
@@ -38,3 +30,17 @@
 
 (define (identity o) o)
 
+(define (concat lsts)
+  (let ((result '()))
+    (let loop-lsts ((lsts lsts))
+      (if (null? lsts)
+          (reverse result)
+          (let loop ((lst (car lsts)))
+            (if (null? lst)
+                (loop-lsts (cdr lsts))
+                (begin
+                  (set! result (cons (car lst) result))
+                  (loop (cdr lst)))))))))
+
+(define (mapcat fn lst)
+  (concat (map fn lst)))

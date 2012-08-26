@@ -21,6 +21,7 @@ void end_frame();
 void scm_init();
 void step(int);
 void terminate();
+void resources_released();
 
 /* exported by testlib.c */
 typedef struct FixedAllocator_ {

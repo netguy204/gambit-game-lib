@@ -6,13 +6,14 @@ c-declare-end
 )
 
 (load "scmlib")
+;(##include "scmlib.scm")
 
 (c-define-type ImageResource (pointer (struct "ImageResource_")))
 (c-define-type Clock (pointer (struct "Clock_")))
 (c-define-type Sprite (pointer (struct "Sprite_")))
 (c-define-type SpriteList (pointer (struct "SpriteList_")))
 
-(define image-load
+(define image-load-internal
   (c-lambda (nonnull-char-string)
             ImageResource
             "image_load"))
@@ -109,10 +110,18 @@ c-declare-end
 
 ;;
 (define *game-clock* #f)
+(define *resources* (make-table))
+
+(define (image-load path)
+  (let ((resource (table-ref *resources* path #f)))
+    (if resource resource
+        (begin
+          (let ((new-resource (image-load-internal path)))
+            (table-set! *resources* path new-resource)
+            new-resource)))))
 
 (c-define (scm-init) () void "scm_init" ""
           (set! *game-clock* (clock-make))
-          ;;(clock-time-scale-set! *game-clock* 2.0)
           (display "initializing") (newline)
           (ensure-resources))
 
@@ -121,4 +130,9 @@ c-declare-end
 
 (c-define (terminate) () void "terminate" ""
           (display "terminating") (newline))
+
+(c-define (resources-released) () void "resources_released" ""
+          (set! *resources* (make-table)))
+
+
 

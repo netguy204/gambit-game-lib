@@ -14,12 +14,14 @@
 (define (%obj-make parent . fields)
   (make-%obj parent (plist->alist fields)))
 
-(define (%obj-field obj field-name)
+(define (%obj-field obj field-name #!optional (default #f))
   (let ((field (assoc field-name (%obj-fields obj))))
     (if field (cdr field)
         (if (%obj-parent obj)
-            (%obj-field (%obj-parent obj) field-name)
-            (error "field does not exist: " field-name)))))
+            (%obj-field (%obj-parent obj) field-name default)
+            (if default
+                default
+                (error "field does not exist: " field-name))))))
 
 (define (%obj-field-set! obj field-name value)
   (let ((field (assoc field-name (%obj-fields obj))))
@@ -31,19 +33,11 @@
   (let ((method (%obj-field obj field)))
     (apply method obj args)))
 
-(define (.obj-field obj field)
-  (%obj-field obj field))
-
-(define (.obj-field-set! obj field value)
-  (%obj-field-set! obj field value))
-
-(define %obj-root (%obj-make #f
-                             'field .obj-field
-                             'field-set! .obj-field-set!))
+(define %obj-root (%obj-make #f))
 
 (define (obj-make #!key (parent %obj-root) (fields '()))
   (apply %obj-make parent fields))
 
-(define obj-field .obj-field)
-(define obj-field-set! .obj-field-set!)
+(define obj-field %obj-field)
+(define obj-field-set! %obj-field-set!)
 (define obj-invoke %obj-invoke)

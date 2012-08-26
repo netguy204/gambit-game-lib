@@ -50,13 +50,7 @@
          (range? (within? this (obj-field this 'range))))
     (filter (lambda (o) (and (range? o) (pred o))) neighbors)))
 
-(define (predator-update this resources)
-  (let* ((prey? (obj-field this 'prey?)))
-   (let ()
-     (if (apply consume-each! resources prey)
-         (list this (spawn this))
-         '()))))
-
+;;; markov chain AI with decaying self-transition
 (define (random-symbol symbols)
   (let loop ((value (random-real))
              (symbols symbols))
@@ -66,19 +60,41 @@
      (#t (loop (- value (cdar symbols))
                (cdr symbols))))))
 
+(define-structure timeline value)
+
+(define timeline-make make-timeline)
+
+(define (timeline-update timeline dt)
+  (let* ((last (timeline-value timeline))
+         (next (+ last dt)))
+    (timeline-value-set! timeline next)
+    next))
+
 (define (markov-transition symbols state)
   (random-symbol (cdr (assoc state symbols))))
 
+(define (exponential-decay time time-constant)
+  (exp (/ time (- time-constant))))
+
 (define idle-markov
-  '((hunting . ((sleeping . 0.5)
-               (hunting . 0.1)
-               (mating . 0.4)))
+  '((initial . ((hunting . 0.5)
+                (sleeping . 0.5)))
+    (hunting . ((sleeping . 0.5)
+                (hunting . 0.1)
+                (mating . 0.4)))
     (sleeping . ((sleeping . 0.6)
                  (hunting . 0.2)
                  (mating . 0.2)))
     (mating . ((sleeping . 0.8)
                (hunting . 0.1)
                (mating . 0.1)))))
+
+(define (predator-update this resources)
+  (let* ((prey? (obj-field this 'prey?)))
+   (let ()
+     (if (apply consume-each! resources prey)
+         (list this (spawn this))
+         '()))))
 
 (define predator (obj-make fields: (list 'update predator-update
                                          'range 1

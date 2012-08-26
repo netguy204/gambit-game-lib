@@ -185,6 +185,7 @@ void images_free() {
     head = next;
   }
   last_resource = NULL;
+  resources_released();
 }
 
 void image_render_to_screen(ImageResource img, float x, float y) {

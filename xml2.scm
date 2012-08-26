@@ -13,7 +13,7 @@ c-declare-end
             (pointer "xmlDoc")
             "xmlParseFile"))
 
-(define xml:get-root-element
+(define xml:root-element
   (c-lambda ((pointer "xmlDoc"))
             (pointer "xmlNode")
             "xmlDocGetRootElement"))
@@ -123,21 +123,30 @@ c-declare-end
 (define (xml:element? node)
   (= (xml:node-type node) xml:ELEMENT-NODE))
 
-(define (xml:exp-make node-name node-attr-alist children)
+(define (sml:make node-name node-attr-alist children)
   (cons node-name (cons node-attr-alist children)))
 
-(define (xml:exp-name exp) (car exp))
+(define (sml:name exp) (car exp))
 
-(define (xml:exp-node-attr exp) (cadr exp))
+(define (sml:attrs exp) (cadr exp))
 
-(define (xml:exp-children exp) (cddr exp))
+(define (sml:attr exp attr)
+  (let ((a (assoc attr (sml:attrs exp))))
+    (if a (cdr a) #f)))
 
-(define (xml:node->sexp-internal node)
+(define (sml:children exp) (cddr exp))
+
+(define (xml->sml-internal node)
   (map (lambda (node)
-         (xml:exp-make (xml:node-name node)
+         (sml:make (xml:node-name node)
                        (xml:node->attr-alist node)
-                       (xml:node->sexp-internal (xml:node-children node))))
+                       (xml->sml-internal (xml:node-children node))))
        (filter xml:element? (xml:node->list node))))
 
-(define (xml:node->sexp node)
-  (car (xml:node->sexp-internal node)))
+(define (xml->sml node)
+  (car (xml->sml-internal node)))
+
+(define (sml:node-named? name)
+  (lambda (node)
+    (equal? (sml:name node) name)))
+
