@@ -7,9 +7,8 @@
 
 #define USE_SDL
 
-#ifdef USE_SDL
 #include <SDL/SDL.h>
-#endif
+#include <SDL/SDL_opengl.h>
 
 /* initialize the internal allocators for the library. Must be called
    before other functions */
@@ -67,9 +66,8 @@ struct LLNode_ {
 
 typedef struct ImageResource_ {
   struct LLNode_ node;
-#ifdef USE_SDL
-  SDL_Surface* surface;
-#endif
+  int w, h;
+  GLuint texture;
 } *ImageResource;
 
 ImageResource image_load(char * file);

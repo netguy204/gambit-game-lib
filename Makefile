@@ -6,7 +6,7 @@ GSC=$(GAMBIT_ROOT)/bin/gsc
 XML_INCLUDE:=-I/usr/include/libxml2
 CFLAGS+=-I$(GAMBIT_ROOT)/include `sdl-config --cflags` $(XML_INCLUDE)
 SDL_LIBS:=`sdl-config --libs` -lSDL_image -lSDL_gfx
-LDFLAGS=$(SDL_LIBS) -L$(GAMBIT_ROOT)/lib -lxml2
+LDFLAGS=$(SDL_LIBS) -L$(GAMBIT_ROOT)/lib -lxml2 -framework OpenGL
 
 MKMOD=make -f Mkmod
 MAKE_XML2=$(MKMOD) SCM_SRC=xml2.scm OUTPUT=xml2 CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)"

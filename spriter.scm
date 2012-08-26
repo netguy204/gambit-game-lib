@@ -158,9 +158,11 @@
           (lerp a ta (- b 360) tb t)
           (lerp a ta b tb t))))
 
-(define (interp-objects obj1 obj2 t)
-  (let ((t1 (tkey-time obj1))
-        (t2 (tkey-time obj2)))
+(define (interp-objects obj1 obj2 max-time t)
+  (let* ((t1 (tkey-time obj1))
+         (t2 (tkey-time obj2))
+         (t2 (if (> t2 t1) t2
+                 max-time)))
     (make-tkey t
                (tkey-name obj1)
                (lerp (tkey-x obj1) t1 (tkey-x obj2) t2 t)
@@ -174,20 +176,18 @@
 (define (interp-anim anim t)
   (let* ((t (* 1000 t))
          (frames (find-frame anim t))
-         (f1 (cdar frames)))
+         (f1 (cdar frames))
+         ;; always assume looping
+         (f2 (if (null? (cdr frames))
+                 (cdar (find-frame anim 0))
+                 (cdadr frames))))
 
-    (if (null? (cdr frames))
-        ;; no need to interpolate
-        (map cdr f1)
-
-        ;; need to interpolate
-        (let ((f2 (cdadr frames)))
-          (map (lambda (f)
-                 (let* ((id (car f))
-                        (obj1 (cdr f))
-                        (obj2 (cdr (assoc id f2))))
-                   (interp-objects obj1 obj2 t)))
-               f1)))))
+    (map (lambda (f)
+           (let* ((id (car f))
+                  (obj1 (cdr f))
+                  (obj2 (cdr (assoc id f2))))
+             (interp-objects obj1 obj2 (animation-length anim) t)))
+         f1)))
 
 ;(define timeline (car (animation->timelines-markup (car (entity->animations-markup (car (entities-markup sml)))))))
 

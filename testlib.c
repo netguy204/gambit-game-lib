@@ -1,3 +1,8 @@
+#include <SDL/SDL.h>
+#include <SDL/SDL_image.h>
+#include <SDL/SDL_rotozoom.h>
+#include <SDL/SDL_opengl.h>
+
 #include <math.h>
 
 #include "testlib.h"
@@ -23,24 +28,122 @@ void lib_init() {
   frame_allocator = stack_allocator_make(1024 * 1024);
 
   scm_init();
+
+  glEnable(GL_TEXTURE_2D);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+  glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+  glViewport(0, 0, 640, 480);
+  glMatrixMode(GL_PROJECTION);
+  glLoadIdentity();
+  glOrtho(0.0f, 640, 480, 0.0f, -1.0f, 1.0f);
+  glMatrixMode(GL_MODELVIEW);
+  glLoadIdentity();
 }
 
-#ifdef USE_SDL
 extern SDL_Surface* screen;
-#endif
 
 void begin_frame() {
+  glClear(GL_COLOR_BUFFER_BIT);
   stack_allocator_freeall(frame_allocator);
-#ifdef USE_SDL
-  SDL_FillRect(screen, NULL, 0);
-#endif
 }
 
 void end_frame() {
-#ifdef USE_SDL
-  SDL_Flip(screen);
-#endif
+  SDL_GL_SwapBuffers();
 }
+
+static LLNode last_resource = NULL;
+
+ImageResource image_load(char * file) {
+  SDL_Surface *surface;
+  GLuint texture;
+  GLenum texture_format;
+  GLint num_colors;
+
+  surface = IMG_Load(file);
+  if(surface == NULL) {
+    fprintf(stderr, "failed to load %s\n", file);
+    return NULL;
+  }
+
+  num_colors = surface->format->BytesPerPixel;
+  if(num_colors == 4) {
+    if(surface->format->Rmask == 0x000000ff) {
+      texture_format = GL_RGBA;
+    } else {
+      texture_format = GL_BGRA;
+    }
+  } else {
+    if (surface->format->Rmask == 0x000000ff) {
+      texture_format = GL_RGB;
+    } else {
+      texture_format = GL_BGR;
+    }
+  }
+
+  glGenTextures(1, &texture);
+  glBindTexture(GL_TEXTURE_2D, texture);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexImage2D(GL_TEXTURE_2D, 0, num_colors, surface->w, surface->h, 0,
+               texture_format, GL_UNSIGNED_BYTE, surface->pixels);
+
+  ImageResource resource = (ImageResource)fixed_allocator_alloc(image_resource_allocator);
+  resource->w = surface->w;
+  resource->h = surface->h;
+
+  resource->texture = texture;
+  resource->node.next = last_resource;
+  last_resource = (LLNode)resource;
+
+  SDL_FreeSurface(surface);
+
+  return resource;
+}
+
+int image_width(ImageResource resource) {
+  return resource->w;
+}
+
+int image_height(ImageResource resource) {
+  return resource->h;
+}
+
+void images_free() {
+  LLNode head = last_resource;
+  LLNode next;
+  while(head) {
+    ImageResource resource = (ImageResource)head;
+    glDeleteTextures(1, &(resource->texture));
+    next = head->next;
+    fixed_allocator_free(image_resource_allocator, resource);
+    head = next;
+  }
+  last_resource = NULL;
+  resources_released();
+}
+
+void image_render_to_screen(ImageResource img, float angle, float x, float y) {
+  glBindTexture(GL_TEXTURE_2D, img->texture);
+  glBegin(GL_QUADS);
+  
+  glTexCoord2i(0, 0);
+  glVertex3f(x, y, 0.0f);
+
+  glTexCoord2i(1, 0);
+  glVertex3f(x + img->w, y, 0.0f);
+
+  glTexCoord2i(1, 1);
+  glVertex3f(x + img->w, y + img->h, 0.0f);
+
+  glTexCoord2i(0, 1);
+  glVertex3f(x, y + img->h, 0.0f);
+
+  glEnd();
+}
+
+/* portable implementation */
 
 /**
  * FixedAllocator's are used to quickly allocate and free objects of
@@ -139,75 +242,6 @@ float clock_cycles_to_seconds(long cycles) {
 long clock_seconds_to_cycles(float seconds) {
   return roundf(seconds * 1000.0f);
 }
-
-static LLNode last_resource = NULL;
-
-#ifdef USE_SDL
-#include <SDL/SDL_image.h>
-#include <SDL/SDL_rotozoom.h>
-
-ImageResource image_load(char * file) {
-  SDL_Surface *image;
-  SDL_Surface *optimized;
-
-  image = IMG_Load(file);
-  if(image == NULL) {
-    fprintf(stderr, "failed to load %s\n", file);
-    return NULL;
-  }
-
-  optimized = SDL_DisplayFormatAlpha(image);
-  SDL_FreeSurface(image);
-
-  ImageResource resource = (ImageResource)fixed_allocator_alloc(image_resource_allocator);
-  resource->surface = optimized;
-  resource->node.next = last_resource;
-  last_resource = (LLNode)resource;
-
-  return resource;
-}
-
-int image_width(ImageResource resource) {
-  return resource->surface->w;
-}
-
-int image_height(ImageResource resource) {
-  return resource->surface->h;
-}
-
-void images_free() {
-  LLNode head = last_resource;
-  LLNode next;
-  while(head) {
-    ImageResource resource = (ImageResource)head;
-    SDL_FreeSurface(resource->surface);
-    next = head->next;
-    fixed_allocator_free(image_resource_allocator, resource);
-    head = next;
-  }
-  last_resource = NULL;
-  resources_released();
-}
-
-void image_render_to_screen(ImageResource img, float angle, float x, float y) {
-  SDL_Surface* src = img->surface;
-  SDL_Rect dest;
-  dest.x = (int)roundf(x);
-  dest.y = (int)roundf(y);
-  dest.w = src->w;
-  dest.h = src->h;
-
-  if(angle != 0) {
-    // have to make a new surface in SW
-    angle = -M_PI * (angle / 180.0);
-    SDL_Surface* new_src = rotozoomSurface(src, angle, 1.0, 0);
-    SDL_BlitSurface(new_src, NULL, screen, &dest);
-    SDL_FreeSurface(new_src);
-  } else {
-    SDL_BlitSurface(src, NULL, screen, &dest);
-  }
-}
-#endif
 
 Sprite frame_make_sprite() {
   Sprite sprite = stack_allocator_alloc(frame_allocator, sizeof(struct Sprite_));

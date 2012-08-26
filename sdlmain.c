@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <SDL.h>
 #include <SDL_image.h>
+#include <SDL_opengl.h>
 
 #define ___VERSION 406006
 #include <gambit.h>
@@ -30,7 +31,8 @@ int main(int argc, char ** argv) {
 
   atexit(shutdown);
 
-  screen = SDL_SetVideoMode(640, 480, 16, SDL_HWSURFACE|SDL_DOUBLEBUF);
+  SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+  screen = SDL_SetVideoMode(640, 480, 16, SDL_OPENGL);
   if(screen == NULL) {
     fprintf(stderr, "Unable to set 640x480 video: %s\n", SDL_GetError());
     exit(1);
