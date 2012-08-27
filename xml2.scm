@@ -27,50 +27,40 @@ c-declare-end
             void
             "xmlFreeDoc"))
 
-(define (xml:null-safe arg fn)
-  (if arg (fn arg)))
+(define xml:node-children
+  (c-lambda (xmlNode)
+            xmlNode
+            "___result_voidstar = ___arg1->children;"))
 
-(define (xml:node-children node)
-  (xml:null-safe node
-    (c-lambda (xmlNode)
-              xmlNode
-              "___result = ___arg1->children;")))
+(define xml:node-next
+  (c-lambda (xmlNode)
+            xmlNode
+            "___result_voidstar = ___arg1->next;"))
 
-(define (xml:node-next node)
-  (xml:null-safe node
-    (c-lambda (xmlNode)
-              xmlNode
-              "___result = ___arg1->next;")))
+(define xml:node-name
+  (c-lambda (xmlNode)
+            nonnull-char-string
+            "___result = ___arg1->name;"))
 
-(define (xml:node-name node)
-  (xml:null-safe node
-    (c-lambda (xmlNode)
-              nonnull-char-string
-              "___result = ___arg1->name;")))
+(define xml:node-content
+  (c-lambda (xmlNode)
+            nonnull-char-string
+            "___result = ___arg1->content;"))
 
-(define (xml:node-content node)
-  (xml:null-safe node 
-    (c-lambda (xmlNode)
-              nonnull-char-string
-              "___result = ___arg1->content;")))
+(define xml:node-properties
+  (c-lambda (xmlNode)
+            xmlAttribute
+            "___result_voidstar = ___arg1->properties;"))
 
-(define (xml:node-properties node)
-  (xml:null-safe node
-    (c-lambda (xmlNode)
-              xmlAttribute
-              "___result = ___arg1->properties;")))
+(define xml:node-type
+  (c-lambda (xmlNode)
+            int
+            "___result = ___arg1->type;"))
 
-(define (xml:node-type node)
-  (xml:null-safe node
-    (c-lambda (xmlNode)
-              int
-              "___result = ___arg1->type;")))
-
-(define (xml:node-doc node)
-  (xml:null-safe node
-    (c-lambda (xmlNode)
-              xmlDoc
-              "___result = ___arg1->doc;")))
+(define xml:node-doc
+  (c-lambda (xmlNode)
+            xmlDoc
+            "___result_voidstar = ___arg1->doc;"))
 
 (define xml:node-list-string
   (c-lambda (xmlDoc xmlNode int)
@@ -80,23 +70,20 @@ c-declare-end
 (define xml:ELEMENT-NODE
   ((c-lambda () int "___result = XML_ELEMENT_NODE;")))
 
-(define (xml:attr-name attr)
-  (xml:null-safe attr
-    (c-lambda (xmlAttribute)
-              nonnull-char-string
-              "___result = ___arg1->name;")))
+(define xml:attr-name
+  (c-lambda (xmlAttribute)
+            nonnull-char-string
+            "___result = ___arg1->name;"))
 
-(define (xml:attr-children attr)
-  (xml:null-safe attr
-    (c-lambda (xmlAttribute)
-              xmlNode
-              "___result = ___arg1->children;")))
+(define xml:attr-children
+  (c-lambda (xmlAttribute)
+            xmlNode
+            "___result_voidstar = ___arg1->children;"))
 
-(define (xml:attr-next attr)
-  (xml:null-safe attr
-    (c-lambda (xmlAttribute)
-              xmlAttribute
-              "___result = ___arg1->next;")))
+(define xml:attr-next
+  (c-lambda (xmlAttribute)
+            xmlAttribute
+            "___result_voidstar = ___arg1->next;"))
 
 (define (xml:node->attr-alist node)
   (let loop ((result '())
