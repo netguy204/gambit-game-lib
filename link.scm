@@ -42,9 +42,6 @@ c-declare-end
   (let ((clock ((c-lambda ()
                           Clock
                           "clock_make"))))
-    (make-will clock
-               (lambda (clock)
-                 (clock-free clock)))
     clock))
 
 (define clock-time-scale
