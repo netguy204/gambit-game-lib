@@ -4,9 +4,18 @@ SCM_LIB_SRC=link.scm
 GAMBIT_ROOT?=/usr/local/Gambit-C
 GSC=$(GAMBIT_ROOT)/bin/gsc
 XML_INCLUDE:=-I/usr/include/libxml2
-CFLAGS+=-I$(GAMBIT_ROOT)/include `sdl-config --cflags` $(XML_INCLUDE)
+CFLAGS+=-std=c99 -I$(GAMBIT_ROOT)/include `sdl-config --cflags` $(XML_INCLUDE)
 SDL_LIBS:=`sdl-config --libs` -lSDL_image
-LDFLAGS=$(SDL_LIBS) -L$(GAMBIT_ROOT)/lib -lxml2 -framework OpenGL
+
+PLATFORM:=$(shell uname)
+
+ifeq ($(PLATFORM), Darwin)
+	OPENGL:=-framework OpenGL
+else
+	OPENGL:=-lGL
+endif
+
+LDFLAGS=$(SDL_LIBS) -L$(GAMBIT_ROOT)/lib -lxml2 $(OPENGL)
 
 MKMOD=make -f Mkmod
 MAKE_XML2=$(MKMOD) SCM_SRC=xml2.scm OUTPUT=xml2 CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)"
@@ -27,7 +36,7 @@ $(SCM_LIB_C): $(SCM_LIB_SRC)
 	$(GSC) -f -link -track-scheme $(SCM_LIB_SRC)
 
 $(SCM_OBJ): $(SCM_LIB_C)
-	$(GSC) -cc-options "-D___DYNAMIC $(CFLAGS)" -obj $(SCM_LIB_C)
+	$(CC) -D___DYNAMIC $(CFLAGS) -c $(SCM_LIB_C)
 
 $(SCM_R5_OBJ): $(SCM_R5_SRC)
 	$(GSC) -:s -o $@ $<

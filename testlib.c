@@ -41,8 +41,6 @@ void lib_init() {
   glLoadIdentity();
 }
 
-extern SDL_Surface* screen;
-
 void begin_frame() {
   glClear(GL_COLOR_BUFFER_BIT);
   stack_allocator_freeall(frame_allocator);

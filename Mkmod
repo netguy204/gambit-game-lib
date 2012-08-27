@@ -8,15 +8,8 @@ SCM_O=$(patsubst %.c,%.o,$(SCM_C))
 
 all: $(SCMLIB)
 
-$(SCM_C): $(SCM_SRC)
-	$(GSC) -link -flat -o $(SCMLIB).c $(SCM_SRC)
-
-$(SCM_O): $(SCM_C)
-	$(GSC) -cc-options "-D___DYNAMIC $(CFLAGS)" -obj $(SCM_C)
-
-$(SCMLIB): $(SCM_O)
-	$(CC) -bundle $(SCM_O) -o $(SCMLIB) $(LDFLAGS)
-
+$(SCMLIB): $(SCM_SRC)
+	$(GSC) -cc-options "-D___DYNAMIC $(CFLAGS)" -o $(SCMLIB) $(SCM_SRC)
 
 clean:
 	rm -rf $(SCMLIB) $(SCM_C) $(SCM_O)
