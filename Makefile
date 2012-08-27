@@ -14,7 +14,7 @@ LDFLAGS=$(SDL_LIBS) -L$(GAMBIT_ROOT)/lib $(OPENGL)
 ifeq ($(PLATFORM), Darwin)
 	LDFLAGS+= -framework OpenGL
 else
-	LDFLAGS+:= -lGL -lm -ldl -lutil
+	LDFLAGS+= -lGL -lm -ldl -lutil
 endif
 
 MKMOD=make -f Module.mk

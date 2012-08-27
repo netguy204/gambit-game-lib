@@ -6,7 +6,7 @@ int last_time;
 int min_time = 18;
 int max_time = 100;
 
-void loop_once() {
+int loop_once() {
   SDL_Event event;
   int new_time;
 
@@ -16,8 +16,7 @@ void loop_once() {
     case SDL_QUIT:
       terminate();
       images_free();
-      exit(0);
-      break;
+      return 0;
     }
   }
 
@@ -38,15 +37,14 @@ void loop_once() {
   end_frame();
 
   last_time = new_time;
+  return 1;
 }
 
 int real_main(int argc, char ** argv) {
   int last_time = SDL_GetTicks();
   lib_init();
 
-  while(1) {
-    loop_once();
-  }
+  while(loop_once()) {}
 
   return 0;
 }

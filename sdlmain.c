@@ -16,20 +16,12 @@ ___END_C_LINKAGE
 
 extern int real_main(int argc, char ** argv);
 
-void shutdown() {
-  ___cleanup();
-  IMG_Quit();
-  SDL_Quit();
-}
-
 int main(int argc, char ** argv) {
   if ( SDL_Init(SDL_INIT_VIDEO) < 0 ) {
     fprintf(stderr, "Unable to init SDL: %s\n", SDL_GetError());
     exit(1);
   }
   IMG_Init(IMG_INIT_PNG);
-
-  atexit(shutdown);
 
   SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
   screen = SDL_SetVideoMode(640, 480, 16, SDL_OPENGL);
@@ -47,6 +39,10 @@ int main(int argc, char ** argv) {
   ___setup(&setup_params);
 
   int result = real_main(argc, argv);
+
+  ___cleanup();
+  IMG_Quit();
+  SDL_Quit();
 
   return result;
 }
