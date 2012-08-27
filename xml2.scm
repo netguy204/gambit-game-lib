@@ -18,12 +18,12 @@ c-declare-end
             "xmlParseFile"))
 
 (define xml:root-element
-  (c-lambda ((pointer "xmlDoc"))
+  (c-lambda (xmlDoc)
             xmlNode
             "xmlDocGetRootElement"))
 
 (define xml:free-doc
-  (c-lambda ((pointer "xmlDoc"))
+  (c-lambda (xmlDoc)
             void
             "xmlFreeDoc"))
 
