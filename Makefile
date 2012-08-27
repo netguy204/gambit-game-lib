@@ -9,13 +9,13 @@ SDL_LIBS:=`sdl-config --libs` -lSDL_image
 
 PLATFORM:=$(shell uname)
 
-ifeq ($(PLATFORM), Darwin)
-	OPENGL:=-framework OpenGL
-else
-	OPENGL:=-lGL
-endif
-
 LDFLAGS=$(SDL_LIBS) -L$(GAMBIT_ROOT)/lib $(OPENGL)
+
+ifeq ($(PLATFORM), Darwin)
+	LDFLAGS+= -framework OpenGL
+else
+	LDFLAGS+:= -lGL -lm -ldl -lutil
+endif
 
 MKMOD=make -f Module.mk
 MAKE_XML2=$(MKMOD) SCM_SRC=xml2.scm OUTPUT=xml2 CFLAGS="$(CFLAGS)" LDFLAGS="-lxml2"
