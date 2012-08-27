@@ -50,6 +50,7 @@ sdlmain: $(SCM_OBJ) $(C_OBJS)
 clean:
 	rm -f *.o* $(SCM_LIB_C) sdlmain
 	$(MAKE_XML2) clean
+	rm -rf sdlmain.app
 
 test_bin: testlib.o testlib_test.o
 	$(CC) $(CFLAGS) -o $@ testlib.o testlib_test.o $(LDFLAGS)
@@ -59,6 +60,9 @@ test: test_bin
 
 xml2.o1.o: xml2.scm
 	$(MAKE_XML2)
+
+sdlmain.app: all
+	mkdir sdlmain.app
 
 .phony: all
 

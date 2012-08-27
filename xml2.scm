@@ -8,14 +8,18 @@ c-declare-end
 
 (load "common")
 
+(c-define-type xmlDoc (pointer "xmlDoc"))
+(c-define-type xmlNode (pointer "xmlNode"))
+(c-define-type xmlAttribute (pointer "xmlAttribute"))
+
 (define xml:parse-file
   (c-lambda (nonnull-char-string)
-            (pointer "xmlDoc")
+            xmlDoc
             "xmlParseFile"))
 
 (define xml:root-element
   (c-lambda ((pointer "xmlDoc"))
-            (pointer "xmlNode")
+            xmlNode
             "xmlDocGetRootElement"))
 
 (define xml:free-doc
@@ -28,48 +32,48 @@ c-declare-end
 
 (define (xml:node-children node)
   (xml:null-safe node
-    (c-lambda ((pointer "xmlNode"))
-              (pointer "xmlNode")
-              "___result_voidstar = ___arg1->children;")))
+    (c-lambda (xmlNode)
+              xmlNode
+              "___result = ___arg1->children;")))
 
 (define (xml:node-next node)
   (xml:null-safe node
-    (c-lambda ((pointer "xmlNode"))
-              (pointer "xmlNode")
-              "___result_voidstar = ___arg1->next;")))
+    (c-lambda (xmlNode)
+              xmlNode
+              "___result = ___arg1->next;")))
 
 (define (xml:node-name node)
   (xml:null-safe node
-    (c-lambda ((pointer "xmlNode"))
+    (c-lambda (xmlNode)
               nonnull-char-string
               "___result = ___arg1->name;")))
 
 (define (xml:node-content node)
   (xml:null-safe node 
-    (c-lambda ((pointer "xmlNode"))
+    (c-lambda (xmlNode)
               nonnull-char-string
               "___result = ___arg1->content;")))
 
 (define (xml:node-properties node)
   (xml:null-safe node
-    (c-lambda ((pointer "xmlNode"))
-              (pointer "xmlAttribute")
-              "___result_voidstar = ___arg1->properties;")))
+    (c-lambda (xmlNode)
+              xmlAttribute
+              "___result = ___arg1->properties;")))
 
 (define (xml:node-type node)
   (xml:null-safe node
-    (c-lambda ((pointer "xmlNode"))
+    (c-lambda (xmlNode)
               int
               "___result = ___arg1->type;")))
 
 (define (xml:node-doc node)
   (xml:null-safe node
-    (c-lambda ((pointer "xmlNode"))
-              (pointer "xmlDoc")
+    (c-lambda (xmlNode)
+              xmlDoc
               "___result = ___arg1->doc;")))
 
 (define xml:node-list-string
-  (c-lambda ((pointer "xmlDoc") (pointer "xmlNode") int)
+  (c-lambda (xmlDoc xmlNode int)
             nonnull-char-string
             "xmlNodeListGetString"))
 
@@ -78,21 +82,21 @@ c-declare-end
 
 (define (xml:attr-name attr)
   (xml:null-safe attr
-    (c-lambda ((pointer "xmlAttribute"))
+    (c-lambda (xmlAttribute)
               nonnull-char-string
               "___result = ___arg1->name;")))
 
 (define (xml:attr-children attr)
   (xml:null-safe attr
-    (c-lambda ((pointer "xmlAttribute"))
-              (pointer "xmlNode")
-              "___result_voidstar = ___arg1->children;")))
+    (c-lambda (xmlAttribute)
+              xmlNode
+              "___result = ___arg1->children;")))
 
 (define (xml:attr-next attr)
   (xml:null-safe attr
-    (c-lambda ((pointer "xmlAttribute"))
-              (pointer "xmlAttribute")
-              "___result_voidstar = ___arg1->next;")))
+    (c-lambda (xmlAttribute)
+              xmlAttribute
+              "___result = ___arg1->next;")))
 
 (define (xml:node->attr-alist node)
   (let loop ((result '())
