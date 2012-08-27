@@ -38,11 +38,10 @@ c-declare-end
             void
             "clock_free"))
 
-(define (clock-make)
-  (let ((clock ((c-lambda ()
-                          Clock
-                          "clock_make"))))
-    clock))
+(define clock-make
+  (c-lambda ()
+            Clock
+            "clock_make"))
 
 (define clock-time-scale
   (c-lambda (Clock)

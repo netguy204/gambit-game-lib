@@ -17,8 +17,8 @@ endif
 
 LDFLAGS=$(SDL_LIBS) -L$(GAMBIT_ROOT)/lib $(OPENGL)
 
-MKMOD=make -f Mkmod
-MAKE_XML2=$(MKMOD) SCM_SRC=xml2.scm OUTPUT=xml2 CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)"
+MKMOD=make -f Module.mk
+MAKE_XML2=$(MKMOD) SCM_SRC=xml2.scm OUTPUT=xml2 CFLAGS="$(CFLAGS)" LDFLAGS="-lxml2"
 
 
 SCM_LIB_C=$(patsubst %.scm,%.c,$(SCM_LIB_SRC)) \

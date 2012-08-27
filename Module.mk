@@ -9,7 +9,7 @@ SCM_O=$(patsubst %.c,%.o,$(SCM_C))
 all: $(SCMLIB)
 
 $(SCMLIB): $(SCM_SRC)
-	$(GSC) -keep-c -cc-options "-D___DYNAMIC $(CFLAGS)" -ld-options "-lxml2" -o $(SCMLIB) $(SCM_SRC)
+	$(GSC) -keep-c -cc-options "-D___DYNAMIC $(CFLAGS)" -ld-options "$(LDFLAGS)" -o $(SCMLIB) $(SCM_SRC)
 
 clean:
 	rm -rf $(SCMLIB) $(SCM_C) $(SCM_O)
