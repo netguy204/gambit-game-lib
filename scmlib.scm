@@ -56,8 +56,8 @@
     
     (particle-integrate p dt)
     (sprite-resource-set! sprite (*test-image*))
-    (sprite-x-set! sprite (exact->inexact (particle-x p)))
-    (sprite-y-set! sprite (exact->inexact (particle-y p)))
+    (sprite-x-set! sprite (particle-x p))
+    (sprite-y-set! sprite (particle-y p))
     (frame/spritelist-append sprite-list sprite)))
 
 (define (update-view-old dt)
@@ -84,12 +84,12 @@
          (piv-y (+ oy (tkey-y tkey))))
 
     (sprite-resource-set! sprite image)
-    (sprite-x-set! sprite (exact->inexact piv-x))
-    (sprite-y-set! sprite (exact->inexact piv-y))
-    (sprite-origin-x-set! sprite (exact->inexact px-img-offset))
-    (sprite-origin-y-set! sprite (exact->inexact py-img-offset))
+    (sprite-x-set! sprite piv-x)
+    (sprite-y-set! sprite piv-y)
+    (sprite-origin-x-set! sprite px-img-offset)
+    (sprite-origin-y-set! sprite py-img-offset)
 
-    (sprite-angle-set! sprite (exact->inexact (tkey-angle tkey)))
+    (sprite-angle-set! sprite (tkey-angle tkey))
     sprite))
 
 (define (add-animation sprite-list anim time ox oy)
@@ -104,7 +104,7 @@
                                               1000.0)))
          (anim-cycle (modulo (clock-time *game-clock*) cycles-for-anim))
          (anim-time (cycles->seconds anim-cycle))
-         (sprite-list (add-animation #f *anim* anim-time 320 30)))
+         (sprite-list (add-animation #f *anim* anim-time 320 100)))
 
     (spritelist-render-to-screen! sprite-list)))
 
@@ -122,9 +122,9 @@
            (h (image-height img)))
 
       (sprite-resource-set! sprite img)
-      (sprite-x-set! sprite (exact->inexact 320))
-      (sprite-y-set! sprite (exact->inexact 240))
-      (sprite-origin-x-set! sprite (exact->inexact w))
-      (sprite-origin-y-set! sprite (exact->inexact h))
-      (sprite-angle-set! sprite (exact->inexact angle))
+      (sprite-x-set! sprite 320)
+      (sprite-y-set! sprite 240)
+      (sprite-origin-x-set! sprite w)
+      (sprite-origin-y-set! sprite h)
+      (sprite-angle-set! sprite angle)
       sprite))))

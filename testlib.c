@@ -126,7 +126,8 @@ void image_render_to_screen(ImageResource img, float angle,
                             float x, float y) {
   glBindTexture(GL_TEXTURE_2D, img->texture);
   glPushMatrix();
-
+  glScalef(0.5, 0.5, 0.5);
+  
   glTranslatef(x, y, 0.0f);
 
   glRotatef(angle, 0.0f, 0.0f, 1.0f);

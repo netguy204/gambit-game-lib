@@ -33,6 +33,11 @@ c-declare-end
             int
             "image_height"))
 
+(define images-free
+  (c-lambda ()
+            void
+            "images_free"))
+
 (define clock-free
   (c-lambda (Clock)
             void
@@ -84,30 +89,45 @@ c-declare-end
             void
             "___arg1->resource = ___arg2;"))
 
-(define sprite-x-set!
+(define %sprite-x-set!
   (c-lambda (Sprite float)
             void
             "___arg1->displayX = ___arg2;"))
 
-(define sprite-y-set!
+(define %sprite-y-set!
   (c-lambda (Sprite float)
             void
             "___arg1->displayY = ___arg2;"))
 
-(define sprite-origin-x-set!
+(define %sprite-origin-x-set!
   (c-lambda (Sprite float)
             void
             "___arg1->originX = ___arg2;"))
 
-(define sprite-origin-y-set!
+(define %sprite-origin-y-set!
   (c-lambda (Sprite float)
             void
             "___arg1->originY = ___arg2;"))
 
-(define sprite-angle-set!
+(define %sprite-angle-set!
   (c-lambda (Sprite float)
             void
             "___arg1->angle = ___arg2;"))
+
+(define (sprite-x-set! sprite val)
+  (%sprite-x-set! sprite (exact->inexact val)))
+
+(define (sprite-y-set! sprite val)
+  (%sprite-y-set! sprite (exact->inexact val)))
+
+(define (sprite-origin-x-set! sprite val)
+  (%sprite-origin-x-set! sprite (exact->inexact val)))
+
+(define (sprite-origin-y-set! sprite val)
+  (%sprite-origin-y-set! sprite (exact->inexact val)))
+
+(define (sprite-angle-set! sprite val)
+  (%sprite-angle-set! sprite (exact->inexact val)))
 
 (define frame/spritelist-append
   (c-lambda (SpriteList Sprite)

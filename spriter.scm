@@ -118,6 +118,8 @@
          (scml (xml->sml node))
          (res (resources scml (path-directory filename))))
 
+    (xml:free-doc doc)
+
     (map (lambda (entity)
            (cons (sml:attr entity "id")
                  (animations entity res)))
@@ -167,8 +169,8 @@
                (tkey-name obj1)
                (lerp (tkey-x obj1) t1 (tkey-x obj2) t2 t)
                (lerp (tkey-y obj1) t1 (tkey-y obj2) t2 t)
-               (tkey-cx obj1)
-               (tkey-cy obj1)
+               (lerp (tkey-cx obj1) t1 (tkey-cx obj2) t2 t)
+               (lerp (tkey-cy obj1) t1 (tkey-cy obj2) t2 t)
                (clerp (tkey-angle obj1) t1 (tkey-angle obj2) t2
                       (tkey-spin obj1) t)
                (tkey-spin obj1))))
