@@ -32,6 +32,14 @@ int main(int argc, char ** argv) {
   }
 
   info = SDL_GetVideoInfo();
-  printf(" suggested %d bits per pixel\n", info->vfmt->BitsPerPixel);
+  printf("suggested %d bits per pixel\n", info->vfmt->BitsPerPixel);
+  if(info->hw_available) {
+    printf("hardware acceleration available\n");
+  }
+  if(info->wm_available) {
+    printf("window manager available\n");
+  }
+  printf("video memory: %d KB\n", info->video_mem);
+
   return 0;
 }
