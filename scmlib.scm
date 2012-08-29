@@ -68,7 +68,7 @@
        (let loop ((ps *ps*)
                   (sprite-list #f))
          (if (null? ps)
-             (if sprite-list (spritelist-render-to-screen! sprite-list))
+             (if sprite-list (spritelist-enqueue-for-screen! sprite-list))
              (loop (cdr ps)
                    (update-particle sprite-list
                                     (car ps) dt w h))))))))
@@ -106,11 +106,11 @@
          (anim-time (cycles->seconds anim-cycle))
          (sprite-list (add-animation #f *anim* anim-time 320 100)))
 
-    (spritelist-render-to-screen! sprite-list)))
+    (spritelist-enqueue-for-screen! sprite-list)))
 
 
 (define (update-view-test dt)
-  (spritelist-render-to-screen!
+  (spritelist-enqueue-for-screen!
    (frame/spritelist-append
     #f
     (let* ((sprite (frame/make-sprite))

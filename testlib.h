@@ -4,11 +4,13 @@
 
 #define MAX_NUM_CLOCKS 20
 #define MAX_NUM_IMAGES 40
+#define MAX_NUM_COMMANDS 40
 
 #define USE_SDL
 
 #include <SDL/SDL.h>
 #include <SDL/SDL_opengl.h>
+#include <pthread.h>
 
 /* initialize the internal allocators for the library. Must be called
    before other functions */
@@ -97,5 +99,49 @@ typedef struct SpriteList_ {
 SpriteList frame_spritelist_append(SpriteList list, Sprite sprite);
 
 void spritelist_render_to_screen(SpriteList list);
+void spritelist_enqueue_for_screen(SpriteList list);
+void process_render_command();
+
+typedef struct DLLNode_ *DLLNode;
+
+struct DLLNode_ {
+  DLLNode next;
+  DLLNode prev;
+};
+
+void llnode_insert_after(DLLNode target, DLLNode addition);
+void llnode_insert_before(DLLNode target, DLLNode addition);
+void llnode_remove(DLLNode node);
+
+#define INSERT_AFTER(target, addition) \
+  llnode_insert_after((DLLNode)target, (DLLNode)addition)
+
+#define INSERT_BEFORE(target, addition) \
+  llnode_insert_before((DLLNode)target, (DLLNode)addition)
+
+#define REMOVE(node) \
+  llnode_remove((DLLNode)node)
+
+typedef void (*CommandFunction)(void*);
+
+typedef struct Command_ {
+  struct DLLNode_ node;
+  CommandFunction function;
+  void *data;
+} *Command;
+
+Command command_make(CommandFunction function, void* data);
+void command_free(Command command);
+
+typedef struct CommandQueue_ {
+  Command head;
+  Command tail;
+  pthread_mutex_t mutex;
+  pthread_cond_t cond;
+} *CommandQueue;
+
+CommandQueue commandqueue_make();
+void command_enqueue(CommandQueue queue, Command command);
+Command command_dequeue(CommandQueue queue);
 
 #endif

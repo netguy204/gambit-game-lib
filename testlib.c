@@ -13,6 +13,8 @@
 static FixedAllocator clock_allocator;
 static FixedAllocator image_resource_allocator;
 static StackAllocator frame_allocator;
+static FixedAllocator command_allocator;
+static CommandQueue render_queue;
 
 void* fail_exit(char * message) {
   fprintf(stderr, "FAIL_EXIT: %s\n", message);
@@ -25,6 +27,8 @@ void lib_init() {
   clock_allocator = fixed_allocator_make(sizeof(struct Clock_), MAX_NUM_CLOCKS);
   image_resource_allocator = fixed_allocator_make(sizeof(struct ImageResource_), MAX_NUM_IMAGES);
   frame_allocator = stack_allocator_make(1024 * 1024);
+  command_allocator = fixed_allocator_make(sizeof(struct Command_), MAX_NUM_COMMANDS);
+  render_queue = commandqueue_make();
 
   scm_init();
 
@@ -276,3 +280,105 @@ void spritelist_render_to_screen(SpriteList list) {
                            sprite->displayX, sprite->displayY);
   }
 }
+
+void spritelist_enqueue_for_screen(SpriteList list) {
+  Command command = command_make((CommandFunction)spritelist_render_to_screen, list);
+  command_enqueue(render_queue, command);
+}
+
+void process_render_command() {
+  Command command = command_dequeue(render_queue);
+  command->function(command->data);
+  command_free(command);
+}
+
+void llnode_insert_after(DLLNode target, DLLNode addition) {
+  DLLNode after = target->next;
+  target->next = addition;
+  addition->prev = target;
+  addition->next = after;
+  if(after) {
+    after->prev = addition;
+  }
+}
+
+void llnode_insert_before(DLLNode target, DLLNode addition) {
+  DLLNode before = target->prev;
+  target->prev = addition;
+  addition->next = target;
+  addition->prev = before;
+  if(before) {
+    before->next = addition;
+  }
+}
+
+void llnode_remove(DLLNode node) {
+  DLLNode after = node->next;
+  DLLNode before = node->prev;
+
+  if(after) {
+    after->prev = before;
+  }
+
+  if(before) {
+    before->next = after;
+  }
+}
+
+Command command_make(CommandFunction function, void* data) {
+  Command command = (Command)fixed_allocator_alloc(command_allocator);
+  command->node.next = NULL;
+  command->node.prev = NULL;
+  command->function = function;
+  command->data = data;
+  return command;
+}
+
+void command_free(Command command) {
+  fixed_allocator_free(command_allocator, command);
+}
+
+CommandQueue commandqueue_make() {
+  CommandQueue queue = (CommandQueue)malloc(sizeof(struct CommandQueue_));
+  queue->head = NULL;
+  queue->tail = NULL;
+  pthread_mutex_init(&queue->mutex, NULL);
+  pthread_cond_init(&queue->cond, NULL);
+  return queue;
+}
+
+void command_enqueue(CommandQueue queue, Command command) {
+  pthread_mutex_lock(&queue->mutex);
+  if(queue->head == NULL) {
+    queue->head = command;
+    queue->tail = command;
+  } else {
+    INSERT_BEFORE(queue->head, command);
+    queue->head = command;
+  }
+  pthread_mutex_unlock(&queue->mutex);
+  pthread_cond_signal(&queue->cond);
+}
+
+Command command_dequeue(CommandQueue queue) {
+  pthread_mutex_lock(&queue->mutex);
+  while(1) {
+    if(queue->tail) {
+      Command result = queue->tail;
+      DLLNode before = ((DLLNode)result)->prev;
+      if(before) {
+        before->next = NULL;
+        queue->tail = (Command)before;
+      } else {
+        queue->head = NULL;
+        queue->tail = NULL;
+      }
+      pthread_mutex_unlock(&queue->mutex);
+      return result;
+    } else {
+      /* need to wait for something to be put in the queue */
+      pthread_cond_wait(&queue->cond, &queue->mutex);
+    }
+  }
+}
+

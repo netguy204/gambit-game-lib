@@ -134,13 +134,24 @@ c-declare-end
             SpriteList
             "frame_spritelist_append"))
 
-(define spritelist-render-to-screen!
+(define spritelist-enqueue-for-screen!
   (c-lambda (SpriteList)
             void
-            "spritelist_render_to_screen"))
+            "spritelist_enqueue_for_screen"))
 
-;;
+;;; game lifecycle
 (define *game-clock* #f)
+
+(c-define (scm-init) () void "scm_init" ""
+          (set! *game-clock* (clock-make))
+          ;(clock-time-scale-set! *game-clock* 0.2)
+          (display "initializing") (newline)
+          (ensure-resources))
+
+(c-define (terminate) () void "terminate" ""
+          (display "terminating") (newline))
+
+;;; resource lifecycle
 (define *resources* (make-table))
 
 (define (image-load path)
@@ -151,20 +162,13 @@ c-declare-end
             (table-set! *resources* path new-resource)
             new-resource)))))
 
-(c-define (scm-init) () void "scm_init" ""
-          (set! *game-clock* (clock-make))
-          ;(clock-time-scale-set! *game-clock* 0.2)
-          (display "initializing") (newline)
-          (ensure-resources))
+(c-define (resources-released) () void "resources_released" ""
+          (set! *resources* (make-table)))
 
+;;; gameloop
 (c-define (step msecs) (int) void "step" ""
           (update-view (clock-update *game-clock* (/ msecs 1000.0))))
 
-(c-define (terminate) () void "terminate" ""
-          (display "terminating") (newline))
-
-(c-define (resources-released) () void "resources_released" ""
-          (set! *resources* (make-table)))
 
 
 
