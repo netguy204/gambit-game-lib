@@ -91,8 +91,8 @@ void begin_frame() {
 }
 
 static void signal_render_complete(void* empty) {
-  SDL_GL_SwapBuffers();
   threadbarrier_wait(render_barrier);
+  SDL_GL_SwapBuffers();
 }
 
 void renderer_await_end_of_frame() {
@@ -202,9 +202,7 @@ void image_render_to_screen(ImageResource img, float angle,
   glScalef(0.5, 0.5, 0.5);
   
   glTranslatef(x, y, 0.0f);
-
   glRotatef(angle, 0.0f, 0.0f, 1.0f);
-  //glTranslatef(-2.0f * cx, -2.0f * cy, 0.0f);
   glTranslatef(-cx, -cy, 0.0f);
 
   glBegin(GL_QUADS);
