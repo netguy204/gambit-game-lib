@@ -34,10 +34,6 @@ int loop_once() {
 
   begin_frame();
   step(delta);
-
-  // hack, until it's a real thread
-  process_render_command();
-
   end_frame();
 
   last_time = new_time;

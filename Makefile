@@ -9,7 +9,7 @@ SDL_LIBS:=`sdl-config --libs` -lSDL_image
 
 PLATFORM:=$(shell uname)
 
-LDFLAGS=$(SDL_LIBS) -L$(GAMBIT_ROOT)/lib $(OPENGL)
+LDFLAGS=$(SDL_LIBS) -L$(GAMBIT_ROOT)/lib $(OPENGL) -lpthread
 
 ifeq ($(PLATFORM), Darwin)
 	LDFLAGS+= -framework OpenGL

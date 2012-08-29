@@ -15,6 +15,9 @@ static FixedAllocator image_resource_allocator;
 static StackAllocator frame_allocator;
 static FixedAllocator command_allocator;
 static CommandQueue render_queue;
+static ThreadBarrier render_barrier;
+static pthread_t renderer_thread;
+static SDL_Surface* screen = NULL;
 
 void* fail_exit(char * message) {
   fprintf(stderr, "FAIL_EXIT: %s\n", message);
@@ -23,14 +26,26 @@ void* fail_exit(char * message) {
   return NULL;
 }
 
-void lib_init() {
-  clock_allocator = fixed_allocator_make(sizeof(struct Clock_), MAX_NUM_CLOCKS);
-  image_resource_allocator = fixed_allocator_make(sizeof(struct ImageResource_), MAX_NUM_IMAGES);
-  frame_allocator = stack_allocator_make(1024 * 1024);
-  command_allocator = fixed_allocator_make(sizeof(struct Command_), MAX_NUM_COMMANDS);
-  render_queue = commandqueue_make();
+void process_render_command() {
+  Command command = command_dequeue(render_queue);
+  command->function(command->data);
+  command_free(command);
+}
 
-  scm_init();
+void* renderer_exec(void* empty) {
+  if ( SDL_Init(SDL_INIT_VIDEO) < 0 ) {
+    fprintf(stderr, "Unable to init SDL: %s\n", SDL_GetError());
+    exit(1);
+  }
+  IMG_Init(IMG_INIT_PNG);
+
+  SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+  screen = SDL_SetVideoMode(640, 480, 16, SDL_OPENGL);
+  if(screen == NULL) {
+    fprintf(stderr, "Unable to set 640x480 video: %s\n", SDL_GetError());
+    exit(1);
+  }
+
 
   glEnable(GL_TEXTURE_2D);
   glEnable(GL_BLEND);
@@ -43,30 +58,61 @@ void lib_init() {
   glOrtho(0.0f, 640, 0.0f, 480.0f, -1.0f, 1.0f);
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();
+
+  while(1) {
+    process_render_command();
+  }
+}
+
+void lib_init() {
+  clock_allocator = fixed_allocator_make(sizeof(struct Clock_), MAX_NUM_CLOCKS);
+  image_resource_allocator = fixed_allocator_make(sizeof(struct ImageResource_), MAX_NUM_IMAGES);
+  frame_allocator = stack_allocator_make(1024 * 1024);
+  command_allocator = fixed_allocator_make(sizeof(struct Command_), MAX_NUM_COMMANDS);
+  render_queue = commandqueue_make();
+  render_barrier = threadbarrier_make(2);
+  pthread_create(&renderer_thread, NULL, renderer_exec, NULL);
+
+  scm_init();
+}
+
+void renderer_begin_frame(void* empty) {
+  glClear(GL_COLOR_BUFFER_BIT);
+}
+
+void enqueue_begin_frame() {
+  Command command = command_make(renderer_begin_frame, NULL);
+  command_enqueue(render_queue, command);
 }
 
 void begin_frame() {
-  glClear(GL_COLOR_BUFFER_BIT);
   stack_allocator_freeall(frame_allocator);
+  enqueue_begin_frame();
+}
+
+static void signal_render_complete(void* empty) {
+  SDL_GL_SwapBuffers();
+  threadbarrier_wait(render_barrier);
+}
+
+void renderer_await_end_of_frame() {
+  Command command = command_make(signal_render_complete, NULL);
+  command_enqueue(render_queue, command);
+  threadbarrier_wait(render_barrier);
 }
 
 void end_frame() {
-  SDL_GL_SwapBuffers();
+  renderer_await_end_of_frame();
 }
 
 static LLNode last_resource = NULL;
 
-ImageResource image_load(char * file) {
-  SDL_Surface *surface;
+void renderer_finish_image_load(ImageResource resource) {
   GLuint texture;
   GLenum texture_format;
   GLint num_colors;
-
-  surface = IMG_Load(file);
-  if(surface == NULL) {
-    fprintf(stderr, "failed to load %s\n", file);
-    return NULL;
-  }
+  SDL_Surface *surface = resource->surface;
+  resource->surface = NULL;
 
   num_colors = surface->format->BytesPerPixel;
   if(num_colors == 4) {
@@ -90,15 +136,30 @@ ImageResource image_load(char * file) {
   glTexImage2D(GL_TEXTURE_2D, 0, num_colors, surface->w, surface->h, 0,
                texture_format, GL_UNSIGNED_BYTE, surface->pixels);
 
+  resource->texture = texture;
+
+  SDL_FreeSurface(surface);
+}
+
+ImageResource image_load(char * file) {
+  SDL_Surface *surface;
+
+  surface = IMG_Load(file);
+  if(surface == NULL) {
+    fprintf(stderr, "failed to load %s\n", file);
+    return NULL;
+  }
+
   ImageResource resource = (ImageResource)fixed_allocator_alloc(image_resource_allocator);
   resource->w = surface->w;
   resource->h = surface->h;
-
-  resource->texture = texture;
   resource->node.next = last_resource;
+  resource->surface = surface;
   last_resource = (LLNode)resource;
 
-  SDL_FreeSurface(surface);
+  Command command = command_make((CommandFunction)renderer_finish_image_load,
+                                 resource);
+  command_enqueue(render_queue, command);
 
   return resource;
 }
@@ -111,12 +172,20 @@ int image_height(ImageResource resource) {
   return resource->h;
 }
 
+static void renderer_finish_image_free(void* texturep) {
+  GLuint texture = *(GLuint*)texturep;
+  glDeleteTextures(1, &texture);
+}
+
 void images_free() {
   LLNode head = last_resource;
   LLNode next;
   while(head) {
     ImageResource resource = (ImageResource)head;
-    glDeleteTextures(1, &(resource->texture));
+    Command command = command_make(renderer_finish_image_free,
+                                   (void*)resource->texture);
+    command_enqueue(render_queue, command);
+
     next = head->next;
     fixed_allocator_free(image_resource_allocator, resource);
     head = next;
@@ -286,12 +355,6 @@ void spritelist_enqueue_for_screen(SpriteList list) {
   command_enqueue(render_queue, command);
 }
 
-void process_render_command() {
-  Command command = command_dequeue(render_queue);
-  command->function(command->data);
-  command_free(command);
-}
-
 void llnode_insert_after(DLLNode target, DLLNode addition) {
   DLLNode after = target->next;
   target->next = addition;
@@ -382,3 +445,25 @@ Command command_dequeue(CommandQueue queue) {
   }
 }
 
+ThreadBarrier threadbarrier_make(int nthreads) {
+  ThreadBarrier barrier = (ThreadBarrier)malloc(sizeof(struct ThreadBarrier_));
+  pthread_mutex_init(&barrier->mutex, NULL);
+  pthread_cond_init(&barrier->cond, NULL);
+  barrier->nthreads = nthreads;
+  barrier->threads_waiting = 0;
+  return barrier;
+}
+
+void threadbarrier_wait(ThreadBarrier barrier) {
+  pthread_mutex_lock(&barrier->mutex);
+  barrier->threads_waiting += 1;
+
+  if(barrier->threads_waiting == barrier->nthreads) {
+    barrier->threads_waiting = 0;
+    pthread_cond_broadcast(&barrier->cond);
+  } else {
+    pthread_cond_wait(&barrier->cond, &barrier->mutex);
+  }
+
+  pthread_mutex_unlock(&barrier->mutex);
+}

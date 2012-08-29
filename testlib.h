@@ -15,6 +15,8 @@
 /* initialize the internal allocators for the library. Must be called
    before other functions */
 void lib_init();
+
+
 void begin_frame();
 void end_frame();
 
@@ -70,6 +72,7 @@ typedef struct ImageResource_ {
   struct LLNode_ node;
   int w, h;
   GLuint texture;
+  SDL_Surface *surface; /* shortlived, internal */
 } *ImageResource;
 
 ImageResource image_load(char * file);
@@ -98,9 +101,7 @@ typedef struct SpriteList_ {
 
 SpriteList frame_spritelist_append(SpriteList list, Sprite sprite);
 
-void spritelist_render_to_screen(SpriteList list);
 void spritelist_enqueue_for_screen(SpriteList list);
-void process_render_command();
 
 typedef struct DLLNode_ *DLLNode;
 
@@ -143,5 +144,15 @@ typedef struct CommandQueue_ {
 CommandQueue commandqueue_make();
 void command_enqueue(CommandQueue queue, Command command);
 Command command_dequeue(CommandQueue queue);
+
+typedef struct ThreadBarrier_ {
+  pthread_mutex_t mutex;
+  pthread_cond_t cond;
+  int nthreads;
+  int threads_waiting;
+} *ThreadBarrier;
+
+ThreadBarrier threadbarrier_make();
+void threadbarrier_wait(ThreadBarrier barrier);
 
 #endif
