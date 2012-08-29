@@ -134,16 +134,19 @@ typedef struct Command_ {
 Command command_make(CommandFunction function, void* data);
 void command_free(Command command);
 
-typedef struct CommandQueue_ {
-  Command head;
-  Command tail;
+typedef struct Queue_ {
+  DLLNode head;
+  DLLNode tail;
   pthread_mutex_t mutex;
   pthread_cond_t cond;
-} *CommandQueue;
+} *Queue;
 
-CommandQueue commandqueue_make();
-void command_enqueue(CommandQueue queue, Command command);
-Command command_dequeue(CommandQueue queue);
+Queue queue_make();
+void enqueue(Queue queue, DLLNode item);
+DLLNode dequeue(Queue queue);
+
+#define command_enqueue(queue, item) enqueue(queue, (DLLNode)item)
+#define command_dequeue(queue) (Command)dequeue(queue)
 
 typedef struct ThreadBarrier_ {
   pthread_mutex_t mutex;

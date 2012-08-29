@@ -14,7 +14,7 @@ static FixedAllocator clock_allocator;
 static FixedAllocator image_resource_allocator;
 static StackAllocator frame_allocator;
 static FixedAllocator command_allocator;
-static CommandQueue render_queue;
+static Queue render_queue;
 static ThreadBarrier render_barrier;
 static pthread_t renderer_thread;
 static SDL_Surface* screen = NULL;
@@ -69,7 +69,7 @@ void lib_init() {
   image_resource_allocator = fixed_allocator_make(sizeof(struct ImageResource_), MAX_NUM_IMAGES);
   frame_allocator = stack_allocator_make(1024 * 1024);
   command_allocator = fixed_allocator_make(sizeof(struct Command_), MAX_NUM_COMMANDS);
-  render_queue = commandqueue_make();
+  render_queue = queue_make();
   render_barrier = threadbarrier_make(2);
   pthread_create(&renderer_thread, NULL, renderer_exec, NULL);
 
@@ -401,8 +401,8 @@ void command_free(Command command) {
   fixed_allocator_free(command_allocator, command);
 }
 
-CommandQueue commandqueue_make() {
-  CommandQueue queue = (CommandQueue)malloc(sizeof(struct CommandQueue_));
+Queue queue_make() {
+  Queue queue = (Queue)malloc(sizeof(struct Queue_));
   queue->head = NULL;
   queue->tail = NULL;
   pthread_mutex_init(&queue->mutex, NULL);
@@ -410,28 +410,28 @@ CommandQueue commandqueue_make() {
   return queue;
 }
 
-void command_enqueue(CommandQueue queue, Command command) {
+void enqueue(Queue queue, DLLNode item) {
   pthread_mutex_lock(&queue->mutex);
   if(queue->head == NULL) {
-    queue->head = command;
-    queue->tail = command;
+    queue->head = item;
+    queue->tail = item;
   } else {
-    INSERT_BEFORE(queue->head, command);
-    queue->head = command;
+    INSERT_BEFORE(queue->head, item);
+    queue->head = item;
   }
   pthread_mutex_unlock(&queue->mutex);
   pthread_cond_signal(&queue->cond);
 }
 
-Command command_dequeue(CommandQueue queue) {
+DLLNode dequeue(Queue queue) {
   pthread_mutex_lock(&queue->mutex);
   while(1) {
     if(queue->tail) {
-      Command result = queue->tail;
-      DLLNode before = ((DLLNode)result)->prev;
+      DLLNode result = queue->tail;
+      DLLNode before = result->prev;
       if(before) {
         before->next = NULL;
-        queue->tail = (Command)before;
+        queue->tail = before;
       } else {
         queue->head = NULL;
         queue->tail = NULL;
