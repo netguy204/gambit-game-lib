@@ -2,6 +2,8 @@
 
 int main(int argc, char ** argv) {
   SDL_Rect** modes;
+  const SDL_VideoInfo* info;
+
   int i;
 
   if ( SDL_Init(SDL_INIT_VIDEO) < 0 ) {
@@ -29,5 +31,7 @@ int main(int argc, char ** argv) {
     }
   }
 
+  info = SDL_GetVideoInfo();
+  printf(" suggested %d bits per pixel\n", info->vfmt->BitsPerPixel);
   return 0;
 }
