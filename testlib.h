@@ -4,7 +4,7 @@
 
 #define MAX_NUM_CLOCKS 20
 #define MAX_NUM_IMAGES 40
-#define MAX_NUM_COMMANDS 40
+#define MAX_NUM_COMMANDS 500
 
 #define USE_SDL
 
@@ -29,21 +29,25 @@ void resources_released();
 
 /* exported by testlib.c */
 typedef struct FixedAllocator_ {
+  const char* name;
   size_t allocation_size;
   void* first_free;
 } *FixedAllocator;
 
 typedef struct StackAllocator_ {
+  const char* name;
   void* stack_top;
   void* stack_bottom;
   void* stack_max;
 } *StackAllocator;
 
-FixedAllocator fixed_allocator_make(size_t obj_size, unsigned int n);
+FixedAllocator fixed_allocator_make(size_t obj_size, unsigned int n,
+                                    const char* name);
 void* fixed_allocator_alloc(FixedAllocator allocator);
 void fixed_allocator_free(FixedAllocator allocator, void *obj);
 
-StackAllocator stack_allocator_make(size_t stack_size);
+StackAllocator stack_allocator_make(size_t stack_size,
+                                    const char* name);
 void* stack_allocator_alloc(StackAllocator allocator, size_t size);
 void stack_allocator_freeall(StackAllocator allocator);
 

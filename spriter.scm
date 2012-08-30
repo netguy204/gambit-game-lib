@@ -4,8 +4,6 @@
 (define (resource-id-make folder-id file-id)
   (cons folder-id file-id))
 
-(define-structure scml resource-names)
-
 (define (folders-markup scml)
   (filter (sml:node-named? "folder") (sml:children scml)))
 
@@ -90,10 +88,10 @@
                     (sml:children key))))
        (mainline->keys-markup mainline-markup)))
 
-(define-structure animation id length mainline)
+(define-structure animation length mainline)
 
-(define (animation-make id length mainline)
-  (make-animation id (string->number length) mainline))
+(define (animation-make length mainline)
+  (make-animation (/ (string->number length) 1000.0) mainline))
 
 (define (animations entity-markup resources)
   (map (lambda (animation)
@@ -105,7 +103,6 @@
                            timelines)))
            (cons (sml:attr animation "name")
                  (animation-make
-                  (sml:attr animation "id")
                   (sml:attr animation "length")
                   mainline))))
        (entity->animations-markup entity-markup)))
@@ -177,6 +174,7 @@
 
 (define (interp-anim anim t)
   (let* ((t (* 1000 t))
+         (l (* 1000 (animation-length anim)))
          (frames (find-frame anim t))
          (f1 (cdar frames))
          ;; always assume looping
@@ -188,7 +186,7 @@
            (let* ((id (car f))
                   (obj1 (cdr f))
                   (obj2 (cdr (assoc id f2))))
-             (interp-objects obj1 obj2 (animation-length anim) t)))
+             (interp-objects obj1 obj2 l t)))
          f1)))
 
 ;(define timeline (car (animation->timelines-markup (car (entity->animations-markup (car (entities-markup sml)))))))

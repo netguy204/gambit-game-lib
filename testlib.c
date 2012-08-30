@@ -19,8 +19,15 @@ static ThreadBarrier render_barrier;
 static pthread_t renderer_thread;
 static SDL_Surface* screen = NULL;
 
-void* fail_exit(char * message) {
-  fprintf(stderr, "FAIL_EXIT: %s\n", message);
+void* fail_exit(const char * message, ...) {
+  fprintf(stderr, "FAIL_EXIT: ");
+
+  va_list args;
+  va_start(args, message);
+  vfprintf(stderr, message, args);
+  va_end(args);
+
+  fprintf(stderr, "\n");
   fflush(stderr);
   exit(1);
   return NULL;
@@ -65,10 +72,10 @@ void* renderer_exec(void* empty) {
 }
 
 void lib_init() {
-  clock_allocator = fixed_allocator_make(sizeof(struct Clock_), MAX_NUM_CLOCKS);
-  image_resource_allocator = fixed_allocator_make(sizeof(struct ImageResource_), MAX_NUM_IMAGES);
-  frame_allocator = stack_allocator_make(1024 * 1024);
-  command_allocator = fixed_allocator_make(sizeof(struct Command_), MAX_NUM_COMMANDS);
+  clock_allocator = fixed_allocator_make(sizeof(struct Clock_), MAX_NUM_CLOCKS, "clock_allocator");
+  image_resource_allocator = fixed_allocator_make(sizeof(struct ImageResource_), MAX_NUM_IMAGES, "image_resource_allocator");
+  frame_allocator = stack_allocator_make(1024 * 1024, "frame_allocator");
+  command_allocator = fixed_allocator_make(sizeof(struct Command_), MAX_NUM_COMMANDS, "command_allocator");
   render_queue = queue_make();
   render_barrier = threadbarrier_make(2);
   pthread_create(&renderer_thread, NULL, renderer_exec, NULL);
@@ -199,7 +206,6 @@ void image_render_to_screen(ImageResource img, float angle,
                             float x, float y) {
   glBindTexture(GL_TEXTURE_2D, img->texture);
   glPushMatrix();
-  glScalef(0.5, 0.5, 0.5);
   
   glTranslatef(x, y, 0.0f);
   glRotatef(angle, 0.0f, 0.0f, 1.0f);
@@ -234,13 +240,15 @@ void image_render_to_screen(ImageResource img, float angle,
  * number of resources in the system is finite), timelines, and other
  * finite arity and long duration objects.
  */
-FixedAllocator fixed_allocator_make(size_t obj_size, unsigned int n) {
+FixedAllocator fixed_allocator_make(size_t obj_size, unsigned int n,
+                                    const char* name) {
   int ii;
 
   /* next 8 byte aligned size */
   obj_size = NEXT_ALIGNED_SIZE(obj_size);
 
   FixedAllocator allocator = (FixedAllocator)malloc(obj_size * n + 2*sizeof(struct FixedAllocator_));
+  allocator->name = name;
   allocator->allocation_size = obj_size;
 
   void* mem = &allocator[1];
@@ -255,7 +263,7 @@ FixedAllocator fixed_allocator_make(size_t obj_size, unsigned int n) {
 }
 
 void* fixed_allocator_alloc(FixedAllocator allocator) {
-  SAFETY(if(!allocator->first_free) return fail_exit("fixed_allocator failed"));
+  SAFETY(if(!allocator->first_free) return fail_exit("fixed_allocator %s failed", allocator->name));
 
   void * mem = allocator->first_free;
   allocator->first_free = *(void**)allocator->first_free;
@@ -267,11 +275,12 @@ void fixed_allocator_free(FixedAllocator allocator, void *obj) {
   allocator->first_free = obj;
 }
 
-StackAllocator stack_allocator_make(size_t stack_size) {
+StackAllocator stack_allocator_make(size_t stack_size, const char* name) {
   size_t size = sizeof(struct StackAllocator_) * 2 + stack_size;
   size = NEXT_ALIGNED_SIZE(size);
 
   StackAllocator allocator = (StackAllocator)malloc(size);
+  allocator->name = name;
   allocator->stack_bottom = &allocator[1];
   allocator->stack_top = allocator->stack_bottom;
   allocator->stack_max = (char*)allocator->stack_top + stack_size;
@@ -280,7 +289,7 @@ StackAllocator stack_allocator_make(size_t stack_size) {
 
 void* stack_allocator_alloc(StackAllocator allocator, size_t size) {
   size = NEXT_ALIGNED_SIZE(size);
-  SAFETY(if((char*)allocator->stack_top + size > (char*)allocator->stack_max) return fail_exit("stack_allocator failed"));
+  SAFETY(if((char*)allocator->stack_top + size > (char*)allocator->stack_max) return fail_exit("stack_allocator %s failed", allocator->name));
   void* mem = allocator->stack_top;
   allocator->stack_top = (char*)allocator->stack_top + size;
   return mem;

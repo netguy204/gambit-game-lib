@@ -34,14 +34,14 @@
 
 (define *ps* #f)
 (define *anim* #f)
+(define *scml* #f)
 
 (define (ensure-resources)
   (call-with-resources
    (lambda ()
      (set! *ps* (repeatedly random-particle 100))
-     (set! *anim* (animation (entity (scml-load "monster/Example.SCML")
-                                     "0")
-                             "Idle")))))
+     (set! *scml* (scml-load "monster/Example.SCML"))
+     (set! *anim* (animation (entity *scml* "0") "Idle")))))
 
 (define (update-particle sprite-list p dt w h)
   (let* ((x (particle-x p))
@@ -100,8 +100,7 @@
           (reverse (interp-anim anim time))))
 
 (define (update-view dt)
-  (let* ((cycles-for-anim (seconds->cycles (/ (animation-length *anim*)
-                                              1000.0)))
+  (let* ((cycles-for-anim (seconds->cycles (animation-length *anim*)))
          (anim-cycle (modulo (clock-time *game-clock*) cycles-for-anim))
          (anim-time (cycles->seconds anim-cycle))
          (sprite-list (add-animation #f *anim* anim-time 320 100)))

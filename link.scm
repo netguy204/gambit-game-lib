@@ -69,15 +69,21 @@ c-declare-end
             long
             "clock_time"))
 
-(define cycles->seconds
+(define %cycles->seconds
   (c-lambda (long)
             float
             "clock_cycles_to_seconds"))
 
-(define seconds->cycles
+(define %seconds->cycles
   (c-lambda (float)
             long
             "clock_seconds_to_cycles"))
+
+(define (compose f g)
+  (lambda (x) (f (g x))))
+
+(define cycles->seconds (compose %cycles->seconds inexact->exact))
+(define seconds->cycles (compose %seconds->cycles exact->inexact))
 
 (define frame/make-sprite
   (c-lambda ()
@@ -114,20 +120,14 @@ c-declare-end
             void
             "___arg1->angle = ___arg2;"))
 
-(define (sprite-x-set! sprite val)
-  (%sprite-x-set! sprite (exact->inexact val)))
+(define (comp2 f g)
+  (lambda (item x) (f item (g x))))
 
-(define (sprite-y-set! sprite val)
-  (%sprite-y-set! sprite (exact->inexact val)))
-
-(define (sprite-origin-x-set! sprite val)
-  (%sprite-origin-x-set! sprite (exact->inexact val)))
-
-(define (sprite-origin-y-set! sprite val)
-  (%sprite-origin-y-set! sprite (exact->inexact val)))
-
-(define (sprite-angle-set! sprite val)
-  (%sprite-angle-set! sprite (exact->inexact val)))
+(define sprite-x-set! (comp2 %sprite-x-set! exact->inexact))
+(define sprite-y-set! (comp2 %sprite-y-set! exact->inexact))
+(define sprite-origin-x-set! (comp2 %sprite-origin-x-set! exact->inexact))
+(define sprite-origin-y-set! (comp2 %sprite-origin-y-set! exact->inexact))
+(define sprite-angle-set! (comp2 %sprite-angle-set! exact->inexact))
 
 (define frame/spritelist-append
   (c-lambda (SpriteList Sprite)
