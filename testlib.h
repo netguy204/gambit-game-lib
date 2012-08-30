@@ -17,6 +17,9 @@
    before other functions */
 void lib_init();
 
+/* shuts down the renderer and frees memory. Must be called before
+   termination */
+void lib_shutdown();
 
 void begin_frame();
 void end_frame();
@@ -84,9 +87,6 @@ ImageResource image_load(char * file);
 int image_width(ImageResource resource);
 int image_height(ImageResource resource);
 void images_free();
-void image_render_to_screen(ImageResource src, float angle,
-                            float cx, float cy,
-                            float x, float y);
 
 typedef struct Sprite_ {
   ImageResource resource;

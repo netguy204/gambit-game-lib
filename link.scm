@@ -18,11 +18,6 @@ c-declare-end
             ImageResource
             "image_load"))
 
-(define image-render-to-screen!
-  (c-lambda (ImageResource float float float float float)
-            void
-            "image_render_to_screen"))
-
 (define image-width
   (c-lambda (ImageResource)
             int

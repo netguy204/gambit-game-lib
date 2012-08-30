@@ -24,8 +24,6 @@ int main(int argc, char ** argv) {
   int result = real_main(argc, argv);
 
   ___cleanup();
-  IMG_Quit();
-  SDL_Quit();
 
   return result;
 }
