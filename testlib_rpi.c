@@ -157,34 +157,24 @@ void renderer_finish_image_load(ImageResource resource) {
   GLuint texture;
   GLenum texture_format;
   GLint num_colors;
-  SDL_Surface *surface = resource->surface;
-  resource->surface = NULL;
 
-  num_colors = surface->format->BytesPerPixel;
+  num_colors = resource->channels;
   if(num_colors == 4) {
-    if(surface->format->Rmask == 0x000000ff) {
-      texture_format = GL_RGBA;
-    } else {
-      texture_format = GL_BGRA;
-    }
+    texture_format = GL_RGBA;
   } else {
-    if (surface->format->Rmask == 0x000000ff) {
-      texture_format = GL_RGB;
-    } else {
-      texture_format = GL_BGR;
-    }
+    texture_format = GL_RGB;
   }
 
   glGenTextures(1, &texture);
   glBindTexture(GL_TEXTURE_2D, texture);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  glTexImage2D(GL_TEXTURE_2D, 0, num_colors, surface->w, surface->h, 0,
-               texture_format, GL_UNSIGNED_BYTE, surface->pixels);
+  glTexImage2D(GL_TEXTURE_2D, 0, num_colors, resource->w, resource->h, 0,
+               texture_format, GL_UNSIGNED_BYTE, resource->data);
 
   resource->texture = texture;
 
-  SDL_FreeSurface(surface);
+  free(resource->data);
 }
 
 void renderer_finish_image_free(void* texturep) {
