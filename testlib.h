@@ -8,7 +8,6 @@
 
 #include <pthread.h>
 #include "threadlib.h"
-#include "GLES/gl.h"
 
 /* initialize the internal allocators for the library. Must be called
    before other functions */
@@ -76,7 +75,7 @@ struct LLNode_ {
 typedef struct ImageResource_ {
   struct LLNode_ node;
   int w, h;
-  GLuint texture;
+  unsigned int texture;
   int channels;
   unsigned char* data; /* shortlived, internal */
 } *ImageResource;

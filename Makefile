@@ -44,6 +44,9 @@ $(SCM_R5_OBJ): $(SCM_R5_SRC)
 $(SCM_GAMBIT_OBJ): $(SCM_GAMBIT_SRC)
 	$(GSC) -o $@ $<
 
+gambitmain.o: gambitmain.c
+	$(CC) $(CFLAGS) -c $< -include "SDL/SDL.h"
+
 sdlmain: $(SCM_OBJ) $(C_OBJS)
 	$(CC) $(CFLAGS) -o $@ $(C_OBJS) $(SCM_OBJ) $(LDFLAGS) -lgambc
 
