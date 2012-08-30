@@ -1,4 +1,5 @@
 #include <math.h>
+#include <stdarg.h>
 
 #include "testlib.h"
 #include "testlib_internal.h"

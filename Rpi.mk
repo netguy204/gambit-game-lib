@@ -3,12 +3,11 @@ SCM_LIB_SRC=link.scm
 
 GAMBIT_ROOT?=/usr/local/Gambit-C
 GSC=$(GAMBIT_ROOT)/bin/gsc
-XML_INCLUDE:=-I/usr/include/libxml2
-CFLAGS+=-std=c99 -I$(GAMBIT_ROOT)/include
+CFLAGS+=-std=c99 -I$(GAMBIT_ROOT)/include -I/usr/include/libxml2
 LDFLAGS+=-L$(GAMBIT_ROOT)/lib $(OPENGL) -lpthread
 
 # from https://github.com/raspberrypi/firmware/blob/master/opt/vc/src/hello_pi/Makefile.include
-CFLAGS+=-DSTANDALONE -D__STDC_CONSTANT_MACROS -D__STDC_LIMIT_MACROS -DTARGET_POSIX -D_LINUX -fPIC -DPIC -D_REENTRANT -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -U_FORTIFY_SOURCE -Wall -g -DHAVE_LIBOPENMAX=2 -DOMX -DOMX_SKIP64BIT -ftree-vectorize -pipe -DUSE_EXTERNAL_OMX -DHAVE_LIBBCM_HOST -DUSE_EXTERNAL_LIBBCM_HOST -DUSE_VCHIQ_ARM -Wno-psabi -I$(SDKSTAGE)/opt/vc/include/ -I$(SDKSTAGE)/opt/vc/include/interface/vcos/pthreads -I./ -I../libs/ilclient -I../libs/vgfont
+CFLAGS+=-DSTANDALONE -D__STDC_CONSTANT_MACROS -D__STDC_LIMIT_MACROS -DTARGET_POSIX -D_LINUX -fPIC -DPIC -D_REENTRANT -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -U_FORTIFY_SOURCE -DHAVE_LIBOPENMAX=2 -DOMX -DOMX_SKIP64BIT -ftree-vectorize -pipe -DUSE_EXTERNAL_OMX -DHAVE_LIBBCM_HOST -DUSE_EXTERNAL_LIBBCM_HOST -DUSE_VCHIQ_ARM -Wno-psabi -I$(SDKSTAGE)/opt/vc/include/ -I$(SDKSTAGE)/opt/vc/include/interface/vcos/pthreads -I./ -I../libs/ilclient -I../libs/vgfont
 
 LDFLAGS+=-L$(SDKSTAGE)/opt/vc/lib/ -lGLESv2 -lEGL -lopenmaxil -lbcm_host -lvcos -lvchiq_arm -L../libs/ilclient -L../libs/vgfont
 
@@ -17,7 +16,7 @@ PLATFORM:=$(shell uname)
 ifeq ($(PLATFORM), Darwin)
 	LDFLAGS+= -framework OpenGL
 else
-	LDFLAGS+= -lGL -lm -ldl -lutil
+	LDFLAGS+= -lm -ldl -lutil
 endif
 
 MKMOD=make -f Module.mk
@@ -32,7 +31,7 @@ C_OBJS=$(patsubst %.c,%.o,$(C_SRC))
 SCM_GAMBIT_OBJ=$(patsubst %.scm,%.o1,$(SCM_GAMBIT_SRC))
 SCM_R5_OBJ=$(patsubst %.scm,%.o1,$(SCM_R5_SRC))
 
-all: pimain xml2.o1.o $(SCM_GAMBIT_OBJ) $(SCM_R5_OBJ) list_modes
+all: pimain xml2.o1.o $(SCM_GAMBIT_OBJ) $(SCM_R5_OBJ)
 
 
 $(SCM_LIB_C): $(SCM_LIB_SRC)
@@ -50,8 +49,6 @@ $(SCM_GAMBIT_OBJ): $(SCM_GAMBIT_SRC)
 pimain: $(SCM_OBJ) $(C_OBJS)
 	$(CC) $(CFLAGS) -o $@ $(C_OBJS) $(SCM_OBJ) $(LDFLAGS) -lgambc
 
-list_modes: list_modes.c
-	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS)
 clean:
 	rm -f *.o* $(SCM_LIB_C) pimain
 	$(MAKE_XML2) clean

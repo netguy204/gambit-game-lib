@@ -1,7 +1,4 @@
 #include <stdlib.h>
-#include <SDL.h>
-#include <SDL_image.h>
-#include <SDL_opengl.h>
 
 #define ___VERSION 406006
 #include <gambit.h>

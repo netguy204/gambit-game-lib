@@ -6,12 +6,9 @@
 #define MAX_NUM_IMAGES 40
 #define MAX_NUM_COMMANDS 500
 
-#define USE_SDL
-
-#include <SDL/SDL.h>
-#include <SDL/SDL_opengl.h>
 #include <pthread.h>
 #include "threadlib.h"
+#include "GLES/gl.h"
 
 /* initialize the internal allocators for the library. Must be called
    before other functions */

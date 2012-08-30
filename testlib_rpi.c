@@ -1,7 +1,10 @@
-/* SDL_Image/EGL implementation of testlib targeting the raspberry
-   pi */
+/* EGL implementation of testlib targeting the raspberry pi */
 
-#include <SDL/SDL_image.h>
+#include <assert.h>
+#include <unistd.h>
+
+#include "testlib.h"
+#include "testlib_internal.h"
 
 #include "bcm_host.h"
 
@@ -15,14 +18,14 @@ EGLContext context;
 uint32_t screen_width;
 uint32_t screen_height;
 
-static const GLFloat quadCoords[4 * 3] = {
+static const GLfloat quadCoords[4 * 3] = {
   0.0f, 0.0f, 0.0f,
   1.0f, 0.0f, 0.0f,
   1.0f, 1.0f, 0.0f,
   0.0f, 1.0f, 0.0f,
 };
 
-static const GLFloat texCoords[4 * 2] = {
+static const GLfloat texCoords[4 * 2] = {
   0.0f, 1.0f,
   1.0f, 1.0f,
   1.0f, 0.0f,
@@ -30,7 +33,6 @@ static const GLFloat texCoords[4 * 2] = {
 };
 
 void renderer_init(void* empty) {
-  IMG_Init(IMG_INIT_PNG);
   int32_t success = 0;
   EGLBoolean result;
   EGLint num_config;
@@ -113,7 +115,7 @@ void renderer_init(void* empty) {
   glViewport(0, 0, screen_width, screen_height);
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
-  glOrtho(0.0f, screen_width, 0.0f, screen_height, -1.0f, 1.0f);
+  glOrthof(0.0f, screen_width, 0.0f, screen_height, -1.0f, 1.0f);
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();
 
@@ -135,7 +137,6 @@ void renderer_init(void* empty) {
 }
 
 void renderer_shutdown(void* empty) {
-  IMG_Quit();
   glClear(GL_COLOR_BUFFER_BIT);
   // Release OpenGL resources
   eglMakeCurrent( display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT );
