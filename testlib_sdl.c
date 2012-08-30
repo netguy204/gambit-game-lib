@@ -6,6 +6,32 @@
 #include "testlib.h"
 #include "testlib_internal.h"
 
+extern StackAllocator frame_allocator;
+
+InputState frame_inputstate() {
+  SDL_Event event;
+  InputState state = stack_allocator_alloc(frame_allocator, sizeof(struct InputState_));
+  memset(state, 0, sizeof(struct InputState_));
+
+  /* pump the events */
+  while(SDL_PollEvent(&event)) {
+    switch(event.type) {
+    case SDL_QUIT:
+      state->quit_requested = 1;
+    }
+  }
+
+  return state;
+}
+
+long time_millis() {
+  return SDL_GetTicks();
+}
+
+void sleep_millis(long millis) {
+  SDL_Delay(millis);
+}
+
 void renderer_init(void* empty) {
   if ( SDL_Init(SDL_INIT_VIDEO) < 0 ) {
     fprintf(stderr, "Unable to init SDL: %s\n", SDL_GetError());

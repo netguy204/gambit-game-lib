@@ -1,4 +1,3 @@
-#include <SDL/SDL.h>
 #include <stdio.h>
 #include "testlib.h"
 
@@ -7,24 +6,20 @@ int min_time = 18;
 int max_time = 100;
 
 int loop_once() {
-  SDL_Event event;
   int new_time;
 
-  /* pump the events */
-  while(SDL_PollEvent(&event)) {
-    switch(event.type) {
-    case SDL_QUIT:
-      terminate();
-      lib_shutdown();
-      return 0;
-    }
+  InputState state = frame_inputstate();
+  if(state->quit_requested) {
+    terminate();
+    lib_shutdown();
+    return 0;
   }
 
   /* check the time */
-  new_time = SDL_GetTicks();
+  new_time = time_millis();
   if((new_time - last_time) < min_time) {
-    SDL_Delay(min_time - (new_time - last_time));
-    new_time = SDL_GetTicks();
+    sleep_millis(min_time - (new_time - last_time));
+    new_time = time_millis();
   }
 
   float delta = new_time - last_time;
@@ -42,7 +37,7 @@ int loop_once() {
 }
 
 int real_main(int argc, char ** argv) {
-  int last_time = SDL_GetTicks();
+  int last_time = time_millis();
   lib_init();
 
   while(loop_once()) {}

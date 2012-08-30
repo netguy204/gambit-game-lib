@@ -1,6 +1,16 @@
 #ifndef TEST_H
 #define TEST_H
 
+/** conventions:
+ *
+ * Things that happen on the renderer thread are prefixed with
+ * renderer_
+ *
+ * Things that allocate from the per frame memory allocator are
+ * prefixed with frame_
+ *
+ * Functions that deal with objects are prefixed with objectname_
+ */
 
 #define MAX_NUM_CLOCKS 20
 #define MAX_NUM_IMAGES 40
@@ -25,6 +35,15 @@ void scm_init();
 void step(int);
 void terminate();
 void resources_released();
+
+typedef struct InputState_ {
+  int quit_requested;
+} *InputState;
+
+/* provided by system specific lib */
+InputState frame_inputstate();
+long time_millis();
+void sleep_millis(long millis);
 
 /* exported by testlib.c */
 typedef struct FixedAllocator_ {

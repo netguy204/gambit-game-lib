@@ -11,11 +11,12 @@
 
 ThreadBarrier render_barrier;
 
-static FixedAllocator clock_allocator;
-static FixedAllocator image_resource_allocator;
-static StackAllocator frame_allocator;
-static FixedAllocator command_allocator;
-static Queue render_queue;
+FixedAllocator clock_allocator;
+FixedAllocator image_resource_allocator;
+StackAllocator frame_allocator;
+FixedAllocator command_allocator;
+Queue render_queue;
+
 static pthread_t renderer_thread;
 
 void* fail_exit(const char * message, ...) {
