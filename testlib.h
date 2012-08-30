@@ -80,7 +80,8 @@ typedef struct ImageResource_ {
   struct LLNode_ node;
   int w, h;
   GLuint texture;
-  SDL_Surface *surface; /* shortlived, internal */
+  int channels;
+  unsigned char* data; /* shortlived, internal */
 } *ImageResource;
 
 ImageResource image_load(char * file);

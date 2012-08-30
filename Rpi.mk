@@ -1,11 +1,11 @@
-C_SRC=threadlib.c testlib.c testlib_sdl.c gambitmain.c realmain.c stb_image.c
+C_SRC=threadlib.c testlib.c testlib_rpi.c gambitmain.c realmain.c
 SCM_LIB_SRC=link.scm
 
 GAMBIT_ROOT?=/usr/local/Gambit-C
 GSC=$(GAMBIT_ROOT)/bin/gsc
 XML_INCLUDE:=-I/usr/include/libxml2
 CFLAGS+=-std=c99 -I$(GAMBIT_ROOT)/include `sdl-config --cflags` $(XML_INCLUDE)
-SDL_LIBS:=`sdl-config --libs`
+SDL_LIBS:=`sdl-config --libs` -lSDL_image
 
 PLATFORM:=$(shell uname)
 

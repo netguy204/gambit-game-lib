@@ -1,9 +1,8 @@
 #include <math.h>
 
-#include <SDL/SDL_image.h>
-
 #include "testlib.h"
 #include "testlib_internal.h"
+#include "stb_image.h"
 
 #define OFFSET(idx, obj_size, ptr) ((void*)(((char*)ptr) + (idx * obj_size)))
 #define NEXT_ALIGNED_SIZE(x) ((x + 8 - 1) & ~(8 - 1))
@@ -97,19 +96,20 @@ int image_height(ImageResource resource) {
 }
 
 ImageResource image_load(char * file) {
-  SDL_Surface *surface;
+  int w, h, channels;
+  unsigned char *data = stbi_load(file, &w, &h, &channels, 0);
 
-  surface = IMG_Load(file);
-  if(surface == NULL) {
+  if(data == NULL) {
     fprintf(stderr, "failed to load %s\n", file);
     return NULL;
   }
 
   ImageResource resource = (ImageResource)fixed_allocator_alloc(image_resource_allocator);
-  resource->w = surface->w;
-  resource->h = surface->h;
+  resource->w = w;
+  resource->h = h;
+  resource->channels = channels;
   resource->node.next = last_resource;
-  resource->surface = surface;
+  resource->data = data;
   last_resource = (LLNode)resource;
 
   Command command = command_make((CommandFunction)renderer_finish_image_load,

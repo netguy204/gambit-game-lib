@@ -1,5 +1,6 @@
+/* SDL/OpenGL implementation of testlib suitable for desktops */
+
 #include <SDL/SDL.h>
-#include <SDL/SDL_image.h>
 #include <SDL/SDL_opengl.h>
 
 #include "testlib.h"
@@ -10,7 +11,6 @@ void renderer_init(void* empty) {
     fprintf(stderr, "Unable to init SDL: %s\n", SDL_GetError());
     exit(1);
   }
-  IMG_Init(IMG_INIT_PNG);
 
   SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
   SDL_Surface* screen = SDL_SetVideoMode(640, 480, 16, SDL_OPENGL);
@@ -18,7 +18,6 @@ void renderer_init(void* empty) {
     fprintf(stderr, "Unable to set 640x480 video: %s\n", SDL_GetError());
     exit(1);
   }
-
 
   glEnable(GL_TEXTURE_2D);
   glEnable(GL_BLEND);
@@ -31,6 +30,11 @@ void renderer_init(void* empty) {
   glOrtho(0.0f, 640, 0.0f, 480.0f, -1.0f, 1.0f);
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();
+}
+
+void renderer_shutdown(void* empty) {
+  SDL_Quit();
+  threadbarrier_wait(render_barrier);
 }
 
 void renderer_begin_frame(void* empty) {
@@ -46,34 +50,24 @@ void renderer_finish_image_load(ImageResource resource) {
   GLuint texture;
   GLenum texture_format;
   GLint num_colors;
-  SDL_Surface *surface = resource->surface;
-  resource->surface = NULL;
 
-  num_colors = surface->format->BytesPerPixel;
+  num_colors = resource->channels;
   if(num_colors == 4) {
-    if(surface->format->Rmask == 0x000000ff) {
-      texture_format = GL_RGBA;
-    } else {
-      texture_format = GL_BGRA;
-    }
+    texture_format = GL_RGBA;
   } else {
-    if (surface->format->Rmask == 0x000000ff) {
-      texture_format = GL_RGB;
-    } else {
-      texture_format = GL_BGR;
-    }
+    texture_format = GL_RGB;
   }
 
   glGenTextures(1, &texture);
   glBindTexture(GL_TEXTURE_2D, texture);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  glTexImage2D(GL_TEXTURE_2D, 0, num_colors, surface->w, surface->h, 0,
-               texture_format, GL_UNSIGNED_BYTE, surface->pixels);
+  glTexImage2D(GL_TEXTURE_2D, 0, num_colors, resource->w, resource->h, 0,
+               texture_format, GL_UNSIGNED_BYTE, resource->data);
 
   resource->texture = texture;
 
-  SDL_FreeSurface(surface);
+  free(resource->data);
 }
 
 void renderer_finish_image_free(void* texturep) {
@@ -110,8 +104,3 @@ void image_render_to_screen(ImageResource img, float angle,
   glPopMatrix();
 }
 
-void renderer_shutdown(void* empty) {
-  IMG_Quit();
-  SDL_Quit();
-  threadbarrier_wait(render_barrier);
-}
