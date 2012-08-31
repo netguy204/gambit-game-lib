@@ -1,21 +1,11 @@
-C_SRC=threadlib.c testlib.c testlib_sdl.c gambitmain.c realmain.c stb_image.c
+C_SRC+=threadlib.c testlib.c gambitmain.c realmain.c stb_image.c
 SCM_LIB_SRC=link.scm
 
 GAMBIT_ROOT?=/usr/local/Gambit-C
 GSC=$(GAMBIT_ROOT)/bin/gsc
 XML_INCLUDE:=-I/usr/include/libxml2
-CFLAGS+=-std=c99 -I$(GAMBIT_ROOT)/include `sdl-config --cflags` $(XML_INCLUDE)
-SDL_LIBS:=`sdl-config --libs`
-
-PLATFORM:=$(shell uname)
-
-LDFLAGS=$(SDL_LIBS) -L$(GAMBIT_ROOT)/lib $(OPENGL) -lpthread
-
-ifeq ($(PLATFORM), Darwin)
-	LDFLAGS+= -framework OpenGL
-else
-	LDFLAGS+= -lGL -lm -ldl -lutil
-endif
+CFLAGS+=-I$(GAMBIT_ROOT)/include $(XML_INCLUDE)
+LDFLAGS+=-L$(GAMBIT_ROOT)/lib -lpthread
 
 MKMOD=make -f Module.mk
 MAKE_XML2=$(MKMOD) SCM_SRC=xml2.scm OUTPUT=xml2 CFLAGS="$(CFLAGS)" LDFLAGS="-lxml2"
@@ -29,7 +19,7 @@ C_OBJS=$(patsubst %.c,%.o,$(C_SRC))
 SCM_GAMBIT_OBJ=$(patsubst %.scm,%.o1,$(SCM_GAMBIT_SRC))
 SCM_R5_OBJ=$(patsubst %.scm,%.o1,$(SCM_R5_SRC))
 
-all: sdlmain xml2.o1.o $(SCM_GAMBIT_OBJ) $(SCM_R5_OBJ) list_modes
+all: $(BIN) xml2.o1.o $(SCM_GAMBIT_OBJ) $(SCM_R5_OBJ) list_modes
 
 
 $(SCM_LIB_C): $(SCM_LIB_SRC)
@@ -44,18 +34,14 @@ $(SCM_R5_OBJ): $(SCM_R5_SRC)
 $(SCM_GAMBIT_OBJ): $(SCM_GAMBIT_SRC)
 	$(GSC) -o $@ $<
 
-gambitmain.o: gambitmain.c
-	$(CC) $(CFLAGS) -c $< -include "SDL/SDL.h"
-
-sdlmain: $(SCM_OBJ) $(C_OBJS)
+$(BIN): $(SCM_OBJ) $(C_OBJS)
 	$(CC) $(CFLAGS) -o $@ $(C_OBJS) $(SCM_OBJ) $(LDFLAGS) -lgambc
 
 list_modes: list_modes.c
 	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS)
 clean:
-	rm -f *.o* $(SCM_LIB_C) sdlmain
+	rm -rf *.o* $(SCM_LIB_C) $(BIN)
 	$(MAKE_XML2) clean
-	rm -rf sdlmain.app
 
 test_bin: testlib.o testlib_test.o
 	$(CC) $(CFLAGS) -o $@ testlib.o testlib_test.o $(LDFLAGS)
@@ -65,9 +51,6 @@ test: test_bin
 
 xml2.o1.o: xml2.scm
 	$(MAKE_XML2)
-
-sdlmain.app: all
-	mkdir sdlmain.app
 
 .phony: all
 
