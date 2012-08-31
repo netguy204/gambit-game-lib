@@ -1,5 +1,4 @@
 (load "xml2")
-(##include "common.scm")
 
 (define (resource-id-make folder-id file-id)
   (cons folder-id file-id))

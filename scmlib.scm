@@ -1,6 +1,6 @@
-(##include "math.scm")
-(##include "common.scm")
-(##include "spriter.scm")
+(load "math")
+(load "common")
+(load "spriter")
 
 (define *test-image* (make-parameter #f))
 

@@ -6,8 +6,6 @@
 c-declare-end
 )
 
-(load "common")
-
 (c-define-type xmlDoc (pointer "xmlDoc"))
 (c-define-type xmlNode (pointer "xmlNode"))
 (c-define-type xmlAttribute (pointer "xmlAttribute"))
