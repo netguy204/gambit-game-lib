@@ -48,6 +48,43 @@ void egl_assert_(int test, const char * string) {
 
 #define egl_assert(test) egl_assert_(test, "" #test)
 
+void gl_check_(const char * msg) {
+  GLenum error = glGetError();
+  if(error == GL_NO_ERROR) return;
+
+  char* e_msg;
+  switch(error) {
+  case GL_INVALID_ENUM:
+    e_msg = "GL_INVALID_ENUM";
+    break;
+  case GL_INVALID_VALUE:
+    e_msg = "GL_INVALID_VALUE";
+    break;
+  case GL_INVALID_OPERATION:
+    e_msg = "GL_INVALID_OPERATION";
+    break;
+  case GL_STACK_OVERFLOW:
+    e_msg = "GL_STACK_OVERFLOW";
+    break;
+  case GL_STACK_UNDERFLOW:
+    e_msg = "GL_STACK_UNDERFLOW";
+    break;
+  case GL_OUT_OF_MEMORY:
+    e_msg = "GL_OUT_OF_MEMORY";
+    break;
+  default:
+    e_msg = "unknown";
+  }
+
+  fprintf(stderr, "GL_ERROR: %s => %s\n", msg, e_msg);
+}
+
+#ifdef GL_CHECK_ERRORS
+#define gl_check(command); gl_check_(#command)
+#else
+#define gl_check(command) command
+#endif
+
 /* GLES2
 static GLbyte vShaderStr[] =
   "attribute vec4 vPosition; \n"
@@ -210,6 +247,7 @@ void renderer_init(void* empty) {
 
   glEnableClientState(GL_TEXTURE_COORD_ARRAY);
   glTexCoordPointer(2, GL_FLOAT, 0, texCoords);
+  gl_check_("setup");
 }
 
 void renderer_shutdown(void* empty) {
@@ -228,6 +266,7 @@ void renderer_begin_frame(void* empty) {
 void signal_render_complete(void* empty) {
   threadbarrier_wait(render_barrier);
   eglSwapBuffers(display, surface);
+  gl_check_("endframe");
 }
 
 void renderer_finish_image_load(ImageResource resource) {
@@ -242,12 +281,12 @@ void renderer_finish_image_load(ImageResource resource) {
     texture_format = GL_RGB;
   }
 
-  glGenTextures(1, &texture);
-  glBindTexture(GL_TEXTURE_2D, texture);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  glTexImage2D(GL_TEXTURE_2D, 0, num_colors, resource->w, resource->h, 0,
-               texture_format, GL_UNSIGNED_BYTE, resource->data);
+  gl_check(glGenTextures(1, &texture));
+  gl_check(glBindTexture(GL_TEXTURE_2D, texture));
+  gl_check(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
+  gl_check(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
+  gl_check(glTexImage2D(GL_TEXTURE_2D, 0, texture_format, resource->w, resource->h, 0,
+                        texture_format, GL_UNSIGNED_BYTE, resource->data));
 
   resource->texture = texture;
 
