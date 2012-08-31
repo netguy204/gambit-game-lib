@@ -1,8 +1,12 @@
 /* EGL implementation of testlib targeting the raspberry pi */
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <math.h>
 #include <assert.h>
-#include <unistd.h>
 #include <time.h>
+#include <unistd.h>
 
 #include "testlib.h"
 #include "testlib_internal.h"
@@ -18,6 +22,7 @@ EGLSurface surface;
 EGLContext context;
 uint32_t screen_width;
 uint32_t screen_height;
+extern StackAllocator frame_allocator;
 
 static const GLfloat quadCoords[4 * 3] = {
   0.0f, 0.0f, 0.0f,
@@ -49,10 +54,13 @@ long time_millis() {
 }
 
 void sleep_millis(long millis) {
-  struct timespec sleep;
-  sleep.tv_sec = millis / 1000;
-  sleep.tv_nsec = millis * 1e6;
-  nanosleep(&sleep);
+  usleep(millis * 1000);
+}
+
+InputState frame_inputstate() {
+  InputState state = stack_allocator_alloc(frame_allocator, sizeof(struct InputState_));
+  memset(state, 0, sizeof(struct InputState_));
+  return state;
 }
 
 void renderer_init(void* empty) {
@@ -80,6 +88,8 @@ void renderer_init(void* empty) {
    
   EGLConfig config;
   
+  bcm_host_init();
+
   // get an EGL display connection
   display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
   egl_assert(display!=EGL_NO_DISPLAY);
@@ -98,6 +108,7 @@ void renderer_init(void* empty) {
   
   // create an EGL window surface
   success = graphics_get_display_size(0 /* LCD */, &screen_width, &screen_height);
+  fprintf(stderr, "success = %d, screen_width = %d, screen_height = %d\n", success, screen_width, screen_height);
   egl_assert( success >= 0 );
   
   dst_rect.x = 0;
@@ -217,7 +228,7 @@ void image_render_to_screen(ImageResource img, float angle,
   glTranslatef(-cx, -cy, 0.0f);
   glScalef(img->w, img->h, 1.0f);
 
-  glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+  glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 
   glPopMatrix();
 }

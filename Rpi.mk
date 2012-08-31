@@ -3,7 +3,7 @@ SCM_LIB_SRC=link.scm
 
 GAMBIT_ROOT?=/usr/local/Gambit-C
 GSC=$(GAMBIT_ROOT)/bin/gsc
-CFLAGS+=-std=c99 -I$(GAMBIT_ROOT)/include -I/usr/include/libxml2
+CFLAGS+=-I$(GAMBIT_ROOT)/include -I/usr/include/libxml2
 LDFLAGS+=-L$(GAMBIT_ROOT)/lib $(OPENGL) -lpthread
 
 # from https://github.com/raspberrypi/firmware/blob/master/opt/vc/src/hello_pi/Makefile.include
@@ -46,8 +46,12 @@ $(SCM_R5_OBJ): $(SCM_R5_SRC)
 $(SCM_GAMBIT_OBJ): $(SCM_GAMBIT_SRC)
 	$(GSC) -o $@ $<
 
+%.o: %.c
+	@rm -f $@ 
+	$(CC) $(CFLAGS) $(INCLUDES) -g -c $< -o $@ -Wno-deprecated-declarations
+
 pimain: $(SCM_OBJ) $(C_OBJS)
-	$(CC) $(CFLAGS) -o $@ $(C_OBJS) $(SCM_OBJ) $(LDFLAGS) -lgambc
+	$(CC) $(CFLAGS) -o $@ -Wl,--whole-archive $(SCM_OBJ) $(C_OBJS) $(LDFLAGS) -Wl,--no-whole-archive -rdynamic -lgambc
 
 clean:
 	rm -f *.o* $(SCM_LIB_C) pimain
