@@ -50,6 +50,10 @@ $(SCM_GAMBIT_OBJ): $(SCM_GAMBIT_SRC)
 	@rm -f $@ 
 	$(CC) $(CFLAGS) $(INCLUDES) -g -c $< -o $@ -Wno-deprecated-declarations
 
+testlib.o: testlib.c
+	@rm -f $@ 
+	$(CC) -std=c99 $(CFLAGS) $(INCLUDES) -g -c $< -o $@ -Wno-deprecated-declarations
+
 pimain: $(SCM_OBJ) $(C_OBJS)
 	$(CC) $(CFLAGS) -o $@ -Wl,--whole-archive $(SCM_OBJ) $(C_OBJS) $(LDFLAGS) -Wl,--no-whole-archive -rdynamic -lgambc
 

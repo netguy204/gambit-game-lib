@@ -53,11 +53,18 @@ c-declare-end
             void
             "___arg1->time_scale = ___arg2;"))
 
+(define (comp2 f g)
+  (lambda (item x) (f item (g x))))
 
-(define clock-update
+(define (compose f g)
+  (lambda (x) (f (g x))))
+
+(define %clock-update
   (c-lambda (Clock float)
             float
             "clock_update"))
+
+(define clock-update (comp2 %clock-update exact->inexact))
 
 (define clock-time
   (c-lambda (Clock)
@@ -73,9 +80,6 @@ c-declare-end
   (c-lambda (float)
             long
             "clock_seconds_to_cycles"))
-
-(define (compose f g)
-  (lambda (x) (f (g x))))
 
 (define cycles->seconds (compose %cycles->seconds inexact->exact))
 (define seconds->cycles (compose %seconds->cycles exact->inexact))
@@ -114,9 +118,6 @@ c-declare-end
   (c-lambda (Sprite float)
             void
             "___arg1->angle = ___arg2;"))
-
-(define (comp2 f g)
-  (lambda (item x) (f item (g x))))
 
 (define sprite-x-set! (comp2 %sprite-x-set! exact->inexact))
 (define sprite-y-set! (comp2 %sprite-y-set! exact->inexact))

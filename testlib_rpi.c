@@ -95,9 +95,11 @@ void renderer_init(void* empty) {
   egl_assert(display!=EGL_NO_DISPLAY);
   
   // initialize the EGL display connection
-  result = eglInitialize(display, NULL, NULL);
+  int major, minor;
+  result = eglInitialize(display, &major, &minor);
   egl_assert(EGL_FALSE != result);
-  
+  fprintf(stderr, "EGL initialzed version %d %d\n", major, minor);
+ 
    // get an appropriate EGL frame buffer configuration
   result = eglChooseConfig(display, attribute_list, &config, 1, &num_config);
   egl_assert(EGL_FALSE != result);
@@ -145,7 +147,7 @@ void renderer_init(void* empty) {
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-  glClearColor(0.8f, 0.8f, 0.8f, 0.0f);
+  glClearColor(0.8f, 0.8f, 0.8f, 1.0f);
   glViewport(0, 0, screen_width, screen_height);
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
