@@ -19,7 +19,7 @@ C_OBJS=$(patsubst %.c,%.o,$(C_SRC))
 SCM_GAMBIT_OBJ=$(patsubst %.scm,%.o1,$(SCM_GAMBIT_SRC))
 SCM_R5_OBJ=$(patsubst %.scm,%.o1,$(SCM_R5_SRC))
 
-all: $(BIN) xml2.o1.o $(SCM_GAMBIT_OBJ) $(SCM_R5_OBJ) list_modes
+all: $(BIN) xml2.o1.o $(SCM_GAMBIT_OBJ) $(SCM_R5_OBJ)
 
 
 $(SCM_LIB_C): $(SCM_LIB_SRC)
@@ -37,8 +37,6 @@ $(SCM_GAMBIT_OBJ): $(SCM_GAMBIT_SRC)
 $(BIN): $(SCM_OBJ) $(C_OBJS)
 	$(CC) $(CFLAGS) -o $@ $(C_OBJS) $(SCM_OBJ) $(LDFLAGS) -lgambc
 
-list_modes: list_modes.c
-	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS)
 clean:
 	rm -rf *.o* $(SCM_LIB_C) $(BIN)
 	$(MAKE_XML2) clean
