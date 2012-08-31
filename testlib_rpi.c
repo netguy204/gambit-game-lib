@@ -2,6 +2,7 @@
 
 #include <assert.h>
 #include <unistd.h>
+#include <time.h>
 
 #include "testlib.h"
 #include "testlib_internal.h"
@@ -32,6 +33,28 @@ static const GLfloat texCoords[4 * 2] = {
   0.0f, 0.0f,
 };
 
+void egl_assert_(int test, const char * string) {
+  if(!test) {
+    fprintf(stderr, "egl_assert: %s -> %s\n", string,
+            eglQueryString(display, eglGetError()));
+    exit(-1);
+  }
+}
+
+#define egl_assert(test) egl_assert_(test, "" #test)
+
+long time_millis() {
+  clock_t time = clock();
+  return time / (CLOCKS_PER_SEC / 1000);
+}
+
+void sleep_millis(long millis) {
+  struct timespec sleep;
+  sleep.tv_sec = millis / 1000;
+  sleep.tv_nsec = millis * 1e6;
+  nanosleep(&sleep);
+}
+
 void renderer_init(void* empty) {
   int32_t success = 0;
   EGLBoolean result;
@@ -59,23 +82,23 @@ void renderer_init(void* empty) {
   
   // get an EGL display connection
   display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
-  assert(display!=EGL_NO_DISPLAY);
+  egl_assert(display!=EGL_NO_DISPLAY);
   
   // initialize the EGL display connection
   result = eglInitialize(display, NULL, NULL);
-  assert(EGL_FALSE != result);
+  egl_assert(EGL_FALSE != result);
   
    // get an appropriate EGL frame buffer configuration
   result = eglChooseConfig(display, attribute_list, &config, 1, &num_config);
-  assert(EGL_FALSE != result);
+  egl_assert(EGL_FALSE != result);
   
   // create an EGL rendering context
   context = eglCreateContext(display, config, EGL_NO_CONTEXT, NULL);
-  assert(context!=EGL_NO_CONTEXT);
+  egl_assert(context!=EGL_NO_CONTEXT);
   
   // create an EGL window surface
   success = graphics_get_display_size(0 /* LCD */, &screen_width, &screen_height);
-  assert( success >= 0 );
+  egl_assert( success >= 0 );
   
   dst_rect.x = 0;
   dst_rect.y = 0;
@@ -101,11 +124,11 @@ void renderer_init(void* empty) {
   vc_dispmanx_update_submit_sync( dispman_update );
   
   surface = eglCreateWindowSurface( display, config, &nativewindow, NULL );
-  assert(surface != EGL_NO_SURFACE);
+  egl_assert(surface != EGL_NO_SURFACE);
 
   // connect the context to the surface
   result = eglMakeCurrent(display, surface, surface, context);
-  assert(EGL_FALSE != result);
+  egl_assert(EGL_FALSE != result);
   
   glEnable(GL_TEXTURE_2D);
   glEnable(GL_BLEND);

@@ -17,12 +17,13 @@ int loop_once() {
 
   /* check the time */
   new_time = time_millis();
-  if((new_time - last_time) < min_time) {
-    sleep_millis(min_time - (new_time - last_time));
+  long old_delta = new_time - last_time;
+  if(old_delta < min_time) {
+    sleep_millis(min_time - old_delta);
     new_time = time_millis();
   }
 
-  float delta = new_time - last_time;
+  long delta = new_time - last_time;
   if(delta > max_time) {
     delta = max_time;
   }
