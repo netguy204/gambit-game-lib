@@ -105,7 +105,7 @@
          (anim-time (cycles->seconds anim-cycle))
          (sprite-list (add-animation #f *anim* anim-time 320 100)))
 
-    ;(update-view-old dt)
+    (update-view-old dt)
     (spritelist-enqueue-for-screen! sprite-list)))
 
 
