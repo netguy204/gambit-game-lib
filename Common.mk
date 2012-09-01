@@ -1,4 +1,4 @@
-C_SRC+=threadlib.c testlib.c gambitmain.c realmain.c stb_image.c
+C_SRC+=threadlib.c memory.c testlib.c gambitmain.c realmain.c stb_image.c
 SCM_LIB_SRC=link.scm
 
 GAMBIT_ROOT?=/usr/local/Gambit-C

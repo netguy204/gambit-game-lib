@@ -15,10 +15,19 @@
 #define MAX_NUM_CLOCKS 20
 #define MAX_NUM_IMAGES 40
 #define MAX_NUM_COMMANDS 60
-#define DEBUG_MEMORY
 
 #include <pthread.h>
 #include "threadlib.h"
+#include "memory.h"
+
+/* allocators */
+extern ThreadBarrier render_barrier;
+extern FixedAllocator clock_allocator;
+extern FixedAllocator image_resource_allocator;
+extern StackAllocator frame_allocator;
+extern FixedAllocator command_allocator;
+extern Queue render_queue;
+
 
 /* initialize the internal allocators for the library. Must be called
    before other functions */
@@ -52,35 +61,6 @@ long time_millis();
 void sleep_millis(long millis);
 
 /* exported by testlib.c */
-typedef struct FixedAllocator_ {
-#ifdef DEBUG_MEMORY
-  const char* name;
-  long inflight;
-  long max_inflight;
-#endif
-  size_t allocation_size;
-  void* first_free;
-} *FixedAllocator;
-
-typedef struct StackAllocator_ {
-#ifdef DEBUG_MEMORY
-  const char* name;
-#endif
-  void* stack_top;
-  void* stack_bottom;
-  void* stack_max;
-} *StackAllocator;
-
-FixedAllocator fixed_allocator_make(size_t obj_size, unsigned int n,
-                                    const char* name);
-void* fixed_allocator_alloc(FixedAllocator allocator);
-void fixed_allocator_free(FixedAllocator allocator, void *obj);
-
-StackAllocator stack_allocator_make(size_t stack_size,
-                                    const char* name);
-void* stack_allocator_alloc(StackAllocator allocator, size_t size);
-void stack_allocator_freeall(StackAllocator allocator);
-
 typedef struct Clock_ {
   long cycles; /* msecs */
   float time_scale;
