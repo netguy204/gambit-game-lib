@@ -21,6 +21,8 @@ SCM_R5_OBJ=$(patsubst %.scm,%.o1,$(SCM_R5_SRC))
 
 all: $(BIN) xml2.o1.o $(SCM_GAMBIT_OBJ) $(SCM_R5_OBJ)
 
+scmlib:
+	$(GSC) math.scm common.scm scmlib.scm spriter.scm
 
 $(SCM_LIB_C): $(SCM_LIB_SRC)
 	$(GSC) -f -link -track-scheme $(SCM_LIB_SRC)
