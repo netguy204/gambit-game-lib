@@ -34,6 +34,10 @@ void* renderer_exec(void* empty) {
   return NULL;
 }
 
+void renderer_await_startup(void* empty) {
+  threadbarrier_wait(render_barrier);
+}
+
 void lib_init() {
   clock_allocator = fixed_allocator_make(sizeof(struct Clock_), MAX_NUM_CLOCKS, "clock_allocator");
   image_resource_allocator = fixed_allocator_make(sizeof(struct ImageResource_), MAX_NUM_IMAGES, "image_resource_allocator");
@@ -42,13 +46,14 @@ void lib_init() {
   render_queue = queue_make();
   render_barrier = threadbarrier_make(2);
 
+  native_init();
+
   renderer_running = 1;
   pthread_create(&renderer_thread, NULL, renderer_exec, NULL);
 
-  Command init = command_make(renderer_init, NULL);
-  command_enqueue(render_queue, init);
+  // let the renderer finish init
+  renderer_enqueue_sync(renderer_init, NULL);
 
-  native_init();
   if(gambit_running) scm_init();
 }
 
@@ -63,34 +68,18 @@ void render_loop_exit(void* empty) {
 
 void lib_shutdown() {
   images_free();
-  Command command = command_make(renderer_shutdown, NULL);
-  command_enqueue(render_queue, command);
-  
-  command = command_make(render_loop_exit, NULL);
-  command_enqueue(render_queue, command);
-
-  threadbarrier_wait(render_barrier);
+  renderer_enqueue(renderer_shutdown, NULL);
+  renderer_enqueue_sync(render_loop_exit, NULL);
   at_exit();
-}
-
-void enqueue_begin_frame() {
-  Command command = command_make(renderer_begin_frame, NULL);
-  command_enqueue(render_queue, command);
 }
 
 void begin_frame() {
   stack_allocator_freeall(frame_allocator);
-  enqueue_begin_frame();
-}
-
-void renderer_await_end_of_frame() {
-  Command command = command_make(signal_render_complete, NULL);
-  command_enqueue(render_queue, command);
-  threadbarrier_wait(render_barrier);
+  renderer_enqueue(renderer_begin_frame, NULL);
 }
 
 void end_frame() {
-  renderer_await_end_of_frame();
+  renderer_enqueue_sync(signal_render_complete, NULL);
 }
 
 static LLNode last_resource = NULL;
@@ -120,8 +109,7 @@ ImageResource image_load(char * file) {
   resource->data = data;
   last_resource = (LLNode)resource;
 
-  Command command = command_make(renderer_finish_image_load, resource);
-  command_enqueue(render_queue, command);
+  renderer_enqueue(renderer_finish_image_load, resource);
 
   return resource;
 }
@@ -131,9 +119,8 @@ void images_free() {
   LLNode next;
   while(head) {
     ImageResource resource = (ImageResource)head;
-    Command command = command_make(renderer_finish_image_free,
-                                   resource->texture);
-    command_enqueue(render_queue, command);
+    renderer_enqueue(renderer_finish_image_free,
+                     resource->texture);
 
     next = head->next;
     fixed_allocator_free(image_resource_allocator, resource);
@@ -203,11 +190,10 @@ void spritelist_render_to_screen(SpriteList list) {
 }
 
 void spritelist_enqueue_for_screen(SpriteList list) {
-  Command command = command_make(spritelist_render_to_screen, list);
-  command_enqueue(render_queue, command);
+  renderer_enqueue(spritelist_render_to_screen, list);
 }
 
-Command command_make_(CommandFunction function, void* data) {
+Command command_make(CommandFunction function, void* data) {
   Command command = (Command)fixed_allocator_alloc(command_allocator);
   command->node.next = NULL;
   command->node.prev = NULL;
@@ -220,3 +206,18 @@ void command_free(Command command) {
   fixed_allocator_free(command_allocator, command);
 }
 
+void command_async(Queue queue, CommandFunction function, void* data) {
+  Command command = command_make(function, data);
+  enqueue(queue, (DLLNode)command);
+}
+
+static void command_sync_function(ThreadBarrier b) {
+  threadbarrier_wait(b);
+}
+
+void command_sync(Queue queue, ThreadBarrier b,
+                  CommandFunction function, void* data) {
+  command_async(queue, function, data);
+  command_async(queue, (CommandFunction)command_sync_function, b);
+  threadbarrier_wait(b);
+}

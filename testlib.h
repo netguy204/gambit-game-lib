@@ -131,13 +131,20 @@ typedef struct Command_ {
   void *data;
 } *Command;
 
-#define command_make(function, data)                    \
-  command_make_((CommandFunction)function, (void*)data)
-
-Command command_make_(CommandFunction function, void* data);
+Command command_make(CommandFunction function, void* data);
 void command_free(Command command);
 
-#define command_enqueue(queue, item) enqueue(queue, (DLLNode)item)
 #define command_dequeue(queue) (Command)dequeue(queue)
+
+void command_async(Queue queue, CommandFunction function, void* data);
+void command_sync(Queue queue, ThreadBarrier b,
+                     CommandFunction function, void* data);
+
+#define renderer_enqueue(function, data) \
+  command_async(render_queue, (CommandFunction)function, (void*)data)
+
+#define renderer_enqueue_sync(function, data) \
+  command_sync(render_queue, render_barrier, \
+               (CommandFunction)function, (void*)data)
 
 #endif

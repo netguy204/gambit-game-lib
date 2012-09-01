@@ -17,6 +17,8 @@ static struct InputState_ pstate;
 
 void native_init() {
   memset(&pstate, 0, sizeof(struct InputState_));
+  screen_width = 1360;
+  screen_height = 768;
 }
 
 
@@ -78,9 +80,6 @@ void renderer_init(void* empty) {
     exit(1);
   }
 
-  screen_width = 1360;
-  screen_height = 768;
-
   SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
   SDL_Surface* screen = SDL_SetVideoMode(screen_width, screen_height,
                                          16, SDL_OPENGL);
@@ -102,7 +101,6 @@ void at_exit() {
 }
 
 void signal_render_complete(void* empty) {
-  threadbarrier_wait(render_barrier);
   SDL_GL_SwapBuffers();
 }
 

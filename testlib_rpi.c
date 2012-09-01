@@ -216,7 +216,6 @@ void at_exit() {
 }
 
 void signal_render_complete(void* empty) {
-  threadbarrier_wait(render_barrier);
   eglSwapBuffers(display, surface);
   gl_check_("endframe");
 }
