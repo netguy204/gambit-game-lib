@@ -45,16 +45,17 @@ void lib_init() {
   Command init = command_make(renderer_init, NULL);
   command_enqueue(render_queue, init);
 
+  native_init();
   if(gambit_running) scm_init();
 }
 
-extern void gambit_cleanup();
 void notify_gambit_terminated() {
   gambit_running = 0;
 }
 
 void render_loop_exit(void* empty) {
   renderer_running = 0;
+  threadbarrier_wait(render_barrier);
 }
 
 void lib_shutdown() {
@@ -66,7 +67,6 @@ void lib_shutdown() {
   command_enqueue(render_queue, command);
 
   threadbarrier_wait(render_barrier);
-  gambit_cleanup();
   at_exit();
 }
 

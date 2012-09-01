@@ -24,6 +24,9 @@ InputState frame_inputstate() {
   return state;
 }
 
+void native_init() {
+}
+
 long time_millis() {
   return SDL_GetTicks();
 }

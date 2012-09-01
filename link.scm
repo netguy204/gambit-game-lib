@@ -13,6 +13,7 @@ c-declare-end
 (c-define-type Clock (pointer (struct "Clock_")))
 (c-define-type Sprite (pointer (struct "Sprite_")))
 (c-define-type SpriteList (pointer (struct "SpriteList_")))
+(c-define-type InputState (pointer (struct "InputState_")))
 
 (define image-load-internal
   (c-lambda (nonnull-char-string)
@@ -82,6 +83,16 @@ c-declare-end
             long
             "clock_seconds_to_cycles"))
 
+(define input-leftright
+  (c-lambda (InputState)
+	    int
+	    "___result = ___arg1->leftright;"))
+
+(define input-updown
+  (c-lambda (InputState)
+	    int
+	    "___result = ___arg1->updown;"))
+
 (define cycles->seconds (compose %cycles->seconds inexact->exact))
 (define seconds->cycles (compose %seconds->cycles exact->inexact))
 
@@ -142,17 +153,24 @@ c-declare-end
 ;; wild hack to keep gambit from trying to kill our process before
 ;; we're done. We use a continuation to send the gambit exit system
 ;; off into space after we've told the C side that we don't need to
-;; tear us down when it's ready
+;; tear us down when it's ready. Seems to only work on non-arm. Call
+;; exit instead of giving the repl a ,q
+
 (define ##exit-cc-hack #f)
 (call/cc (lambda (cc) (set! ##exit-cc-hack cc)))
+
+(define (exit)
+  (terminate)
+  (%notify-terminate))
+
+(define quit exit)
 
 (c-define (scm-init) () void "scm_init" ""
           (set! *game-clock* (clock-make))
           (##add-exit-job!
            (lambda ()
-             (terminate)
-             (%notify-terminate)
-             (##exit-cc-hack)))
+	     (exit)
+	     (##exit-cc-hack)))
 
           ;(clock-time-scale-set! *game-clock* 0.2)
           (display "initializing") (newline)
@@ -176,8 +194,8 @@ c-declare-end
           (set! *resources* (make-table)))
 
 ;;; gameloop
-(c-define (step msecs) (int) void "step" ""
-          (update-view (clock-update *game-clock* (/ msecs 1000.0))))
+(c-define (step msecs input) (int InputState) void "step" ""
+          (update-view (clock-update *game-clock* (/ msecs 1000.0)) input))
 
 
 ;;; termination

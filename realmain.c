@@ -30,7 +30,7 @@ int loop_once() {
   }
 
   begin_frame();
-  if(gambit_running) step(delta);
+  if(gambit_running) step(delta, state);
   end_frame();
 
   last_time = new_time;

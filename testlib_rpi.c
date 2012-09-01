@@ -10,6 +10,7 @@
 
 #include "testlib.h"
 #include "testlib_internal.h"
+#include "joystick.h"
 
 #include "bcm_host.h"
 
@@ -125,18 +126,20 @@ GLuint load_shader(GLenum type, const char * src) {
 }
 */
 
-struct timeval* start_time = NULL;
-long time_millis() {
-  if(start_time == NULL) {
-    start_time = malloc(sizeof(struct timeval));
-    gettimeofday(start_time, NULL);
-  }
+struct timeval start_time;
+js_state joystick_state;
 
+void native_init() {
+  gettimeofday(&start_time, NULL);
+  joystick_state = joystick_open("/dev/input/js0");
+}
+
+long time_millis() {
   struct timeval now_time;
   gettimeofday(&now_time);
 
-  long delta_secs = now_time.tv_sec - start_time->tv_sec;
-  long delta_usecs = now_time.tv_usec - start_time->tv_usec;
+  long delta_secs = now_time.tv_sec - start_time.tv_sec;
+  long delta_usecs = now_time.tv_usec - start_time.tv_usec;
   return (delta_secs * 1000) + (delta_usecs / 1000);
 }
 
@@ -147,6 +150,20 @@ void sleep_millis(long millis) {
 InputState frame_inputstate() {
   InputState state = stack_allocator_alloc(frame_allocator, sizeof(struct InputState_));
   memset(state, 0, sizeof(struct InputState_));
+
+  joystick_update_state(joystick_state);
+
+  /*
+  if(joystick_state->values[4].value != state->leftright
+     || joystick_state->values[5].value != state->updown) {
+    joystick_print_state(joystick_state);
+  }
+  joystick_print_state(joystick_state);
+  */
+
+  state->leftright = joystick_state->values[4].value;
+  state->updown = joystick_state->values[5].value;
+
   return state;
 }
 
@@ -270,7 +287,6 @@ void renderer_shutdown(void* empty) {
 }
 
 void at_exit() {
-  exit(0);
 }
 
 void renderer_begin_frame(void* empty) {

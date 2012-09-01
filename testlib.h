@@ -40,9 +40,15 @@ void lib_shutdown();
 void begin_frame();
 void end_frame();
 
+typedef struct InputState_ {
+  int quit_requested;
+  int updown;
+  int leftright;
+} *InputState;
+
 /* exported by test.scm */
 void scm_init();
-void step(int);
+void step(int, InputState);
 void terminate();
 void resources_released();
 
@@ -51,11 +57,8 @@ void resources_released();
 extern int gambit_running;
 void notify_gambit_terminated();
 
-typedef struct InputState_ {
-  int quit_requested;
-} *InputState;
-
 /* provided by system specific lib */
+void native_init();
 InputState frame_inputstate();
 long time_millis();
 void sleep_millis(long millis);
