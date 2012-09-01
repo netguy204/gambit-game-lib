@@ -65,6 +65,7 @@ void lib_init() {
   if(gambit_running) scm_init();
 }
 
+extern void gambit_cleanup();
 void notify_gambit_terminated() {
   gambit_running = 0;
 }
@@ -82,6 +83,8 @@ void lib_shutdown() {
   command_enqueue(render_queue, command);
 
   threadbarrier_wait(render_barrier);
+  gambit_cleanup();
+  at_exit();
 }
 
 void enqueue_begin_frame() {
