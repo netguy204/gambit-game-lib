@@ -1,14 +1,21 @@
 
-(define (filter pred lst)
-  (let loop ((result '())
+(define (reduce fn init lst)
+  (let loop ((result init)
              (lst lst))
-    (if (null? lst)
-        (reverse result)
-        (if (pred (car lst))
-            (loop (cons (car lst) result)
-                  (cdr lst))
-            (loop result
-                  (cdr lst))))))
+    (if (null? lst) result
+        (loop (fn result (car lst))
+              (cdr lst)))))
+
+(define (filter-reverse pred lst)
+  (reduce (lambda (result item)
+            (if (pred item)
+                (cons item result)
+                result))
+          '()
+          lst))
+
+(define (filter pred lst)
+  (reverse (filter-reverse pred lst)))
 
 (define (remove-if pred lst)
   (filter (lambda (x) (not (pred x))) lst))
@@ -45,9 +52,12 @@
 (define (mapcat fn lst)
   (concat (map fn lst)))
 
-(define (reduce fn init lst)
-  (let loop ((result init)
-             (lst lst))
-    (if (null? lst) result
-        (loop (fn result (car lst))
-              (cdr lst)))))
+
+(define (delete-reverse item lst)
+  (filter-reverse (lambda (lst-item)
+                    (eq? item lst-item))
+                  lst))
+
+(define (delete item lst)
+  (reverse (delete-reverse item lst)))
+

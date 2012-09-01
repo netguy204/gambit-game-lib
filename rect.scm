@@ -27,3 +27,21 @@
              (max 0 (- cy radius))
              (+ cx radius)
              (+ cy radius)))
+
+(define (rect-intersect a b)
+  (let ((aminx (rect-minx a))
+        (aminy (rect-miny a))
+        (amaxx (rect-maxx a))
+        (amaxy (rect-maxy a))
+
+        (bminx (rect-minx b))
+        (bminy (rect-miny b))
+        (bmaxx (rect-maxx b))
+        (bmaxy (rect-maxy b)))
+
+    (cond
+     ((< amaxx bminx) #f)
+     ((> aminx bmaxx) #f)
+     ((< amaxy bminy) #f)
+     ((> aminy bmaxy) #f)
+     (#t #t))))

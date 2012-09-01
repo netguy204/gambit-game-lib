@@ -96,6 +96,10 @@ c-declare-end
 (define cycles->seconds (compose %cycles->seconds inexact->exact))
 (define seconds->cycles (compose %seconds->cycles exact->inexact))
 
+(define *screen-width* #f)
+
+(define *screen-height* #f)
+
 (define frame/make-sprite
   (c-lambda ()
             Sprite
@@ -172,12 +176,19 @@ c-declare-end
 	     (exit)
 	     (##exit-cc-hack)))
 
+          (set! *screen-width*
+                ((c-lambda () int "___result = screen_width;")))
+          (set! *screen-height*
+                ((c-lambda () int "___result = screen_height;")))
+
           ;(clock-time-scale-set! *game-clock* 0.2)
           (display "initializing") (newline)
           (ensure-resources)
           (thread-start!
            (make-thread
-            (lambda () (##repl-debug-main)))))
+            (lambda ()
+              (thread-sleep 1)
+              (##repl-debug-,bmain)))))
 
 ;;; resource lifecycle
 (define *resources* (make-table))

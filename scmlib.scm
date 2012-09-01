@@ -1,10 +1,8 @@
 (load "math")
 (load "common")
-(load "spriter")
+(load "rect")
 
-(define *test-image* (make-parameter #f))
-
-(define-structure particle r dr)
+(define-structure particle r dr t tr)
 
 (define (particle-x p)
   (vect-x (particle-r p)))
@@ -15,92 +13,24 @@
 (define (particle-integrate p dt)
   (vect-add-into! (particle-r p)
                   (particle-r p)
-                  (vect-scale (particle-dr p) dt)))
+                  (vect-scale (particle-dr p) dt))
+  (particle-t-set! p (* (particle-tr p) dt)))
 
 (define (rand-in-range min max)
   (+ min (random-integer (- max min))))
 
-(define (random-particle)
-  (let ((img-w (image-width (*test-image*)))
-        (img-h (image-height (*test-image*))))
+(define (random-particle img)
+  (let ((img-w (image-width img))
+        (img-h (image-height img)))
     (make-particle (make-vect (random-integer (- 640 img-w))
                               (random-integer (- 480 img-h)))
                    (make-vect (rand-in-range -100 100)
-                              (rand-in-range -100 100)))))
+                              (rand-in-range -100 100))
+                   (rand-in-range 0 360)
+                   (rand-in-range 100 1000))))
 
-(define (call-with-resources fn)
-  (parameterize ((*test-image* (image-load "test.png")))
-    (fn)))
-
-(define *ps* #f)
 (define *anim* #f)
 (define *scml* #f)
-
-(define (ensure-resources)
-  (call-with-resources
-   (lambda ()
-     (set! *ps* (repeatedly random-particle 100))
-     (set! *scml* (scml-load "monster/Example.SCML"))
-     (set! *anim* (animation (entity *scml* "0") "Idle")))))
-
-(define (update-particle sprite-list p dt w h)
-  (let* ((x (particle-x p))
-         (y (particle-y p))
-         (dr (particle-dr p))
-         (sprite (frame/make-sprite)))
-    
-    (if (or (>= x w) (<= x 0))
-        (vect-scale-both-into! dr dr -1 1))
-    (if (or (>= y h) (<= y 0))
-        (vect-scale-both-into! dr dr 1 -1))
-    
-    (particle-integrate p dt)
-    (sprite-resource-set! sprite (*test-image*))
-    (sprite-x-set! sprite (particle-x p))
-    (sprite-y-set! sprite (particle-y p))
-    (frame/spritelist-append sprite-list sprite)))
-
-(define (update-view-old dt)
-  (call-with-resources
-   (lambda ()
-     (let ((w (- 640 (image-width (*test-image*))))
-           (h (- 480 (image-height (*test-image*)))))
-       (let loop ((ps *ps*)
-                  (sprite-list #f))
-         (if (null? ps)
-             (if sprite-list (spritelist-enqueue-for-screen! sprite-list))
-             (loop (cdr ps)
-                   (update-particle sprite-list
-                                    (car ps) dt w h))))))))
-
-(define (tkey->sprite tkey ox oy)
-  (let* ((image (image-load (tkey-name tkey)))
-         (sprite (frame/make-sprite))
-         (h (image-height image))
-         (w (image-width image))
-         (px-img-offset (* (tkey-cx tkey) w))
-         (py-img-offset (* (tkey-cy tkey) h))
-         (piv-x (+ ox (tkey-x tkey)))
-         (piv-y (+ oy (tkey-y tkey))))
-
-    (sprite-resource-set! sprite image)
-    (sprite-x-set! sprite piv-x)
-    (sprite-y-set! sprite piv-y)
-    (sprite-origin-x-set! sprite px-img-offset)
-    (sprite-origin-y-set! sprite py-img-offset)
-
-    (sprite-angle-set! sprite (tkey-angle tkey))
-    sprite))
-
-(define (add-animation sprite-list anim time ox oy)
-  (reduce (lambda (sprite-list tkey)
-            (frame/spritelist-append sprite-list
-                                     (tkey->sprite tkey ox oy)))
-          #f
-          (reverse (interp-anim anim time))))
-
-(define *speed* 50)
-(define *pos* (make-vect 320 100))
 
 (define (scale-input val dt)
   (cond
@@ -109,36 +39,126 @@
    ((< val 0) (- (* dt *speed*)))
    (#t (error "bad input " val))))
 
-(define (update-view dt input)
-  (let* ((cycles-for-anim (seconds->cycles (animation-length *anim*)))
-         (anim-cycle (modulo (clock-time *game-clock*) cycles-for-anim))
-         (anim-time (cycles->seconds anim-cycle))
-	 (lr (scale-input (input-leftright input) dt))
-	 (ud (scale-input (input-updown input) dt))
-	 (temp (vect-add-into! *pos* *pos* (make-vect lr ud)))
-         (sprite-list (add-animation #f *anim* anim-time
-				     (vect-x *pos*) (vect-y *pos*))))
+(define-structure game-particle particle img-name)
 
-    ;(update-view-old dt)
-    (spritelist-enqueue-for-screen! sprite-list)))
+(define (game-particle-img gp)
+  (image-load (game-particle-img-name gp)))
 
+(define (game-particle-x gp)
+  (particle-x (game-particle-particle gp)))
 
-(define (update-view-test dt)
+(define (game-particle-y gp)
+  (particle-y (game-particle-particle gp)))
+
+(define (game-particle-cx gp)
+  (let ((img (game-particle-img gp)))
+    (/ (image-width img) 2)))
+
+(define (game-particle-cy gp)
+  (let ((img (game-particle-img gp)))
+    (/ (image-height img) 2)))
+
+(define (game-particle-t gp)
+  (particle-t (game-particle-particle gp)))
+
+(define (game-particle-rect gp)
+  (let ((img (game-particle-img gp))
+        (hw (/ (image-width img) 2))
+        (hh (/ (image-height img) 2))
+        (p (game-particle-particle gp))
+        (cx (particle-x p))
+        (cy (particle-y p)))
+    (rect-make (- cx hw) (- cy hh) (+ cx hw) (+ cy hh))))
+
+(define (game-particle->sprite gp)
+  (let ((sprite (frame/make-sprite)))
+    (sprite-resource-set! sprite (game-particle-img gp))
+    (sprite-x-set! sprite (game-particle-x gp))
+    (sprite-y-set! sprite (game-particle-y gp))
+    (sprite-origin-x-set! sprite (game-particle-cx gp))
+    (sprite-origin-y-set! sprite (game-particle-cy gp))
+    (sprite-angle-set! sprite (game-particle-t gp))
+    sprite))
+
+(define (game-particles->sprite-list gps)
+  (reduce (lambda (sprite-list gp)
+            (frame/spritelist-append
+             sprite-list
+             (game-particle->sprite gp)))
+          #f
+          gps))
+
+(define *player* '())
+(define *player-bullets* '())
+(define *enemies* '())
+(define *enemy-bullets* '())
+
+(define *enemy-speed* 50)
+
+(define (spawn-enemy)
+  (let* ((img-name "spacer/ship-right.png")
+         (img (image-load img-name)))
+    (make-game-particle
+     (make-particle (make-vect
+                     (- *screen-width* (image-width img))
+                     (rand-in-range 0 (- *screen-height* (image-height img))))
+                    (make-vect (- *enemy-speed*)
+                                 0)
+                    180
+                    0)
+     img-name)))
+
+(define (spawn-enemies n)
+  (repeatedly spawn-enemy n))
+
+(define (spawn-player)
+  (let* ((img-name "spacer/ship-right.png")
+         (img (image-load img-name)))
+    (make-game-particle
+     (make-particle (make-vect (image-width img)
+                                 (/ *screen-height* 2))
+                    (make-vect 0 0)
+                    0
+                    0)
+     img-name)))
+
+(define (ensure-resources)
+  (set! *player* (spawn-player))
+  (set! *enemies* (spawn-enemies 10)))
+
+(define (integrate-game-particle gp dt)
+  (particle-integrate (game-particle-particle gp) dt))
+
+(define (integrate-objects dt)
+  (let ((integrate (lambda (item) (integrate-game-particle item dt))))
+    (for-each integrate (list *player*))
+    (for-each integrate *player-bullets*)
+    (for-each integrate *enemies*)
+    (for-each integrate *enemy-bullets*)))
+
+(define (with-collisions as bs fn)
+  (for-each (lambda (a)
+              (for-each (lambda (b)
+                          (if (rect-intersect (game-particle-rect a)
+                                              (game-particle-rect b))
+                              (fn a b)))
+                        bs))
+            as))
+
+(define (handle-collisions)
+  (with-collisions *player-bullets* *enemies*
+    (lambda (bullet enemy)
+      (set! *player-bullets* (delete bullet *player-bullets*))
+      (set! *enemies* (delete enemy *enemies*)))))
+
+(define (render)
   (spritelist-enqueue-for-screen!
-   (frame/spritelist-append
-    #f
-    (let* ((sprite (frame/make-sprite))
-           (cycles-per-rot (seconds->cycles 2.0))
-           (rot-cycle (modulo (clock-time *game-clock*) cycles-per-rot))
-           (angle (* 360.0 (/ rot-cycle cycles-per-rot)))
-           (img (image-load "test.png"))
-           (w (image-width img))
-           (h (image-height img)))
+   (game-particles->sprite-list *enemies*))
 
-      (sprite-resource-set! sprite img)
-      (sprite-x-set! sprite 320)
-      (sprite-y-set! sprite 240)
-      (sprite-origin-x-set! sprite w)
-      (sprite-origin-y-set! sprite h)
-      (sprite-angle-set! sprite angle)
-      sprite))))
+  (spritelist-enqueue-for-screen!
+   (game-particles->sprite-list (cons *player* *player-bullets*))))
+
+(define (update-view dt input)
+  (integrate-objects dt)
+  (handle-collisions)
+  (render))
