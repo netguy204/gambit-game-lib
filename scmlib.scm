@@ -33,11 +33,11 @@
 (define *anim* #f)
 (define *scml* #f)
 
-(define (scale-input val dt)
+(define (sign val)
   (cond
    ((= val 0) 0)
-   ((> val 0) (* dt *speed*))
-   ((< val 0) (- (* dt *speed*)))
+   ((> val 0) -1)
+   ((< val 0) 1)
    (#t (error "bad input " val))))
 
 (define-structure game-particle particle img-name)

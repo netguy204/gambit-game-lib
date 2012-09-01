@@ -99,6 +99,12 @@ void sleep_millis(long millis) {
   usleep(millis * 1000);
 }
 
+int sign(int val) {
+  if(val > 0) return 1;
+  if(val < 0) return -1;
+  return 0;
+}
+
 InputState frame_inputstate() {
   InputState state = stack_allocator_alloc(frame_allocator, sizeof(struct InputState_));
   memset(state, 0, sizeof(struct InputState_));
@@ -113,8 +119,9 @@ InputState frame_inputstate() {
   joystick_print_state(joystick_state);
   */
 
-  state->leftright = joystick_state->values[4].value;
-  state->updown = -joystick_state->values[5].value;
+  state->leftright = sign(joystick_state->values[4].value);
+  state->updown = -sign(joystick_state->values[5].value);
+  state->action1 = joystick_state->values[0].value;
 
   return state;
 }
