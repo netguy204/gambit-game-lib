@@ -102,7 +102,9 @@ void threadbarrier_wait(ThreadBarrier barrier) {
     barrier->threads_waiting = 0;
     pthread_cond_broadcast(&barrier->cond);
   } else {
-    pthread_cond_wait(&barrier->cond, &barrier->mutex);
+    while(barrier->threads_waiting != 0) {
+      pthread_cond_wait(&barrier->cond, &barrier->mutex);
+    }
   }
 
   pthread_mutex_unlock(&barrier->mutex);
