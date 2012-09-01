@@ -162,7 +162,7 @@ InputState frame_inputstate() {
   */
 
   state->leftright = joystick_state->values[4].value;
-  state->updown = joystick_state->values[5].value;
+  state->updown = -joystick_state->values[5].value;
 
   return state;
 }
