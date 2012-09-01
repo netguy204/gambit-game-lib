@@ -48,6 +48,7 @@ typedef struct InputState_ {
   int quit_requested;
   int updown;
   int leftright;
+  int action1;
 } *InputState;
 
 /* exported by test.scm */

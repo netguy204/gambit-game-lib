@@ -24,8 +24,6 @@ void native_init() {
 
 InputState frame_inputstate() {
   SDL_Event event;
-  InputState state = stack_allocator_alloc(frame_allocator, sizeof(struct InputState_));
-  memset(state, 0, sizeof(struct InputState_));
 
   /* pump the events */
   while(SDL_PollEvent(&event)) {
@@ -33,7 +31,7 @@ InputState frame_inputstate() {
 
     switch(event.type) {
     case SDL_QUIT:
-      state->quit_requested = 1;
+      pstate.quit_requested = 1;
       break;
     case SDL_KEYDOWN:
       keydown = 1;
@@ -54,11 +52,16 @@ InputState frame_inputstate() {
       case SDLK_UP:
         pstate.updown = keydown * 1;
         break;
+      case SDLK_SPACE:
+        pstate.action1 = keydown * 1;
       default:
         break;
       }
     }
   }
+
+  InputState state = stack_allocator_alloc(frame_allocator, sizeof(struct InputState_));
+  memcpy(state, &pstate, sizeof(struct InputState_));
 
   state->leftright = pstate.leftright;
   state->updown = pstate.updown;

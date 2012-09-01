@@ -55,7 +55,7 @@
 
 (define (delete-reverse item lst)
   (filter-reverse (lambda (lst-item)
-                    (eq? item lst-item))
+                    (not (eq? item lst-item)))
                   lst))
 
 (define (delete item lst)

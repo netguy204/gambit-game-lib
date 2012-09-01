@@ -14,7 +14,8 @@
   (vect-add-into! (particle-r p)
                   (particle-r p)
                   (vect-scale (particle-dr p) dt))
-  (particle-t-set! p (* (particle-tr p) dt)))
+  (particle-t-set! p (+ (particle-t p)
+                        (* (particle-tr p) dt))))
 
 (define (rand-in-range min max)
   (+ min (random-integer (- max min))))
@@ -61,13 +62,16 @@
 (define (game-particle-t gp)
   (particle-t (game-particle-particle gp)))
 
+(define (game-particle-dr-set! gp dr)
+  (particle-dr-set! (game-particle-particle gp) dr))
+
 (define (game-particle-rect gp)
-  (let ((img (game-particle-img gp))
-        (hw (/ (image-width img) 2))
-        (hh (/ (image-height img) 2))
-        (p (game-particle-particle gp))
-        (cx (particle-x p))
-        (cy (particle-y p)))
+  (let* ((img (game-particle-img gp))
+         (hw (/ (image-width img) 2))
+         (hh (/ (image-height img) 2))
+         (p (game-particle-particle gp))
+         (cx (particle-x p))
+         (cy (particle-y p)))
     (rect-make (- cx hw) (- cy hh) (+ cx hw) (+ cy hh))))
 
 (define (game-particle->sprite gp)
@@ -94,6 +98,10 @@
 (define *enemy-bullets* '())
 
 (define *enemy-speed* 50)
+(define *player-speed* 300)
+(define *bullet-speed* 1200)
+(define *initial-enemies* 5)
+(define *max-enemies* 30)
 
 (define (spawn-enemy)
   (let* ((img-name "spacer/ship-right.png")
@@ -122,9 +130,36 @@
                     0)
      img-name)))
 
+(define pi 3.141592654)
+
+(define (degrees->radians deg)
+  (/ (* pi deg) 180))
+
+(define (radians->degrees rad)
+  (/ (* rad 180) pi))
+
+(define (spawn-bullet shooter)
+  (let* ((sx (game-particle-x shooter))
+         (sy (game-particle-y shooter))
+         (ang (game-particle-t shooter))
+         
+         (dx (cos (degrees->radians ang)))
+         (dy (sin (degrees->radians ang))))
+    
+    (make-game-particle
+     (make-particle (make-vect sx sy)
+                    (make-vect (* dx *bullet-speed*)
+                               (* dy *bullet-speed*))
+                    ang
+                    500)
+     "spacer/plasma.png")))
+
+(define (player-fire)
+  (set! *player-bullets* (cons (spawn-bullet *player*) *player-bullets*)))
+
 (define (ensure-resources)
   (set! *player* (spawn-player))
-  (set! *enemies* (spawn-enemies 10)))
+  (set! *enemies* (spawn-enemies *initial-enemies*)))
 
 (define (integrate-game-particle gp dt)
   (particle-integrate (game-particle-particle gp) dt))
@@ -151,6 +186,22 @@
       (set! *player-bullets* (delete bullet *player-bullets*))
       (set! *enemies* (delete enemy *enemies*)))))
 
+(define (random-spawn? num max-num prob)
+  (let ((rand (rand-in-range 0 max-num))
+        (thresh (* prob (- max-num num))))
+    (< rand thresh)))
+
+(define (spawn-and-terminate dt)
+  (for-each
+   (lambda (bullet)
+     (if (> (game-particle-x bullet) *screen-width*)
+         (set! *player-bullets* (delete bullet *player-bullets*))))
+
+   *player-bullets*)
+
+  (if (random-spawn? (length *enemies*) *max-enemies* 0.3)
+      (set! *enemies* (cons (spawn-enemy) *enemies*))))
+
 (define (render)
   (spritelist-enqueue-for-screen!
    (game-particles->sprite-list *enemies*))
@@ -159,6 +210,18 @@
    (game-particles->sprite-list (cons *player* *player-bullets*))))
 
 (define (update-view dt input)
+  (let ((updown (input-updown input))
+        (leftright (input-leftright input))
+        (action1 (input-action1 input)))
+    (game-particle-dr-set!
+     *player*
+     (make-vect (* *player-speed* leftright)
+                (* *player-speed* updown)))
+
+    (if action1
+        (player-fire)))
+
   (integrate-objects dt)
+  (spawn-and-terminate dt)
   (handle-collisions)
   (render))

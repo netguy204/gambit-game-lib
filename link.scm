@@ -93,6 +93,14 @@ c-declare-end
 	    int
 	    "___result = ___arg1->updown;"))
 
+(define %input-action1
+  (c-lambda (InputState)
+            int
+            "___result = ___arg1->action1;"))
+
+(define (input-action1 input)
+  (= 1 (%input-action1 input)))
+
 (define cycles->seconds (compose %cycles->seconds inexact->exact))
 (define seconds->cycles (compose %seconds->cycles exact->inexact))
 
