@@ -8,6 +8,13 @@
 
 extern StackAllocator frame_allocator;
 
+static struct InputState_ pstate;
+
+void native_init() {
+  memset(&pstate, 0, sizeof(struct InputState_));
+}
+
+
 InputState frame_inputstate() {
   SDL_Event event;
   InputState state = stack_allocator_alloc(frame_allocator, sizeof(struct InputState_));
@@ -15,16 +22,41 @@ InputState frame_inputstate() {
 
   /* pump the events */
   while(SDL_PollEvent(&event)) {
+    int keydown = 0;
+
     switch(event.type) {
     case SDL_QUIT:
       state->quit_requested = 1;
+      break;
+    case SDL_KEYDOWN:
+      keydown = 1;
+    }
+
+    if(event.type == SDL_KEYDOWN ||
+       event.type == SDL_KEYUP) {
+      switch(event.key.keysym.sym) {
+      case SDLK_LEFT:
+        pstate.leftright = keydown * -1;
+        break;
+      case SDLK_RIGHT:
+        pstate.leftright = keydown * 1;
+        break;
+      case SDLK_DOWN:
+        pstate.updown = keydown * -1;
+        break;
+      case SDLK_UP:
+        pstate.updown = keydown * 1;
+        break;
+      default:
+        break;
+      }
     }
   }
 
-  return state;
-}
+  state->leftright = pstate.leftright;
+  state->updown = pstate.updown;
 
-void native_init() {
+  return state;
 }
 
 long time_millis() {
@@ -41,10 +73,15 @@ void renderer_init(void* empty) {
     exit(1);
   }
 
+  screen_width = 1360;
+  screen_height = 768;
+
   SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-  SDL_Surface* screen = SDL_SetVideoMode(640, 480, 16, SDL_OPENGL);
+  SDL_Surface* screen = SDL_SetVideoMode(screen_width, screen_height,
+                                         16, SDL_OPENGL);
   if(screen == NULL) {
-    fprintf(stderr, "Unable to set 640x480 video: %s\n", SDL_GetError());
+    fprintf(stderr, "Unable to set %dx%d video: %s\n",
+            screen_width, screen_height, SDL_GetError());
     exit(1);
   }
 
@@ -53,10 +90,12 @@ void renderer_init(void* empty) {
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
   glClearColor(0.8f, 0.8f, 0.8f, 0.0f);
-  glViewport(0, 0, 640, 480);
+  glViewport(0, 0, screen_width, screen_height);
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
-  glOrtho(0.0f, 640, 0.0f, 480.0f, -1.0f, 1.0f);
+  glOrtho(0.0f, (GLfloat)screen_width,
+          0.0f, (GLfloat)screen_height,
+          -1.0f, 1.0f);
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();
 }

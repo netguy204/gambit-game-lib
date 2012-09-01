@@ -21,8 +21,7 @@
 EGLDisplay display;
 EGLSurface surface;
 EGLContext context;
-uint32_t screen_width;
-uint32_t screen_height;
+
 extern StackAllocator frame_allocator;
 
 static const GLfloat quadCoords[4 * 3] = {

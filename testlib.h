@@ -17,6 +17,8 @@
 #define MAX_NUM_COMMANDS 60
 
 #include <pthread.h>
+#include <stdint.h>
+
 #include "threadlib.h"
 #include "memory.h"
 
@@ -28,6 +30,8 @@ extern StackAllocator frame_allocator;
 extern FixedAllocator command_allocator;
 extern Queue render_queue;
 
+extern uint32_t screen_width;
+extern uint32_t screen_height;
 
 /* initialize the internal allocators for the library. Must be called
    before other functions */

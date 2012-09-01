@@ -13,6 +13,9 @@ StackAllocator frame_allocator;
 FixedAllocator command_allocator;
 Queue render_queue;
 
+uint32_t screen_width;
+uint32_t screen_height;
+
 int gambit_running;
 
 static pthread_t renderer_thread;

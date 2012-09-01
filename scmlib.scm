@@ -99,13 +99,14 @@
           #f
           (reverse (interp-anim anim time))))
 
+(define *speed* 50)
 (define *pos* (make-vect 320 100))
 
 (define (scale-input val dt)
   (cond
    ((= val 0) 0)
-   ((> val 0) (* dt 50))
-   ((< val 0) (- (* dt 50)))
+   ((> val 0) (* dt *speed*))
+   ((< val 0) (- (* dt *speed*)))
    (#t (error "bad input " val))))
 
 (define (update-view dt input)
