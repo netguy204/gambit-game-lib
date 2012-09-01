@@ -135,8 +135,8 @@ long time_millis() {
   struct timeval now_time;
   gettimeofday(&now_time);
 
-  long delta_secs = now_time->tv_sec - start_time->tv_sec;
-  long delta_usecs = now_time->tv_usec - start_time->tv_usec;
+  long delta_secs = now_time.tv_sec - start_time->tv_sec;
+  long delta_usecs = now_time.tv_usec - start_time->tv_usec;
   return (delta_secs * 1000) + (delta_usecs / 1000);
 }
 

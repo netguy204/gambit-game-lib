@@ -10,10 +10,10 @@ include Common.mk
 
 %.o: %.c
 	@rm -f $@ 
-	$(CC) $(CFLAGS) $(INCLUDES) -g -c $< -o $@ -Wno-deprecated-declarations
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@ -Wno-deprecated-declarations
 
 # testlib needs c99 enabled for the FOREACH macro to be implementable
 testlib.o: testlib.c
 	@rm -f $@ 
-	$(CC) -std=c99 $(CFLAGS) $(INCLUDES) -g -c $< -o $@ -Wno-deprecated-declarations
+	$(CC) -std=c99 $(CFLAGS) $(INCLUDES) -c $< -o $@ -Wno-deprecated-declarations
 

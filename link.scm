@@ -5,10 +5,6 @@
 c-declare-end
 )
 
-(thread-start!
- (make-thread
-  (lambda () (##repl-debug-main))))
-
 (load "scmlib")
 
 ;(##include "scmlib.scm")
@@ -152,7 +148,6 @@ c-declare-end
 
 (c-define (scm-init) () void "scm_init" ""
           (set! *game-clock* (clock-make))
-          (##clear-exit-jobs!)
           (##add-exit-job!
            (lambda ()
              (terminate)
@@ -161,7 +156,10 @@ c-declare-end
 
           ;(clock-time-scale-set! *game-clock* 0.2)
           (display "initializing") (newline)
-          (ensure-resources))
+          (ensure-resources)
+          (thread-start!
+           (make-thread
+            (lambda () (##repl-debug-main)))))
 
 ;;; resource lifecycle
 (define *resources* (make-table))
