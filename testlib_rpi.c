@@ -125,9 +125,19 @@ GLuint load_shader(GLenum type, const char * src) {
 }
 */
 
+struct timeval* start_time = NULL;
 long time_millis() {
-  clock_t time = clock();
-  return time / (CLOCKS_PER_SEC / 1000);
+  if(start_time == NULL) {
+    start_time = malloc(sizeof(struct timeval));
+    gettimeofday(start_time, NULL);
+  }
+
+  struct timeval now_time;
+  gettimeofday(&now_time);
+
+  long delta_secs = now_time->tv_sec - start_time->tv_sec;
+  long delta_usecs = now_time->tv_usec - start_time->tv_usec;
+  return (delta_secs * 1000) + (delta_usecs / 1000);
 }
 
 void sleep_millis(long millis) {
@@ -260,7 +270,7 @@ void renderer_shutdown(void* empty) {
 }
 
 void at_exit() {
-  // nothing more neaded
+  exit(0);
 }
 
 void renderer_begin_frame(void* empty) {
