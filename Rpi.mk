@@ -1,4 +1,4 @@
-C_SRC=testlib_rpi.c
+C_SRC=testlib_rpi.c joystick.c
 BIN=pimain
 
 # from https://github.com/raspberrypi/firmware/blob/master/opt/vc/src/hello_pi/Makefile.include

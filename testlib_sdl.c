@@ -62,7 +62,6 @@ void renderer_init(void* empty) {
 }
 
 void renderer_shutdown(void* empty) {
-  threadbarrier_wait(render_barrier);
 }
 
 void at_exit() {
