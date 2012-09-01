@@ -59,8 +59,11 @@ void renderer_init(void* empty) {
 }
 
 void renderer_shutdown(void* empty) {
-  SDL_Quit();
   threadbarrier_wait(render_barrier);
+}
+
+void at_exit() {
+  SDL_Quit();
 }
 
 void renderer_begin_frame(void* empty) {
@@ -97,7 +100,7 @@ void renderer_finish_image_load(ImageResource resource) {
 }
 
 void renderer_finish_image_free(void* texturep) {
-  GLuint texture = *(GLuint*)texturep;
+  GLuint texture = (GLuint)texturep;
   glDeleteTextures(1, &texture);
 }
 

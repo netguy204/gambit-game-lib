@@ -14,6 +14,8 @@ void image_render_to_screen(ImageResource img, float angle,
                             float cx, float cy,
                             float x, float y);
 
+void at_exit();
+
 /* internal data structures */
 ThreadBarrier render_barrier;
 

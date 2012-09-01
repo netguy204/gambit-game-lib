@@ -5,7 +5,12 @@
 c-declare-end
 )
 
+(thread-start!
+ (make-thread
+  (lambda () (##repl-debug-main))))
+
 (load "scmlib")
+
 ;(##include "scmlib.scm")
 
 (c-define-type ImageResource (pointer (struct "ImageResource_")))
@@ -138,14 +143,25 @@ c-declare-end
 ;;; game lifecycle
 (define *game-clock* #f)
 
+;; wild hack to keep gambit from trying to kill our process before
+;; we're done. We use a continuation to send the gambit exit system
+;; off into space after we've told the C side that we don't need to
+;; tear us down when it's ready
+(define ##exit-cc-hack #f)
+(call/cc (lambda (cc) (set! ##exit-cc-hack cc)))
+
 (c-define (scm-init) () void "scm_init" ""
           (set! *game-clock* (clock-make))
+          (##clear-exit-jobs!)
+          (##add-exit-job!
+           (lambda ()
+             (terminate)
+             (%notify-terminate)
+             (##exit-cc-hack)))
+
           ;(clock-time-scale-set! *game-clock* 0.2)
           (display "initializing") (newline)
           (ensure-resources))
-
-(c-define (terminate) () void "terminate" ""
-          (display "terminating") (newline))
 
 ;;; resource lifecycle
 (define *resources* (make-table))
@@ -166,5 +182,14 @@ c-declare-end
           (update-view (clock-update *game-clock* (/ msecs 1000.0))))
 
 
+;;; termination
 
+;; c tells us to terminate
+(c-define (terminate) () void "terminate" ""
+          (display "terminating") (newline))
 
+;; we tell c to terminate
+(define %notify-terminate
+  (c-lambda ()
+            void
+            "notify_gambit_terminated"))

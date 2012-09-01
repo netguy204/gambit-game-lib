@@ -14,7 +14,8 @@
 
 #define MAX_NUM_CLOCKS 20
 #define MAX_NUM_IMAGES 40
-#define MAX_NUM_COMMANDS 500
+#define MAX_NUM_COMMANDS 60
+#define DEBUG_MEMORY
 
 #include <pthread.h>
 #include "threadlib.h"
@@ -36,6 +37,11 @@ void step(int);
 void terminate();
 void resources_released();
 
+/* filled by the gambit repl when gambit is shutting down. no more
+   calls to gabmit should happen after this is set */
+extern int gambit_running;
+void notify_gambit_terminated();
+
 typedef struct InputState_ {
   int quit_requested;
 } *InputState;
@@ -47,13 +53,19 @@ void sleep_millis(long millis);
 
 /* exported by testlib.c */
 typedef struct FixedAllocator_ {
+#ifdef DEBUG_MEMORY
   const char* name;
+  long inflight;
+  long max_inflight;
+#endif
   size_t allocation_size;
   void* first_free;
 } *FixedAllocator;
 
 typedef struct StackAllocator_ {
+#ifdef DEBUG_MEMORY
   const char* name;
+#endif
   void* stack_top;
   void* stack_bottom;
   void* stack_max;
@@ -132,7 +144,10 @@ typedef struct Command_ {
   void *data;
 } *Command;
 
-Command command_make(CommandFunction function, void* data);
+#define command_make(function, data)                    \
+  command_make_((CommandFunction)function, (void*)data)
+
+Command command_make_(CommandFunction function, void* data);
 void command_free(Command command);
 
 #define command_enqueue(queue, item) enqueue(queue, (DLLNode)item)

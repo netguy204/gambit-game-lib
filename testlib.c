@@ -16,6 +16,7 @@ FixedAllocator image_resource_allocator;
 StackAllocator frame_allocator;
 FixedAllocator command_allocator;
 Queue render_queue;
+int gambit_running;
 
 static pthread_t renderer_thread;
 
@@ -39,10 +40,12 @@ void process_render_command() {
   command_free(command);
 }
 
+static int renderer_running = 0;
 void* renderer_exec(void* empty) {
-  while(1) {
+  while(renderer_running) {
     process_render_command();
   }
+  return NULL;
 }
 
 void lib_init() {
@@ -52,18 +55,32 @@ void lib_init() {
   command_allocator = fixed_allocator_make(sizeof(struct Command_), MAX_NUM_COMMANDS, "command_allocator");
   render_queue = queue_make();
   render_barrier = threadbarrier_make(2);
+
+  renderer_running = 1;
   pthread_create(&renderer_thread, NULL, renderer_exec, NULL);
 
   Command init = command_make(renderer_init, NULL);
   command_enqueue(render_queue, init);
 
-  scm_init();
+  if(gambit_running) scm_init();
+}
+
+void notify_gambit_terminated() {
+  gambit_running = 0;
+}
+
+void render_loop_exit(void* empty) {
+  renderer_running = 0;
 }
 
 void lib_shutdown() {
   images_free();
   Command command = command_make(renderer_shutdown, NULL);
   command_enqueue(render_queue, command);
+  
+  command = command_make(render_loop_exit, NULL);
+  command_enqueue(render_queue, command);
+
   threadbarrier_wait(render_barrier);
 }
 
@@ -114,8 +131,7 @@ ImageResource image_load(char * file) {
   resource->data = data;
   last_resource = (LLNode)resource;
 
-  Command command = command_make((CommandFunction)renderer_finish_image_load,
-                                 resource);
+  Command command = command_make(renderer_finish_image_load, resource);
   command_enqueue(render_queue, command);
 
   return resource;
@@ -127,7 +143,7 @@ void images_free() {
   while(head) {
     ImageResource resource = (ImageResource)head;
     Command command = command_make(renderer_finish_image_free,
-                                   (void*)resource->texture);
+                                   resource->texture);
     command_enqueue(render_queue, command);
 
     next = head->next;
@@ -135,7 +151,7 @@ void images_free() {
     head = next;
   }
   last_resource = NULL;
-  resources_released();
+  if(gambit_running) resources_released();
 }
 
 /* portable implementation */
@@ -156,7 +172,13 @@ FixedAllocator fixed_allocator_make(size_t obj_size, unsigned int n,
   obj_size = NEXT_ALIGNED_SIZE(obj_size);
 
   FixedAllocator allocator = (FixedAllocator)malloc(obj_size * n + 2*sizeof(struct FixedAllocator_));
+
+#ifdef DEBUG_MEMORY
   allocator->name = name;
+  allocator->inflight = 0;
+  allocator->max_inflight = 0;
+#endif
+
   allocator->allocation_size = obj_size;
 
   void* mem = &allocator[1];
@@ -175,12 +197,24 @@ void* fixed_allocator_alloc(FixedAllocator allocator) {
 
   void * mem = allocator->first_free;
   allocator->first_free = *(void**)allocator->first_free;
+
+#ifdef DEBUG_MEMORY
+  allocator->inflight += 1;
+  if(allocator->inflight > allocator->max_inflight) {
+    allocator->max_inflight = allocator->inflight;
+  }
+#endif
+
   return mem;
 }
 
 void fixed_allocator_free(FixedAllocator allocator, void *obj) {
   *(void**)obj = allocator->first_free;
   allocator->first_free = obj;
+
+#ifdef DEBUG_MEMORY
+  allocator->inflight -= 1;
+#endif
 }
 
 StackAllocator stack_allocator_make(size_t stack_size, const char* name) {
@@ -188,7 +222,9 @@ StackAllocator stack_allocator_make(size_t stack_size, const char* name) {
   size = NEXT_ALIGNED_SIZE(size);
 
   StackAllocator allocator = (StackAllocator)malloc(size);
+#ifdef DEBUG_MEMORY
   allocator->name = name;
+#endif
   allocator->stack_bottom = &allocator[1];
   allocator->stack_top = allocator->stack_bottom;
   allocator->stack_max = (char*)allocator->stack_top + stack_size;
@@ -266,11 +302,11 @@ void spritelist_render_to_screen(SpriteList list) {
 }
 
 void spritelist_enqueue_for_screen(SpriteList list) {
-  Command command = command_make((CommandFunction)spritelist_render_to_screen, list);
+  Command command = command_make(spritelist_render_to_screen, list);
   command_enqueue(render_queue, command);
 }
 
-Command command_make(CommandFunction function, void* data) {
+Command command_make_(CommandFunction function, void* data) {
   Command command = (Command)fixed_allocator_alloc(command_allocator);
   command->node.next = NULL;
   command->node.prev = NULL;

@@ -259,6 +259,10 @@ void renderer_shutdown(void* empty) {
   eglTerminate( display );
 }
 
+void at_exit() {
+  // nothing more neaded
+}
+
 void renderer_begin_frame(void* empty) {
   glClear(GL_COLOR_BUFFER_BIT);
 }
@@ -294,7 +298,7 @@ void renderer_finish_image_load(ImageResource resource) {
 }
 
 void renderer_finish_image_free(void* texturep) {
-  GLuint texture = *(GLuint*)texturep;
+  GLuint texture = (GLuint)texturep;
   glDeleteTextures(1, &texture);
 }
 

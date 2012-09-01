@@ -9,6 +9,7 @@ extern ___mod_or_lnk SCHEME_LIBRARY_LINKER (___global_state_struct*);
 ___END_C_LINKAGE
 
 extern int real_main(int argc, char ** argv);
+extern void at_exit();
 
 int main(int argc, char ** argv) {
   ___setup_params_struct setup_params;
@@ -21,6 +22,8 @@ int main(int argc, char ** argv) {
   int result = real_main(argc, argv);
 
   ___cleanup();
+
+  at_exit();
 
   return result;
 }
