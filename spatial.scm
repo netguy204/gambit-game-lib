@@ -1,15 +1,13 @@
-(load "object")
-(load "rect")
-(load "common")
+(define-structure spatial obj->idxs idx->objs width)
 
 (define (spatial-calc-idx width x y)
   (+ x (* y width)))
 
-(define (spatial-idx this x y)
-  (spatial-calc-idx (obj-field this 'width) x y))
+(define (spatial-idx spatial x y)
+  (spatial-calc-idx (spatial-width spatial) x y))
 
-(define (spatial-rect->idxs this rect)
-  (let ((width (obj-field this 'width))
+(define (spatial-rect->idxs spatial rect)
+  (let ((width (spatial-width spatial))
         (minx (floor (rect-minx rect)))
         (maxx (ceiling (rect-maxx rect)))
         (miny (floor (rect-miny rect)))
@@ -34,9 +32,9 @@
             (loop (cdr new) old)
             (loop (cdr new) (cons (car new) old))))))
 
-(define (spatial-rect this rect)
-  (let ((idxs (spatial-rect->idxs this rect))
-        (idx->objs (obj-field this 'idx->objs)))
+(define (spatial-rect spatial rect)
+  (let ((idxs (spatial-rect->idxs spatial rect))
+        (idx->objs (spatial-idx->objs spatial)))
 
     (let loop ((idxs idxs)
                (result '()))
@@ -47,9 +45,9 @@
                   (table-ref idx->objs (car idxs) '())
                   result))))))
 
-(define (spatial-delete! this value)
-  (let* ((obj->idxs (obj-field this 'obj->idxs))
-         (idx->objs (obj-field this 'idx->objs))
+(define (spatial-delete! spatial value)
+  (let* ((obj->idxs (spatial-obj->idxs spatial))
+         (idx->objs (spatial-idx->objs spatial))
          (idxs (table-ref obj->idxs value '())))
     (let loop ((idxs idxs))
       (if (not (null? idxs))
@@ -63,11 +61,11 @@
     ;; remove this object from the object table
     (table-set! obj->idxs value)))
 
-(define (spatial-update! this value rect)
-  (spatial-delete! this value)
-  (let ((idxs (spatial-rect->idxs this rect))
-        (obj->idxs (obj-field this 'obj->idxs))
-        (idx->objs (obj-field this 'idx->objs)))
+(define (spatial-update! spatial value rect)
+  (spatial-delete! spatial value)
+  (let ((idxs (spatial-rect->idxs spatial rect))
+        (obj->idxs (spatial-obj->idxs spatial))
+        (idx->objs (spatial-idx->objs spatial)))
     (table-set! obj->idxs value idxs)
     (let loop ((idxs idxs))
       (if (not (null? idxs))
@@ -76,10 +74,8 @@
             (loop (cdr idxs))))))
   value)
 
-(define (spatial-objects this)
-  (map car (table->list (obj-field this 'obj->idxs))))
+(define (spatial-objects spatial)
+  (map car (table->list (spatial-obj->idxs spatial))))
 
 (define (spatial-make width)
-  (obj-make fields: (list 'obj->idxs (make-table test: eq?)
-                          'idx->objs (make-table)
-                          'width width)))
+  (make-spatial (make-table test: eq?) (make-table) width))

@@ -20,10 +20,10 @@ C_OBJS=$(patsubst %.c,%.o,$(C_SRC))
 SCM_GAMBIT_OBJ=$(patsubst %.scm,%.o1,$(SCM_GAMBIT_SRC))
 SCM_R5_OBJ=$(patsubst %.scm,%.o1,$(SCM_R5_SRC))
 
-all: $(BIN) xml2.o1.o $(SCM_GAMBIT_OBJ) $(SCM_R5_OBJ)
+all: $(BIN) $(SCM_GAMBIT_OBJ) $(SCM_R5_OBJ)
 
 scmlib:
-	$(GSC) math.scm common.scm scmlib.scm spriter.scm
+	$(GSC) math.scm common.scm scmlib.scm rect.scm spatial.scm
 
 $(SCM_LIB_C): $(SCM_LIB_SRC)
 	$(GSC) -f -link -track-scheme $(SCM_LIB_SRC)

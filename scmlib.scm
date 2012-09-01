@@ -1,6 +1,7 @@
 (load "math")
 (load "common")
 (load "rect")
+(load "spatial")
 
 (define-structure particle r dr t tr)
 
@@ -65,14 +66,17 @@
 (define (game-particle-dr-set! gp dr)
   (particle-dr-set! (game-particle-particle gp) dr))
 
-(define (game-particle-rect gp)
+(define (game-particle-rect-scaled gp s)
   (let* ((img (game-particle-img gp))
-         (hw (/ (image-width img) 2))
-         (hh (/ (image-height img) 2))
+         (hw (* s (/ (image-width img) 2)))
+         (hh (* s (/ (image-height img) 2)))
          (p (game-particle-particle gp))
-         (cx (particle-x p))
-         (cy (particle-y p)))
+         (cx (* s (particle-x p)))
+         (cy (* s (particle-y p))))
     (rect-make (- cx hw) (- cy hh) (+ cx hw) (+ cy hh))))
+
+(define (game-particle-rect gp)
+  (game-particle-rect-scaled gp 1))
 
 (define (game-particle->sprite gp)
   (let ((sprite (frame/make-sprite)))
@@ -100,8 +104,8 @@
 (define *enemy-speed* 50)
 (define *player-speed* 300)
 (define *bullet-speed* 1200)
-(define *initial-enemies* 5)
-(define *max-enemies* 30)
+(define *initial-enemies* 1)
+(define *max-enemies* 10)
 
 (define (spawn-enemy)
   (let* ((img-name "spacer/ship-right.png")
@@ -180,8 +184,29 @@
                         bs))
             as))
 
+(define *spatial-scale-factor* (/ 64.))
+
+(define (game-particle-spatial-rect g)
+  (game-particle-rect-scaled g *spatial-scale-factor*))
+
+(define (with-spatial-collisions spatial bs fn)
+  (for-each (lambda (b)
+              (let* ((rect (game-particle-spatial-rect b))
+                     (as (spatial-rect spatial rect)))
+                (if (not (null? as))
+                    (with-collisions as (list b) fn))))
+            bs))
+
+(define (game-objects->spatial gs)
+  (reduce (lambda (spatial g)
+            (spatial-update! spatial g (game-particle-spatial-rect g))
+            spatial)
+          (spatial-make (* *screen-width* *spatial-scale-factor*))
+          gs))
+
 (define (handle-collisions)
-  (with-collisions *player-bullets* *enemies*
+  (with-spatial-collisions (game-objects->spatial *player-bullets*)
+                           *enemies*
     (lambda (bullet enemy)
       (set! *player-bullets* (delete bullet *player-bullets*))
       (set! *enemies* (delete enemy *enemies*)))))
@@ -192,13 +217,21 @@
     (< rand thresh)))
 
 (define (spawn-and-terminate dt)
+  ;; remove bullets that go off the right
   (for-each
    (lambda (bullet)
      (if (> (game-particle-x bullet) *screen-width*)
          (set! *player-bullets* (delete bullet *player-bullets*))))
-
    *player-bullets*)
 
+  ;; remove enemies that go off the left
+  (for-each
+   (lambda (enemy)
+     (if (< (game-particle-x enemy) 0)
+         (set! *enemies* (delete enemy *enemies*))))
+   *enemies*)
+
+  ;; spawn new enemies
   (if (random-spawn? (length *enemies*) *max-enemies* 0.3)
       (set! *enemies* (cons (spawn-enemy) *enemies*))))
 
