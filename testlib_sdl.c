@@ -6,6 +6,11 @@
 #include "testlib.h"
 #include "testlib_internal.h"
 
+// include common code that is dependant on the platform variable
+// location/name of the opengl headers
+#define glOrthof glOrtho
+#include "testlib_gl.c"
+
 extern StackAllocator frame_allocator;
 
 static struct InputState_ pstate;
@@ -85,92 +90,19 @@ void renderer_init(void* empty) {
     exit(1);
   }
 
-  glEnable(GL_TEXTURE_2D);
-  glEnable(GL_BLEND);
-  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-  glClearColor(0.8f, 0.8f, 0.8f, 0.0f);
-  glViewport(0, 0, screen_width, screen_height);
-  glMatrixMode(GL_PROJECTION);
-  glLoadIdentity();
-  glOrtho(0.0f, (GLfloat)screen_width,
-          0.0f, (GLfloat)screen_height,
-          -1.0f, 1.0f);
-  glMatrixMode(GL_MODELVIEW);
-  glLoadIdentity();
+  renderer_gl_init();
 }
 
 void renderer_shutdown(void* empty) {
+  renderer_gl_shutdown();
 }
 
 void at_exit() {
   SDL_Quit();
 }
 
-void renderer_begin_frame(void* empty) {
-  glClear(GL_COLOR_BUFFER_BIT);
-}
-
 void signal_render_complete(void* empty) {
   threadbarrier_wait(render_barrier);
   SDL_GL_SwapBuffers();
-}
-
-void renderer_finish_image_load(ImageResource resource) {
-  GLuint texture;
-  GLenum texture_format;
-  GLint num_colors;
-
-  num_colors = resource->channels;
-  if(num_colors == 4) {
-    texture_format = GL_RGBA;
-  } else {
-    texture_format = GL_RGB;
-  }
-
-  glGenTextures(1, &texture);
-  glBindTexture(GL_TEXTURE_2D, texture);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  glTexImage2D(GL_TEXTURE_2D, 0, num_colors, resource->w, resource->h, 0,
-               texture_format, GL_UNSIGNED_BYTE, resource->data);
-
-  resource->texture = texture;
-
-  free(resource->data);
-}
-
-void renderer_finish_image_free(void* texturep) {
-  GLuint texture = (GLuint)texturep;
-  glDeleteTextures(1, &texture);
-}
-
-void image_render_to_screen(ImageResource img, float angle,
-                            float cx, float cy,
-                            float x, float y) {
-  glBindTexture(GL_TEXTURE_2D, img->texture);
-  glPushMatrix();
-  
-  glTranslatef(x, y, 0.0f);
-  glRotatef(angle, 0.0f, 0.0f, 1.0f);
-  glTranslatef(-cx, -cy, 0.0f);
-
-  glBegin(GL_QUADS);
-  
-  glTexCoord2i(0, 1);
-  glVertex3f(0, 0, 0.0f);
-
-  glTexCoord2i(1, 1);
-  glVertex3f(img->w, 0, 0.0f);
-
-  glTexCoord2i(1, 0);
-  glVertex3f(img->w, img->h, 0.0f);
-
-  glTexCoord2i(0, 0);
-  glVertex3f(0, img->h, 0.0f);
-
-  glEnd();
-
-  glPopMatrix();
 }
 
