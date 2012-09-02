@@ -119,7 +119,7 @@
 (define *particles* '())
 
 (define *enemy-speed* 50)
-(define *player-speed* 300)
+(define *player-speed* 700)
 (define *bullet-speed* 1200)
 (define *initial-enemies* 1)
 (define *max-enemies* 10)

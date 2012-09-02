@@ -35,6 +35,7 @@ int joystick_maybe_read(int fileno, struct js_event* e) {
     }
     return 0;
   } else {
+    e->type &= ~JS_EVENT_INIT;
     return 1;
   }
 }
@@ -42,7 +43,7 @@ int joystick_maybe_read(int fileno, struct js_event* e) {
 js_state joystick_open(const char* device) {
   int fd = open ("/dev/input/js0", O_RDONLY|O_NONBLOCK);
 
-  int capacity = 16;
+  int capacity = 32;
   js_state state = malloc(sizeof(struct js_state_));
   state->num_values = 0;
   state->capacity = capacity;
@@ -62,18 +63,20 @@ void joystick_close(js_state state) {
 
 void joystick_update_state(js_state state) {
   struct js_event e;
+
   while(joystick_maybe_read(state->fileno, &e)) {
-    if(e.number >= state->num_values) {
-      if(e.number >= state->capacity) {
-	int new_cap = e.number + 1;
+    int slot = e.number * 2 + e.type - 1;
+    if(slot >= state->num_values) {
+      if(slot >= state->capacity) {
+	int new_cap = slot + 1;
 	state->values = realloc(state->values, new_cap * sizeof(struct js_event));
 	state->capacity = new_cap;
       }
 
-      state->num_values = e.number + 1;
+      state->num_values = slot + 1;
     }
 
-    state->values[e.number] = e;
+    state->values[slot] = e;
   }
 }
 
