@@ -205,11 +205,16 @@
           gs))
 
 (define (handle-collisions)
-  (with-spatial-collisions (game-objects->spatial *player-bullets*)
-                           *enemies*
-    (lambda (bullet enemy)
-      (set! *player-bullets* (delete bullet *player-bullets*))
-      (set! *enemies* (delete enemy *enemies*)))))
+  (if (or (null? *player-bullets*)
+          (null? *enemies*))
+      '()
+      (with-spatial-collisions
+       (game-objects->spatial *player-bullets*)
+       *enemies*
+
+       (lambda (bullet enemy)
+         (set! *player-bullets* (delete bullet *player-bullets*))
+         (set! *enemies* (delete enemy *enemies*))))))
 
 (define (random-spawn? num max-num prob)
   (let ((rand (rand-in-range 0 max-num))
@@ -235,7 +240,18 @@
   (if (random-spawn? (length *enemies*) *max-enemies* 0.3)
       (set! *enemies* (cons (spawn-enemy) *enemies*))))
 
+(define (stars-spritelist)
+  (let ((stars (image-load "spacer/night-sky-stars.jpg"))
+        (sprite (frame/make-sprite)))
+    (sprite-resource-set! sprite stars)
+    (sprite-x-set! sprite 0)
+    (sprite-y-set! sprite 0)
+    (frame/spritelist-append #f sprite)))
+
 (define (render)
+  (spritelist-enqueue-for-screen!
+   (stars-spritelist))
+
   (spritelist-enqueue-for-screen!
    (game-particles->sprite-list *enemies*))
 
