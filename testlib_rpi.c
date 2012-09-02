@@ -119,8 +119,8 @@ InputState frame_inputstate() {
   joystick_print_state(joystick_state);
   */
 
-  state->leftright = sign(joystick_state->values[4].value);
-  state->updown = -sign(joystick_state->values[5].value);
+  state->leftright = float(joystick_state->values[0].value) / 32767.0;
+  state->updown = -float(joystick_state->values[1].value) / 32767.0;
   state->action1 = joystick_state->values[0].value;
 
   return state;

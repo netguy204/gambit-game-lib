@@ -46,8 +46,8 @@ void end_frame();
 
 typedef struct InputState_ {
   int quit_requested;
-  int updown;
-  int leftright;
+  float updown;
+  float leftright;
   int action1;
 } *InputState;
 

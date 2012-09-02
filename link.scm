@@ -85,12 +85,12 @@ c-declare-end
 
 (define input-leftright
   (c-lambda (InputState)
-	    int
+	    float
 	    "___result = ___arg1->leftright;"))
 
 (define input-updown
   (c-lambda (InputState)
-	    int
+	    float
 	    "___result = ___arg1->updown;"))
 
 (define %input-action1

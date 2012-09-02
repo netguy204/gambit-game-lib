@@ -133,12 +133,14 @@
 (define (spawn-smoke-particle source)
   (let* ((r (vect-copy (game-particle-r source)))
          (dr (vect-copy (game-particle-dr source)))
-         (dr (vect-add-into! dr dr (random-vector 10 60)))
+         (dr (vect-add-into! dr dr (random-vector 50 100)))
          (death-time (+ (seconds->cycles (/ (rand-in-range 500 6500) 1000))
                         (clock-time *game-clock*))))
     (make-game-particle
      (make-particle
-      r dr (rand-in-range 0 360) (rand-in-range -10 10) 0.01 1)
+      r dr
+      (rand-in-range 0 360) (rand-in-range -20 20)
+      0.01 (* 0.5 (rand-in-range 1 4)))
      "spacer/smoke.png"
      (lambda (gp dt)
        (if (> (clock-time *game-clock*) death-time)
@@ -159,7 +161,8 @@
                      (- *screen-width* (image-width img))
                      (+ (/ (image-height img) 2)
                         (* (image-height img) (rand-in-range 0 nrows))))
-                    (make-vect (- *enemy-speed*)
+                    (make-vect (- (rand-in-range *enemy-speed*
+                                                 (* 2 *enemy-speed*)))
                                  0)
                     180 0 1 0)
      img-name
@@ -206,6 +209,26 @@
 
 (define (player-fire)
   (set! *player-bullets* (cons (spawn-bullet *player*) *player-bullets*)))
+
+(define-structure repeating-latch period latch-value last-state last-time)
+
+(define (repeating-latch-make period latch-value)
+  (make-repeating-latch period latch-value 0 0))
+
+(define (repeating-latch-state latch input-state)
+  (if (not (eq? (repeating-latch-last-state latch) input-state))
+      (begin
+        (repeating-latch-last-state-set! latch input-state)
+        (repeating-latch-last-time-set! latch (clock-time *game-clock*))
+        input-state)
+
+      (if (> (cycles->seconds (- (clock-time *game-clock*)
+                                 (repeating-latch-last-time latch)))
+             (repeating-latch-period latch))
+          (begin
+            (repeating-latch-last-time-set! latch (clock-time *game-clock*))
+            input-state)
+          (repeating-latch-latch-value latch))))
 
 (define (ensure-resources)
   (set! *player* (spawn-player))
@@ -318,6 +341,8 @@
   (spritelist-enqueue-for-screen!
    (game-particles->sprite-list (cons *player* *player-bullets*))))
 
+(define *player-fire-repeater* (repeating-latch-make 0.1 #f))
+
 (define (update-view dt input)
   (let ((updown (input-updown input))
         (leftright (input-leftright input))
@@ -327,7 +352,7 @@
      (make-vect (* *player-speed* leftright)
                 (* *player-speed* updown)))
 
-    (if action1
+    (if (repeating-latch-state *player-fire-repeater*  action1)
         (player-fire)))
 
   (integrate-objects dt)
