@@ -17,8 +17,8 @@
                   (vect-scale (particle-dr p) dt))
   (particle-t-set! p (+ (particle-t p)
                         (* (particle-dt p) dt)))
-  (particle-s-set! p (+ (particle-s p)
-                        (* (particle-ds p) dt))))
+  (particle-s-set! p (max 0 (+ (particle-s p)
+                              (* (particle-ds p) dt)))))
 
 (define (rand-in-range min max)
   (+ min (random-integer (- max min))))
@@ -126,7 +126,7 @@
 (define *enemy-speed* 50)
 (define *player-speed* 600)
 (define *player-bullet-speed* 1200)
-(define *enemy-bullet-speed* 600)
+(define *enemy-bullet-speed* 400)
 (define *initial-enemies* 1)
 (define *max-enemies* 10)
 
@@ -184,7 +184,7 @@
 
     (make-game-particle
      (make-particle (make-vect
-                     (- *screen-width* (image-width img))
+                     (+ *screen-width* (/ (image-width img) 2))
                      (+ (/ (image-height img) 2)
                         (* (image-height img) (rand-in-range 0 nrows))))
                     (make-vect (- (rand-in-range *enemy-speed*
