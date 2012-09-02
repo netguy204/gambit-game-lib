@@ -143,11 +143,17 @@ c-declare-end
             void
             "___arg1->angle = ___arg2;"))
 
+(define %sprite-scale-set!
+  (c-lambda (Sprite float)
+            void
+            "___arg1->scale = ___arg2;"))
+
 (define sprite-x-set! (comp2 %sprite-x-set! exact->inexact))
 (define sprite-y-set! (comp2 %sprite-y-set! exact->inexact))
 (define sprite-origin-x-set! (comp2 %sprite-origin-x-set! exact->inexact))
 (define sprite-origin-y-set! (comp2 %sprite-origin-y-set! exact->inexact))
 (define sprite-angle-set! (comp2 %sprite-angle-set! exact->inexact))
+(define sprite-scale-set! (comp2 %sprite-scale-set! exact->inexact))
 
 (define frame/spritelist-append
   (c-lambda (SpriteList Sprite)

@@ -111,6 +111,7 @@ typedef struct Sprite_ {
   float originY;
   float displayX;
   float displayY;
+  float scale;
 } *Sprite;
 
 Sprite frame_make_sprite();

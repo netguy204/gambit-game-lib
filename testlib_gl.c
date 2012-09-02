@@ -110,16 +110,15 @@ void renderer_finish_image_free(void* texturep) {
   glDeleteTextures(1, &texture);
 }
 
-void image_render_to_screen(ImageResource img, float angle,
-                            float cx, float cy,
-                            float x, float y) {
-  glBindTexture(GL_TEXTURE_2D, img->texture);
+void sprite_render_to_screen(Sprite sprite) {
+  glBindTexture(GL_TEXTURE_2D, sprite->resource->texture);
   glPushMatrix();
   
-  glTranslatef(x, y, 0.0f);
-  glRotatef(angle, 0.0f, 0.0f, 1.0f);
-  glTranslatef(-cx, -cy, 0.0f);
-  glScalef(img->w, img->h, 1.0f);
+  glTranslatef(sprite->displayX, sprite->displayY, 0.0f);
+  glScalef(sprite->scale, sprite->scale, 1.0f);
+  glRotatef(sprite->angle, 0.0f, 0.0f, 1.0f);
+  glTranslatef(-sprite->originX, -sprite->originY, 0.0f);
+  glScalef(sprite->resource->w, sprite->resource->h, 1.0f);
 
   glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 

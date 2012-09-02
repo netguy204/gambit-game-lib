@@ -10,9 +10,7 @@ void renderer_begin_frame(void* empty);
 void signal_render_complete(void* empty); // barrier
 void renderer_finish_image_load(ImageResource resource);
 void renderer_finish_image_free(void* texturep);
-void image_render_to_screen(ImageResource img, float angle,
-                            float cx, float cy,
-                            float x, float y);
+void sprite_render_to_screen(Sprite sprite);
 
 void at_exit();
 

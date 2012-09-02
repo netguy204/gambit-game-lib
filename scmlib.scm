@@ -3,7 +3,7 @@
 (load "rect")
 (load "spatial")
 
-(define-structure particle r dr t tr)
+(define-structure particle r dr t dt s ds)
 
 (define (particle-x p)
   (vect-x (particle-r p)))
@@ -16,10 +16,16 @@
                   (particle-r p)
                   (vect-scale (particle-dr p) dt))
   (particle-t-set! p (+ (particle-t p)
-                        (* (particle-tr p) dt))))
+                        (* (particle-dt p) dt)))
+  (particle-s-set! p (+ (particle-s p)
+                        (* (particle-ds p) dt))))
 
 (define (rand-in-range min max)
   (+ min (random-integer (- max min))))
+
+(define (random-vector maxx maxy)
+  (make-vect (rand-in-range (- maxx) maxx)
+             (rand-in-range (- maxy) maxy)))
 
 (define (random-particle img)
   (let ((img-w (image-width img))
@@ -29,7 +35,9 @@
                    (make-vect (rand-in-range -100 100)
                               (rand-in-range -100 100))
                    (rand-in-range 0 360)
-                   (rand-in-range 100 1000))))
+                   (rand-in-range 100 1000)
+                   1
+                   0)))
 
 (define *anim* #f)
 (define *scml* #f)
@@ -72,6 +80,9 @@
 (define (game-particle-dr-set! gp dr)
   (particle-dr-set! (game-particle-particle gp) dr))
 
+(define (game-particle-s gp)
+  (particle-s (game-particle-particle gp)))
+
 (define (game-particle-rect-scaled gp s)
   (let* ((img (game-particle-img gp))
          (hw (* s (/ (image-width img) 2)))
@@ -84,21 +95,22 @@
 (define (game-particle-rect gp)
   (game-particle-rect-scaled gp 1))
 
-(define (game-particle->sprite gp)
+(define (game-particle->sprite gp ocx ocy)
   (let ((sprite (frame/make-sprite)))
     (sprite-resource-set! sprite (game-particle-img gp))
     (sprite-x-set! sprite (game-particle-x gp))
     (sprite-y-set! sprite (game-particle-y gp))
-    (sprite-origin-x-set! sprite (game-particle-cx gp))
-    (sprite-origin-y-set! sprite (game-particle-cy gp))
+    (sprite-origin-x-set! sprite (+ ocx (game-particle-cx gp)))
+    (sprite-origin-y-set! sprite (+ ocy (game-particle-cy gp)))
     (sprite-angle-set! sprite (game-particle-t gp))
+    (sprite-scale-set! sprite (game-particle-s gp))
     sprite))
 
-(define (game-particles->sprite-list gps)
+(define (game-particles->sprite-list gps #!optional (ocx 0) (ocy 0))
   (reduce (lambda (sprite-list gp)
             (frame/spritelist-append
              sprite-list
-             (game-particle->sprite gp)))
+             (game-particle->sprite gp ocx ocy)))
           #f
           gps))
 
@@ -114,10 +126,31 @@
 (define *initial-enemies* 1)
 (define *max-enemies* 10)
 
-(define (spawn-particle pos vel update)
-  (let ((sx (game-particle-x source))
-        (sy (game-particle-y source)))
-    '()))
+(define (step-pretty-particles dt)
+  (set! *particles*
+    (mapcat (lambda (p)
+              (filter not-null? ((game-particle-extra p) p dt)))
+            *particles*)))
+
+(define (spawn-smoke-particle source)
+  (let* ((r (vect-copy (game-particle-r source)))
+         (dr (vect-copy (game-particle-dr source)))
+         (dr (vect-add-into! dr dr (random-vector 10 60)))
+         (death-time (+ (seconds->cycles (/ (rand-in-range 500 6500) 1000))
+                        (clock-time *game-clock*))))
+    (make-game-particle
+     (make-particle
+      r dr (rand-in-range 0 360) (rand-in-range -10 10) 0.01 1)
+     "spacer/smoke.png"
+     (lambda (gp dt)
+       (if (> (clock-time *game-clock*) death-time)
+           '()
+           (list (integrate-game-particle gp dt)))))))
+
+(define (add-pretty-particles! p)
+  (if (list? p)
+      (set! *particles* (append p *particles*))
+      (set! *particles* (cons p *particles*))))
 
 (define (spawn-enemy)
   (let* ((img-name "spacer/ship-right.png")
@@ -130,8 +163,7 @@
                         (* (image-height img) (rand-in-range 0 nrows))))
                     (make-vect (- *enemy-speed*)
                                  0)
-                    180
-                    0)
+                    180 0 1 0)
      img-name
      '())))
 
@@ -145,8 +177,7 @@
      (make-particle (make-vect (image-width img)
                                  (/ *screen-height* 2))
                     (make-vect 0 0)
-                    0
-                    0)
+                    0 0 1 0)
      img-name
      '())))
 
@@ -170,8 +201,8 @@
      (make-particle (make-vect sx sy)
                     (make-vect (* dx *bullet-speed*)
                                (* dy *bullet-speed*))
-                    (rand-in-range 0 360)
-                    500)
+                    (rand-in-range 0 360) 500
+                    0.25 1)
      "spacer/plasma.png"
      '())))
 
@@ -183,10 +214,12 @@
   (set! *enemies* (spawn-enemies *initial-enemies*)))
 
 (define (integrate-game-particle gp dt)
-  (particle-integrate (game-particle-particle gp) dt))
+  (particle-integrate (game-particle-particle gp) dt)
+  gp)
 
 (define (integrate-objects dt)
   (let ((integrate (lambda (item) (integrate-game-particle item dt))))
+    (step-pretty-particles dt)
     (for-each integrate (list *player*))
     (for-each integrate *player-bullets*)
     (for-each integrate *enemies*)
@@ -231,7 +264,9 @@
 
        (lambda (bullet enemy)
          (set! *player-bullets* (delete bullet *player-bullets*))
-         (set! *enemies* (delete enemy *enemies*))))))
+         (set! *enemies* (delete enemy *enemies*))
+         (add-pretty-particles! (spawn-smoke-particle bullet))
+         (add-pretty-particles! (spawn-smoke-particle enemy))))))
 
 (define (random-spawn? num max-num prob)
   (let ((rand (rand-in-range 0 max-num))
@@ -271,6 +306,9 @@
 (define (render input)
   (spritelist-enqueue-for-screen!
    (stars-spritelist))
+
+  (spritelist-enqueue-for-screen!
+   (game-particles->sprite-list *particles*))
 
   (spritelist-enqueue-for-screen!
    (game-particles->sprite-list *enemies*))

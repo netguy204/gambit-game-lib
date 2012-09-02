@@ -170,6 +170,7 @@ Sprite frame_make_sprite() {
   sprite->angle = 0.0f;
   sprite->originX = 0.0f;
   sprite->originY = 0.0f;
+  sprite->scale = 1.0f;
   return sprite;
 }
 
@@ -183,9 +184,7 @@ SpriteList frame_spritelist_append(SpriteList rest, Sprite sprite) {
 void spritelist_render_to_screen(SpriteList list) {
   LL_FOREACH(SpriteList, element, list) {
     Sprite sprite = element->sprite;
-    image_render_to_screen(sprite->resource, sprite->angle,
-                           sprite->originX, sprite->originY,
-                           sprite->displayX, sprite->displayY);
+    sprite_render_to_screen(sprite);
   }
 }
 

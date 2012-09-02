@@ -61,3 +61,5 @@
 (define (delete item lst)
   (reverse (delete-reverse item lst)))
 
+(define (not-null? p)
+  (not (null? p)))
