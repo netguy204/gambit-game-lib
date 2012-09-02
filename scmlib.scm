@@ -41,10 +41,16 @@
    ((< val 0) 1)
    (#t (error "bad input " val))))
 
-(define-structure game-particle particle img-name)
+(define-structure game-particle particle img-name extra)
 
 (define (game-particle-img gp)
   (image-load (game-particle-img-name gp)))
+
+(define (game-particle-r gp)
+  (particle-r (game-particle-particle gp)))
+
+(define (game-particle-dr gp)
+  (particle-dr (game-particle-particle gp)))
 
 (define (game-particle-x gp)
   (particle-x (game-particle-particle gp)))
@@ -100,6 +106,7 @@
 (define *player-bullets* '())
 (define *enemies* '())
 (define *enemy-bullets* '())
+(define *particles* '())
 
 (define *enemy-speed* 50)
 (define *player-speed* 300)
@@ -107,24 +114,32 @@
 (define *initial-enemies* 1)
 (define *max-enemies* 10)
 
+(define (spawn-particle pos vel update)
+  (let ((sx (game-particle-x source))
+        (sy (game-particle-y source)))
+    '()))
+
 (define (spawn-enemy)
   (let* ((img-name "spacer/ship-right.png")
-         (img (image-load img-name)))
+         (img (image-load img-name))
+         (nrows (ceiling (/ *screen-height* (image-height img)))))
     (make-game-particle
      (make-particle (make-vect
                      (- *screen-width* (image-width img))
-                     (rand-in-range 0 (- *screen-height* (image-height img))))
+                     (+ (/ (image-height img) 2)
+                        (* (image-height img) (rand-in-range 0 nrows))))
                     (make-vect (- *enemy-speed*)
                                  0)
                     180
                     0)
-     img-name)))
+     img-name
+     '())))
 
 (define (spawn-enemies n)
   (repeatedly spawn-enemy n))
 
 (define (spawn-player)
-  (let* ((img-name "spacer/ship-right.png")
+  (let* ((img-name "spacer/hero.png")
          (img (image-load img-name)))
     (make-game-particle
      (make-particle (make-vect (image-width img)
@@ -132,7 +147,8 @@
                     (make-vect 0 0)
                     0
                     0)
-     img-name)))
+     img-name
+     '())))
 
 (define pi 3.141592654)
 
@@ -154,9 +170,10 @@
      (make-particle (make-vect sx sy)
                     (make-vect (* dx *bullet-speed*)
                                (* dy *bullet-speed*))
-                    ang
+                    (rand-in-range 0 360)
                     500)
-     "spacer/plasma.png")))
+     "spacer/plasma.png"
+     '())))
 
 (define (player-fire)
   (set! *player-bullets* (cons (spawn-bullet *player*) *player-bullets*)))
@@ -225,19 +242,22 @@
   ;; remove bullets that go off the right
   (for-each
    (lambda (bullet)
-     (if (> (game-particle-x bullet) *screen-width*)
+     (if (> (game-particle-x bullet) (+ (/ (image-width
+                                            (game-particle-img bullet)) 2)
+                                        *screen-width*))
          (set! *player-bullets* (delete bullet *player-bullets*))))
    *player-bullets*)
 
   ;; remove enemies that go off the left
   (for-each
    (lambda (enemy)
-     (if (< (game-particle-x enemy) 0)
+     (if (< (game-particle-x enemy) (- (/ (image-width
+                                           (game-particle-img enemy)) 2)))
          (set! *enemies* (delete enemy *enemies*))))
    *enemies*)
 
   ;; spawn new enemies
-  (if (random-spawn? (length *enemies*) *max-enemies* 0.3)
+  (if (random-spawn? (length *enemies*) *max-enemies* 0.1)
       (set! *enemies* (cons (spawn-enemy) *enemies*))))
 
 (define (stars-spritelist)
@@ -248,13 +268,17 @@
     (sprite-y-set! sprite 0)
     (frame/spritelist-append #f sprite)))
 
-(define (render)
+(define (render input)
   (spritelist-enqueue-for-screen!
    (stars-spritelist))
 
   (spritelist-enqueue-for-screen!
    (game-particles->sprite-list *enemies*))
 
+  (if (and (= 0 (input-leftright input))
+           (= 0 (input-updown input)))
+      (game-particle-img-name-set! *player* "spacer/hero.png")
+      (game-particle-img-name-set! *player* "spacer/hero-engines.png"))
   (spritelist-enqueue-for-screen!
    (game-particles->sprite-list (cons *player* *player-bullets*))))
 
@@ -273,4 +297,4 @@
   (integrate-objects dt)
   (spawn-and-terminate dt)
   (handle-collisions)
-  (render))
+  (render input))

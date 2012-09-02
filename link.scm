@@ -195,7 +195,6 @@ c-declare-end
           (thread-start!
            (make-thread
             (lambda ()
-              (thread-sleep 1)
               (##repl-debug-,bmain)))))
 
 ;;; resource lifecycle
