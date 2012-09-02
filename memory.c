@@ -44,6 +44,7 @@ FixedAllocator fixed_allocator_make(size_t obj_size, unsigned int n,
   allocator->max_inflight = 0;
 #endif
 
+  pthread_mutex_init(&allocator->mutex, NULL);
   allocator->allocation_size = obj_size;
 
   void* mem = &allocator[1];
@@ -60,6 +61,7 @@ FixedAllocator fixed_allocator_make(size_t obj_size, unsigned int n,
 void* fixed_allocator_alloc(FixedAllocator allocator) {
   SAFETY(if(!allocator->first_free) return fail_exit("fixed_allocator %s failed", allocator->name));
 
+  pthread_mutex_lock(&allocator->mutex);
   void * mem = allocator->first_free;
   allocator->first_free = *(void**)allocator->first_free;
 
@@ -69,17 +71,20 @@ void* fixed_allocator_alloc(FixedAllocator allocator) {
     allocator->max_inflight = allocator->inflight;
   }
 #endif
+  pthread_mutex_unlock(&allocator->mutex);
 
   return mem;
 }
 
 void fixed_allocator_free(FixedAllocator allocator, void *obj) {
+  pthread_mutex_lock(&allocator->mutex);
   *(void**)obj = allocator->first_free;
   allocator->first_free = obj;
 
 #ifdef DEBUG_MEMORY
   allocator->inflight -= 1;
 #endif
+  pthread_mutex_unlock(&allocator->mutex);
 }
 
 StackAllocator stack_allocator_make(size_t stack_size, const char* name) {
@@ -90,6 +95,7 @@ StackAllocator stack_allocator_make(size_t stack_size, const char* name) {
 #ifdef DEBUG_MEMORY
   allocator->name = name;
 #endif
+  pthread_mutex_init(&allocator->mutex, NULL);
   allocator->stack_bottom = &allocator[1];
   allocator->stack_top = allocator->stack_bottom;
   allocator->stack_max = (char*)allocator->stack_top + stack_size;
@@ -97,10 +103,13 @@ StackAllocator stack_allocator_make(size_t stack_size, const char* name) {
 }
 
 void* stack_allocator_alloc(StackAllocator allocator, size_t size) {
+  pthread_mutex_lock(&allocator->mutex);
   size = NEXT_ALIGNED_SIZE(size);
   SAFETY(if((char*)allocator->stack_top + size > (char*)allocator->stack_max) return fail_exit("stack_allocator %s failed", allocator->name));
   void* mem = allocator->stack_top;
   allocator->stack_top = (char*)allocator->stack_top + size;
+  pthread_mutex_unlock(&allocator->mutex);
+
   return mem;
 }
 

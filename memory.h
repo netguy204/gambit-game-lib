@@ -2,6 +2,7 @@
 #define MEMORY_H
 
 #include <stdlib.h>
+#include <pthread.h>
 
 #define DEBUG_MEMORY
 
@@ -11,6 +12,7 @@ typedef struct FixedAllocator_ {
   long inflight;
   long max_inflight;
 #endif
+  pthread_mutex_t mutex;
   size_t allocation_size;
   void* first_free;
 } *FixedAllocator;
@@ -19,6 +21,7 @@ typedef struct StackAllocator_ {
 #ifdef DEBUG_MEMORY
   const char* name;
 #endif
+  pthread_mutex_t mutex;
   void* stack_top;
   void* stack_bottom;
   void* stack_max;
