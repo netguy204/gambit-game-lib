@@ -119,7 +119,7 @@
 (define *particles* '())
 
 (define *enemy-speed* 50)
-(define *player-speed* 700)
+(define *player-speed* 600)
 (define *bullet-speed* 1200)
 (define *initial-enemies* 1)
 (define *max-enemies* 10)
@@ -142,6 +142,23 @@
       (rand-in-range 0 360) (rand-in-range -20 20)
       0.01 (* 0.5 (rand-in-range 1 4)))
      "spacer/smoke.png"
+     (lambda (gp dt)
+       (if (> (clock-time *game-clock*) death-time)
+           '()
+           (list (integrate-game-particle gp dt)))))))
+
+(define (spawn-hulk-particle source)
+  (let* ((r (vect-copy (game-particle-r source)))
+         (dr (vect-copy (game-particle-dr source)))
+         (dr (vect-add-into! dr dr (random-vector 300 600)))
+         (death-time (+ (seconds->cycles (/ (rand-in-range 500 6500) 1000))
+                        (clock-time *game-clock*))))
+    (make-game-particle
+     (make-particle
+      r dr
+      180 (rand-in-range -360 360)
+      1 -1)
+     "spacer/ship-right.png"
      (lambda (gp dt)
        (if (> (clock-time *game-clock*) death-time)
            '()
@@ -286,8 +303,8 @@
        (lambda (bullet enemy)
          (set! *player-bullets* (delete bullet *player-bullets*))
          (set! *enemies* (delete enemy *enemies*))
-         (add-pretty-particles! (spawn-smoke-particle bullet))
-         (add-pretty-particles! (spawn-smoke-particle enemy))))))
+         (add-pretty-particles! (spawn-smoke-particle enemy))
+         (add-pretty-particles! (spawn-hulk-particle bullet))))))
 
 (define (random-spawn? num max-num prob)
   (let ((rand (rand-in-range 0 max-num))
@@ -341,7 +358,7 @@
   (spritelist-enqueue-for-screen!
    (game-particles->sprite-list (cons *player* *player-bullets*))))
 
-(define *player-fire-repeater* (repeating-latch-make 0.1 #f))
+(define *player-fire-repeater* (repeating-latch-make 0.2 #f))
 
 (define (update-view dt input)
   (let ((updown (input-updown input))
