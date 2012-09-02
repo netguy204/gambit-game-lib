@@ -97,13 +97,11 @@
 
 (define (game-particle->sprite gp ocx ocy)
   (let ((sprite (frame/make-sprite)))
-    (sprite-resource-set! sprite (game-particle-img gp))
-    (sprite-x-set! sprite (game-particle-x gp))
-    (sprite-y-set! sprite (game-particle-y gp))
-    (sprite-origin-x-set! sprite (+ ocx (game-particle-cx gp)))
-    (sprite-origin-y-set! sprite (+ ocy (game-particle-cy gp)))
-    (sprite-angle-set! sprite (game-particle-t gp))
-    (sprite-scale-set! sprite (game-particle-s gp))
+    (sprite-parms-set! sprite (game-particle-img gp)
+                       (game-particle-x gp) (game-particle-y gp)
+                       (+ ocx (game-particle-cx gp))
+                       (+ ocy (game-particle-cy gp))
+                       (game-particle-t gp) (game-particle-s gp))
     sprite))
 
 (define (game-particles->sprite-list gps #!optional (ocx 0) (ocy 0))

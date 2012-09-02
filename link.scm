@@ -155,6 +155,26 @@ c-declare-end
 (define sprite-angle-set! (comp2 %sprite-angle-set! exact->inexact))
 (define sprite-scale-set! (comp2 %sprite-scale-set! exact->inexact))
 
+(define %sprite-parms-set!
+  ;; sprite image x y cx cy angle scale
+  (c-lambda (Sprite ImageResource float float float float float float)
+            void
+            "
+___arg1->resource = ___arg2;
+___arg1->displayX = ___arg3;
+___arg1->displayY = ___arg4;
+___arg1->originX = ___arg5;
+___arg1->originY = ___arg6;
+___arg1->angle = ___arg7;
+___arg1->scale = ___arg8;
+"))
+
+(define (sprite-parms-set! sprite img x y cx cy angle scale)
+  (%sprite-parms-set! sprite img
+                      (exact->inexact x) (exact->inexact y)
+                      (exact->inexact cx) (exact->inexact cy)
+                      (exact->inexact angle) (exact->inexact scale)))
+
 (define frame/spritelist-append
   (c-lambda (SpriteList Sprite)
             SpriteList
