@@ -140,7 +140,7 @@
   (let* ((r (vect-copy (game-particle-r source)))
          (dr (vect-copy (game-particle-dr source)))
          (dr (vect-add-into! dr dr (random-vector 50 100)))
-         (death-time (+ (seconds->cycles (/ (rand-in-range 500 6500) 1000))
+         (death-time (+ (seconds->cycles (/ (rand-in-range 500 3500) 1000))
                         (clock-time *game-clock*))))
     (make-game-particle
      (make-particle
@@ -294,7 +294,7 @@
                         bs))
             as))
 
-(define *spatial-scale-factor* (/ 64.))
+(define *spatial-scale-factor* (/ 256.))
 
 (define (game-particle-spatial-rect g)
   (game-particle-rect-scaled g *spatial-scale-factor*))
@@ -325,7 +325,6 @@
        (lambda (bullet enemy)
          (set! *player-bullets* (delete bullet *player-bullets*))
          (set! *enemies* (delete enemy *enemies*))
-         (add-pretty-particles! (spawn-smoke-particle enemy))
          (add-pretty-particles! (spawn-smoke-particle enemy))
          (add-pretty-particles! (spawn-hulk-particle
                                  bullet
