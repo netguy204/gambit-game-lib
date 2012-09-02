@@ -112,22 +112,28 @@
           #f
           gps))
 
+(define (game-particle-integrate gp dt)
+  (particle-integrate (game-particle-particle gp) dt)
+  gp)
+
 (define *player* '())
 (define *player-bullets* '())
+(define *enemy-bullets* '())
 (define *enemies* '())
 (define *enemy-bullets* '())
 (define *particles* '())
 
 (define *enemy-speed* 50)
 (define *player-speed* 600)
-(define *bullet-speed* 1200)
+(define *player-bullet-speed* 1200)
+(define *enemy-bullet-speed* 600)
 (define *initial-enemies* 1)
 (define *max-enemies* 10)
 
 (define (step-pretty-particles dt)
   (set! *particles*
     (mapcat (lambda (p)
-              (filter not-null? ((game-particle-extra p) p dt)))
+              (filter not-null? (integrate-game-particle p dt)))
             *particles*)))
 
 (define (spawn-smoke-particle source)
@@ -145,9 +151,9 @@
      (lambda (gp dt)
        (if (> (clock-time *game-clock*) death-time)
            '()
-           (list (integrate-game-particle gp dt)))))))
+           (list (game-particle-integrate gp dt)))))))
 
-(define (spawn-hulk-particle source)
+(define (spawn-hulk-particle source img)
   (let* ((r (vect-copy (game-particle-r source)))
          (dr (vect-copy (game-particle-dr source)))
          (dr (vect-add-into! dr dr (random-vector 300 600)))
@@ -158,11 +164,11 @@
       r dr
       180 (rand-in-range -360 360)
       1 -1)
-     "spacer/ship-right.png"
+     img
      (lambda (gp dt)
        (if (> (clock-time *game-clock*) death-time)
            '()
-           (list (integrate-game-particle gp dt)))))))
+           (list (game-particle-integrate gp dt)))))))
 
 (define (add-pretty-particles! p)
   (if (list? p)
@@ -172,7 +178,10 @@
 (define (spawn-enemy)
   (let* ((img-name "spacer/ship-right.png")
          (img (image-load img-name))
-         (nrows (ceiling (/ *screen-height* (image-height img)))))
+         (nrows (ceiling (/ *screen-height* (image-height img))))
+         (shot-period (seconds->cycles (rand-in-range 1 5)))
+         (next-shot (+ shot-period (clock-time *game-clock*))))
+
     (make-game-particle
      (make-particle (make-vect
                      (- *screen-width* (image-width img))
@@ -183,7 +192,15 @@
                                  0)
                     180 0 1 0)
      img-name
-     '())))
+     (lambda (gp dt)
+       (if (> (clock-time *game-clock*) next-shot)
+           (begin
+             (set! *enemy-bullets*
+                   (cons (spawn-bullet gp "spacer/enemy-bullet.png"
+                                       *enemy-bullet-speed*)
+                         *enemy-bullets*))
+             (set! next-shot (+ (clock-time *game-clock*) shot-period))))
+       (game-particle-integrate gp dt)))))
 
 (define (spawn-enemies n)
   (repeatedly spawn-enemy n))
@@ -197,7 +214,7 @@
                     (make-vect 0 0)
                     0 0 1 0)
      img-name
-     '())))
+     #f)))
 
 (define pi 3.141592654)
 
@@ -207,7 +224,7 @@
 (define (radians->degrees rad)
   (/ (* rad 180) pi))
 
-(define (spawn-bullet shooter)
+(define (spawn-bullet shooter img speed)
   (let* ((sx (game-particle-x shooter))
          (sy (game-particle-y shooter))
          (ang (game-particle-t shooter))
@@ -217,15 +234,17 @@
     
     (make-game-particle
      (make-particle (make-vect sx sy)
-                    (make-vect (* dx *bullet-speed*)
-                               (* dy *bullet-speed*))
+                    (make-vect (* dx speed)
+                               (* dy speed))
                     (rand-in-range 0 360) 500
                     0.25 1)
-     "spacer/plasma.png"
-     '())))
+     img
+     #f)))
 
 (define (player-fire)
-  (set! *player-bullets* (cons (spawn-bullet *player*) *player-bullets*)))
+  (set! *player-bullets* (cons (spawn-bullet *player* "spacer/plasma.png"
+                                             *player-bullet-speed*)
+                               *player-bullets*)))
 
 (define-structure repeating-latch period latch-value last-state last-time)
 
@@ -252,14 +271,17 @@
   (set! *enemies* (spawn-enemies *initial-enemies*)))
 
 (define (integrate-game-particle gp dt)
-  (particle-integrate (game-particle-particle gp) dt)
-  gp)
+  (let ((extra (game-particle-extra gp)))
+    (if extra
+        (extra gp dt)
+        (game-particle-integrate gp dt))))
 
 (define (integrate-objects dt)
   (let ((integrate (lambda (item) (integrate-game-particle item dt))))
     (step-pretty-particles dt)
     (for-each integrate (list *player*))
     (for-each integrate *player-bullets*)
+    (for-each integrate *enemy-bullets*)
     (for-each integrate *enemies*)
     (for-each integrate *enemy-bullets*)))
 
@@ -304,7 +326,21 @@
          (set! *player-bullets* (delete bullet *player-bullets*))
          (set! *enemies* (delete enemy *enemies*))
          (add-pretty-particles! (spawn-smoke-particle enemy))
-         (add-pretty-particles! (spawn-hulk-particle bullet))))))
+         (add-pretty-particles! (spawn-smoke-particle enemy))
+         (add-pretty-particles! (spawn-hulk-particle
+                                 bullet
+                                 "spacer/ship-right.png")))))
+
+  (if (null? *enemy-bullets*)
+      '()
+      (with-collisions
+       (list *player*) *enemy-bullets*
+
+       (lambda (player bullet)
+         (set! *enemy-bullets* (delete bullet *enemy-bullets*))
+         (add-pretty-particles! (spawn-hulk-particle
+                                 player
+                                 "spacer/hero.png"))))))
 
 (define (random-spawn? num max-num prob)
   (let ((rand (rand-in-range 0 max-num))
@@ -320,6 +356,14 @@
                                         *screen-width*))
          (set! *player-bullets* (delete bullet *player-bullets*))))
    *player-bullets*)
+
+  ;; remove bullets that go off the left
+  (for-each
+   (lambda (bullet)
+     (if (< (game-particle-x bullet) (- (/ (image-width
+                                            (game-particle-img bullet)) 2)))
+         (set! *enemy-bullets* (delete bullet *enemy-bullets*))))
+   *enemy-bullets*)
 
   ;; remove enemies that go off the left
   (for-each
@@ -350,6 +394,9 @@
 
   (spritelist-enqueue-for-screen!
    (game-particles->sprite-list *enemies*))
+
+  (spritelist-enqueue-for-screen!
+   (game-particles->sprite-list *enemy-bullets*))
 
   (if (and (= 0 (input-leftright input))
            (= 0 (input-updown input)))
