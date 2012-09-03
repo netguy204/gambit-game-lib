@@ -20,3 +20,5 @@ include Common.mk
 gambitmain.o: gambitmain.c
 	$(CC) $(CFLAGS) -c $< -include "SDL/SDL.h"
 
+audio_test: audio_test.c sampler.c
+	gcc -g -o audio_test sampler.c audio_test.c `sdl-config --libs` `sdl-config --cflags`
