@@ -16,13 +16,16 @@
 #define SAMPLE_FREQ 22050
 
 #define SAMPLE(f, x) (((Sampler)(f))->function(f, x))
+#define RELEASE_SAMPLER(f) (((Sampler)(f))->release(f))
 
 #define array_size(a) (sizeof(a)/sizeof(a[0]))
 
 typedef int16_t (*SamplerFunction)(void*, long);
+typedef void (*ReleaseSampler)(void*);
 
 typedef struct Sampler_ {
   SamplerFunction function;
+  ReleaseSampler release;
 } *Sampler;
 
 typedef struct SinSampler_ {

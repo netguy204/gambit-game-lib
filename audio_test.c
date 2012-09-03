@@ -80,7 +80,10 @@ int main(int argc, char ** argv) {
   }
 
   SDL_PauseAudio(0);
-  SDL_Delay(4500);
+  SDL_Delay(2500);
+
+  RELEASE_SAMPLER(gfilter);
+
   SDL_CloseAudio();
   return 0;
 }

@@ -15,6 +15,7 @@ int16_t sin_sample(SinSampler sampler, long sample) {
 SinSampler sinsampler_make(float freq, float amp, float phase) {
   SinSampler sampler = malloc(sizeof(struct SinSampler_));
   sampler->sampler.function = (SamplerFunction)sin_sample;
+  sampler->sampler.release = free;
 
   float cycles_per_sample = freq / SAMPLE_FREQ;
   sampler->radians_per_sample = cycles_per_sample * 2 * M_PI;
@@ -32,6 +33,7 @@ int16_t saw_sample(SawSampler sampler, long sample) {
 SawSampler sawsampler_make(float freq, float amp, float phase) {
   SawSampler sampler = malloc(sizeof(struct SawSampler_));
   sampler->sampler.function = (SamplerFunction)saw_sample;
+  sampler->sampler.release = free;
 
   long samples_per_period = SAMPLE_FREQ / freq;
   float slope = 2 * amp / samples_per_period;
@@ -42,6 +44,11 @@ SawSampler sawsampler_make(float freq, float amp, float phase) {
   sampler->amp = amp;
 
   return sampler;
+}
+
+void finitesampler_release(FiniteSampler sampler) {
+  RELEASE_SAMPLER(sampler->nested_sampler);
+  free(sampler);
 }
 
 int16_t finitesampler_sample(FiniteSampler sampler, long sample) {
@@ -59,11 +66,23 @@ FiniteSampler finitesampler_make(Sampler nested_sampler,
   FiniteSampler sampler = malloc(sizeof(struct FiniteSampler_));
 
   sampler->sampler.function = (SamplerFunction)finitesampler_sample;
+  sampler->sampler.release = (ReleaseSampler)finitesampler_release;
+
   sampler->nested_sampler = nested_sampler;
   sampler->start_sample = start_sample;
   sampler->duration_samples = duration_samples;
 
   return sampler;
+}
+
+void finitesequence_release(FiniteSequence seq) {
+  int ii;
+  for(ii = 0; ii < seq->nsamplers; ++ii) {
+    RELEASE_SAMPLER(seq->samplers[ii]);
+  }
+
+  free(seq->samplers);
+  free(seq);
 }
 
 int16_t finitesequence_sample(FiniteSequence seq, long sample) {
@@ -79,7 +98,10 @@ int16_t finitesequence_sample(FiniteSequence seq, long sample) {
 
 FiniteSequence finitesequence_make(FiniteSampler* samplers, int nsamplers) {
   FiniteSequence seq = malloc(sizeof(struct FiniteSequence_));
+
   seq->sampler.function = (SamplerFunction)finitesequence_sample;
+  seq->sampler.release = (ReleaseSampler)finitesequence_release;
+
   seq->nsamplers = nsamplers;
   seq->samplers = samplers;
   return seq;
@@ -110,6 +132,14 @@ int16_t filter_value(Filter filter, int16_t value) {
   return result;
 }
 
+void filter_release(Filter filter) {
+  free(filter->as);
+  free(filter->bs);
+  free(filter->xs);
+  free(filter->ys);
+  RELEASE_SAMPLER(filter->nested_sampler);
+}
+
 int16_t filter_sample(Filter filter, long sample) {
   return filter_value(filter, SAMPLE(filter->nested_sampler, sample));
 }
@@ -119,6 +149,8 @@ Filter filter_make(Sampler nested_sampler,
                    float* as, int na, float* bs, int nb) {
   Filter filter = malloc(sizeof(struct Filter_));
   filter->sampler.function = (SamplerFunction)filter_sample;
+  filter->sampler.release = (ReleaseSampler)filter_release;
+
   filter->nested_sampler = nested_sampler;
 
   filter->na = na;
