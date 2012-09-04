@@ -332,7 +332,7 @@
 
          (audio-enqueue
           (stepsampler-make
-           (sinsampler-make 100 8000 0)
+           (sinsampler-make 300 8000 0)
            (audio-current-sample) (seconds->samples 0.1))))))
 
   (if (null? *enemy-bullets*)
