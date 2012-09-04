@@ -159,7 +159,8 @@ void filter_release(Filter filter) {
   free(filter->bs);
   free(filter->xs);
   free(filter->ys);
-  RELEASE_SAMPLER(filter->nested_sampler);
+
+  if(filter->nested_sampler) RELEASE_SAMPLER(filter->nested_sampler);
 }
 
 int16_t filter_sample(Filter filter, long sample) {

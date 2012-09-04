@@ -96,6 +96,8 @@ typedef struct Filter_ {
 Filter filter_make(Sampler nested_sampler,
                    float* as, int na, float* bs, int nb);
 
+int16_t filter_value(Filter filter, int16_t value);
+
 Filter lowpass_make(Sampler nested_sampler, float cutoff, float sample_freq);
 
 FiniteSequence make_sequence(float* freqs, int nfreqs, float amp,

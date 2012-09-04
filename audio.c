@@ -1,6 +1,10 @@
 #include "threadlib.h"
 #include "audio.h"
 
+PlayList playlist;
+Queue audio_queue;
+Filter global_filter;
+
 PlayListSample playlistsample_make(FiniteSampler sampler) {
   PlayListSample pl = malloc(sizeof(struct PlayListSample_));
   pl->sampler = sampler;
@@ -63,6 +67,8 @@ void playlist_fill_buffer(PlayList list, int16_t* buffer, int nsamples) {
       if(END(node->sampler) < sample) break;
       buffer[ii] += SAMPLE(node->sampler, sample);
     }
+
+    buffer[ii] = filter_value(global_filter, buffer[ii]);
   }
 
   list->next_sample += nsamples;
@@ -76,12 +82,11 @@ void playlist_fill_buffer(PlayList list, int16_t* buffer, int nsamples) {
   }
 }
 
-PlayList playlist;
-Queue audio_queue;
-
 void audio_init() {
   playlist = playlist_make();
   audio_queue = queue_make();
+  global_filter = lowpass_make(NULL, 0, 0);
+
   native_audio_init();
 }
 
