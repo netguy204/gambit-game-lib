@@ -3,8 +3,6 @@
 
 typedef struct LLNode_* LLNode;
 
-#define LL_FOREACH(type, var, head) for(type var = head; var != NULL; var = (type)(((LLNode)var)->next))
-
 struct LLNode_ {
   LLNode next;
 };

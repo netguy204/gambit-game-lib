@@ -58,15 +58,16 @@ void playlist_insert_sampler(PlayList list, PlayListSample sample) {
 
 void playlist_fill_buffer(PlayList list, int16_t* buffer, int nsamples) {
   int ii;
-
   long next_sample = list->next_sample;
   list->next_sample += nsamples;
 
   for(ii = 0; ii < nsamples; ++ii) {
     long sample = next_sample + ii;
+    PlayListSample node;
 
     buffer[ii] = 0;
-    LL_FOREACH(PlayListSample, node, list->head) {
+    for(node = list->head; node != NULL;
+	node = (PlayListSample)node->node.next) {
       if(END(node->sampler) < sample) break;
       buffer[ii] += SAMPLE(node->sampler, sample);
     }

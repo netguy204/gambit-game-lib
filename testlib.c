@@ -185,7 +185,8 @@ SpriteList frame_spritelist_append(SpriteList rest, Sprite sprite) {
 }
 
 void spritelist_render_to_screen(SpriteList list) {
-  LL_FOREACH(SpriteList, element, list) {
+  for(SpriteList element = list; element != NULL;
+      element = (SpriteList)element->node.next) {
     Sprite sprite = element->sprite;
     sprite_render_to_screen(sprite);
   }
