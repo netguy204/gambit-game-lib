@@ -3,53 +3,20 @@
 (load "rect")
 (load "spatial")
 
-(define-structure particle r dr t dt s ds)
+(define-structure game-particle particle img-name extra w h)
 
-(define (particle-x p)
-  (vect-x (particle-r p)))
+(define (game-particle-make particle img-name #!optional (extra #f))
+  (let* ((gp (make-game-particle particle img-name extra 0 0))
+	 (img (game-particle-img gp)))
+    (game-particle-w-set! gp (image-width img))
+    (game-particle-h-set! gp (image-height img))
+    gp))
 
-(define (particle-y p)
-  (vect-y (particle-r p)))
+(define (game-particle-width gp)
+  (* (particle-s (game-particle-particle gp)) (game-particle-w gp)))
 
-(define (particle-integrate p dt)
-  (vect-add-into! (particle-r p)
-                  (particle-r p)
-                  (vect-scale (particle-dr p) dt))
-  (particle-t-set! p (+ (particle-t p)
-                        (* (particle-dt p) dt)))
-  (particle-s-set! p (max 0 (+ (particle-s p)
-                              (* (particle-ds p) dt)))))
-
-(define (rand-in-range min max)
-  (+ min (random-integer (- max min))))
-
-(define (random-vector maxx maxy)
-  (make-vect (rand-in-range (- maxx) maxx)
-             (rand-in-range (- maxy) maxy)))
-
-(define (random-particle img)
-  (let ((img-w (image-width img))
-        (img-h (image-height img)))
-    (make-particle (make-vect (random-integer (- 640 img-w))
-                              (random-integer (- 480 img-h)))
-                   (make-vect (rand-in-range -100 100)
-                              (rand-in-range -100 100))
-                   (rand-in-range 0 360)
-                   (rand-in-range 100 1000)
-                   1
-                   0)))
-
-(define *anim* #f)
-(define *scml* #f)
-
-(define (sign val)
-  (cond
-   ((= val 0) 0)
-   ((> val 0) -1)
-   ((< val 0) 1)
-   (#t (error "bad input " val))))
-
-(define-structure game-particle particle img-name extra)
+(define (game-particle-height gp)
+  (* (particle-s (game-particle-particle gp)) (game-particle-h gp)))
 
 (define (game-particle-img gp)
   (image-load (game-particle-img-name gp)))
@@ -67,12 +34,10 @@
   (particle-y (game-particle-particle gp)))
 
 (define (game-particle-cx gp)
-  (let ((img (game-particle-img gp)))
-    (/ (image-width img) 2)))
+  (/ (game-particle-w gp) 2))
 
 (define (game-particle-cy gp)
-  (let ((img (game-particle-img gp)))
-    (/ (image-height img) 2)))
+  (/ (game-particle-h gp) 2))
 
 (define (game-particle-t gp)
   (particle-t (game-particle-particle gp)))
@@ -84,12 +49,10 @@
   (particle-s (game-particle-particle gp)))
 
 (define (game-particle-rect-scaled gp s)
-  (let* ((img (game-particle-img gp))
-         (hw (* s (/ (image-width img) 2)))
-         (hh (* s (/ (image-height img) 2)))
-         (p (game-particle-particle gp))
-         (cx (* s (particle-x p)))
-         (cy (* s (particle-y p))))
+  (let* ((hw (* s (/ (game-particle-width gp) 2)))
+         (hh (* s (/ (game-particle-width gp) 2)))
+         (cx (* s (game-particle-x gp)))
+         (cy (* s (game-particle-y gp))))
     (rect-make (- cx hw) (- cy hh) (+ cx hw) (+ cy hh))))
 
 (define (game-particle-rect gp)
@@ -142,7 +105,7 @@
          (dr (vect-add-into! dr dr (random-vector 50 100)))
          (death-time (+ (seconds->cycles (/ (rand-in-range 500 3500) 1000))
                         (clock-time *game-clock*))))
-    (make-game-particle
+    (game-particle-make
      (make-particle
       r dr
       (rand-in-range 0 360) (rand-in-range -20 20)
@@ -159,7 +122,7 @@
          (dr (vect-add-into! dr dr (random-vector 300 600)))
          (death-time (+ (seconds->cycles (/ (rand-in-range 500 6500) 1000))
                         (clock-time *game-clock*))))
-    (make-game-particle
+    (game-particle-make
      (make-particle
       r dr
       180 (rand-in-range -360 360)
@@ -182,7 +145,7 @@
          (shot-period (seconds->cycles (rand-in-range 1 5)))
          (next-shot (+ shot-period (clock-time *game-clock*))))
 
-    (make-game-particle
+    (game-particle-make
      (make-particle (make-vect
                      (+ *screen-width* (/ (image-width img) 2))
                      (+ (/ (image-height img) 2)
@@ -208,13 +171,12 @@
 (define (spawn-player)
   (let* ((img-name "spacer/hero.png")
          (img (image-load img-name)))
-    (make-game-particle
+    (game-particle-make
      (make-particle (make-vect (image-width img)
                                  (/ *screen-height* 2))
                     (make-vect 0 0)
                     0 0 1 0)
-     img-name
-     #f)))
+     img-name)))
 
 (define pi 3.141592654)
 
@@ -232,14 +194,13 @@
          (dx (cos (degrees->radians ang)))
          (dy (sin (degrees->radians ang))))
     
-    (make-game-particle
+    (game-particle-make
      (make-particle (make-vect sx sy)
                     (make-vect (* dx speed)
                                (* dy speed))
                     (rand-in-range 0 360) 500
                     0.25 1)
-     img
-     #f)))
+     img)))
 
 (define (player-fire)
   (set! *player-bullets* (cons (spawn-bullet *player* "spacer/plasma.png"
@@ -350,8 +311,7 @@
   ;; remove bullets that go off the right
   (for-each
    (lambda (bullet)
-     (if (> (game-particle-x bullet) (+ (/ (image-width
-                                            (game-particle-img bullet)) 2)
+     (if (> (game-particle-x bullet) (+ (/ (game-particle-width bullet) 2)
                                         *screen-width*))
          (set! *player-bullets* (delete bullet *player-bullets*))))
    *player-bullets*)
@@ -359,16 +319,14 @@
   ;; remove bullets that go off the left
   (for-each
    (lambda (bullet)
-     (if (< (game-particle-x bullet) (- (/ (image-width
-                                            (game-particle-img bullet)) 2)))
+     (if (< (game-particle-x bullet) (- (/ (game-particle-width bullet) 2)))
          (set! *enemy-bullets* (delete bullet *enemy-bullets*))))
    *enemy-bullets*)
 
   ;; remove enemies that go off the left
   (for-each
    (lambda (enemy)
-     (if (< (game-particle-x enemy) (- (/ (image-width
-                                           (game-particle-img enemy)) 2)))
+     (if (< (game-particle-x enemy) (- (/ (game-particle-width enemy) 2)))
          (set! *enemies* (delete enemy *enemies*))))
    *enemies*)
 

@@ -46,3 +46,28 @@
   (let ((dx (- x1 x2))
         (dy (- y1 y2)))
     (sqrt (+ (* dx dx) (* dy dy)))))
+
+(define-structure particle r dr t dt s ds)
+
+(define (particle-x p)
+  (vect-x (particle-r p)))
+
+(define (particle-y p)
+  (vect-y (particle-r p)))
+
+(define (particle-integrate p dt)
+  (vect-add-into! (particle-r p)
+                  (particle-r p)
+                  (vect-scale (particle-dr p) dt))
+  (particle-t-set! p (+ (particle-t p)
+                        (* (particle-dt p) dt)))
+  (particle-s-set! p (max 0 (+ (particle-s p)
+                              (* (particle-ds p) dt)))))
+
+(define (rand-in-range min max)
+  (+ min (random-integer (- max min))))
+
+(define (random-vector maxx maxy)
+  (make-vect (rand-in-range (- maxx) maxx)
+             (rand-in-range (- maxy) maxy)))
+
