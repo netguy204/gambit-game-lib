@@ -186,18 +186,26 @@ ___arg1->scale = ___arg8;
             "spritelist_enqueue_for_screen"))
 
 ;;; audio
-(c-define-type SinSampler (pointer (struct "SinSampler_")))
-(c-define-type StepSampler (pointer (struct "StepSampler_")))
 (c-define-type Sampler (pointer (struct "Sampler_")))
 (c-define-type FiniteSampler (pointer (struct "FiniteSampler_")))
 
 (define %sinsampler-make
   (c-lambda (float float float)
-            SinSampler
-            "sinsampler_make"))
+            Sampler
+            "___result = (Sampler)sinsampler_make(___arg1, ___arg2, ___arg3);"))
 
 (define (sinsampler-make freq amp phase)
   (%sinsampler-make (exact->inexact freq)
+                    (exact->inexact amp)
+                    (exact->inexact phase)))
+
+(define %sawsampler-make
+  (c-lambda (float float float)
+            Sampler
+            "___result = (Sampler)sawsampler_make(___arg1, ___arg2, ___arg3);"))
+
+(define (sawsampler-make freq amp phase)
+  (%sawsampler-make (exact->inexact freq)
                     (exact->inexact amp)
                     (exact->inexact phase)))
 
@@ -208,21 +216,11 @@ ___arg1->scale = ___arg8;
 
 (define %stepsampler-make
   (c-lambda (Sampler long long)
-            StepSampler
-            "stepsampler_make"))
-
-(define ->sampler
-  (c-lambda (SinSampler)
-            Sampler
-            "___result = (Sampler)___arg1;"))
-
-(define ->finitesampler
-  (c-lambda (StepSampler)
             FiniteSampler
-            "___result = (FiniteSampler)___arg1;"))
+            "___result = (FiniteSampler)stepsampler_make(___arg1, ___arg2, ___arg3);"))
 
 (define (stepsampler-make sampler start-sample duration-in-samples)
-  (%stepsampler-make (->sampler sampler)
+  (%stepsampler-make sampler
                      (inexact->exact start-sample)
                      (inexact->exact duration-in-samples)))
 
@@ -231,13 +229,10 @@ ___arg1->scale = ___arg8;
             long
             "audio_current_sample"))
 
-(define %audio-enqueue
+(define audio-enqueue
   (c-lambda (FiniteSampler)
             void
             "audio_enqueue"))
-
-(define (audio-enqueue finite-sampler)
-  (%audio-enqueue (->finitesampler finite-sampler)))
 
 ;;; game lifecycle
 (define *game-clock* #f)
