@@ -46,12 +46,12 @@ SawSampler sawsampler_make(float freq, float amp, float phase) {
   return sampler;
 }
 
-void finitesampler_release(FiniteSampler sampler) {
+void stepsampler_release(StepSampler sampler) {
   RELEASE_SAMPLER(sampler->nested_sampler);
   free(sampler);
 }
 
-int16_t finitesampler_sample(FiniteSampler sampler, long sample) {
+int16_t stepsampler_sample(StepSampler sampler, long sample) {
   if(sample < sampler->start_sample) return 0;
   sample -= sampler->start_sample;
 
@@ -60,13 +60,23 @@ int16_t finitesampler_sample(FiniteSampler sampler, long sample) {
   return SAMPLE(sampler->nested_sampler, sample);
 }
 
-FiniteSampler finitesampler_make(Sampler nested_sampler,
-                                 long start_sample,
-                                 long duration_samples) {
-  FiniteSampler sampler = malloc(sizeof(struct FiniteSampler_));
+long stepsampler_start(StepSampler sampler) {
+  return sampler->start_sample;
+}
 
-  sampler->sampler.function = (SamplerFunction)finitesampler_sample;
-  sampler->sampler.release = (ReleaseSampler)finitesampler_release;
+long stepsampler_duration(StepSampler sampler) {
+  return sampler->duration_samples;
+}
+
+StepSampler stepsampler_make(Sampler nested_sampler,
+                             long start_sample,
+                             long duration_samples) {
+  StepSampler sampler = malloc(sizeof(struct StepSampler_));
+
+  sampler->sampler.sampler.function = (SamplerFunction)stepsampler_sample;
+  sampler->sampler.sampler.release = (ReleaseSampler)stepsampler_release;
+  sampler->sampler.duration = (SamplerDuration)stepsampler_duration;
+  sampler->sampler.start = (SamplerStart)stepsampler_start;
 
   sampler->nested_sampler = nested_sampler;
   sampler->start_sample = start_sample;
@@ -96,11 +106,23 @@ int16_t finitesequence_sample(FiniteSequence seq, long sample) {
   return result;
 }
 
+long finitesequence_start(FiniteSequence seq) {
+  if(seq->nsamplers == 0) return 0;
+  return START(seq->samplers[0]);
+}
+
+long finitesequence_duration(FiniteSequence seq) {
+  if(seq->nsamplers == 0) return 0;
+  return END(seq->samplers[seq->nsamplers - 1]) - START(seq->samplers[0]);
+}
+
 FiniteSequence finitesequence_make(FiniteSampler* samplers, int nsamplers) {
   FiniteSequence seq = malloc(sizeof(struct FiniteSequence_));
 
-  seq->sampler.function = (SamplerFunction)finitesequence_sample;
-  seq->sampler.release = (ReleaseSampler)finitesequence_release;
+  seq->sampler.sampler.function = (SamplerFunction)finitesequence_sample;
+  seq->sampler.sampler.release = (ReleaseSampler)finitesequence_release;
+  seq->sampler.start = (SamplerStart)finitesequence_start;
+  seq->sampler.duration = (SamplerDuration)finitesequence_duration;
 
   seq->nsamplers = nsamplers;
   seq->samplers = samplers;
@@ -184,7 +206,7 @@ Filter lowpass_make(Sampler nested_sampler, float cutoff, float sample_freq) {
 FiniteSequence make_sequence(float* freqs, int nfreqs, float amp,
                              float duration) {
   int ii = 0;
-  FiniteSampler* samplers = malloc(nfreqs * sizeof(FiniteSampler));
+  FiniteSampler* samplers = malloc(nfreqs * sizeof(StepSampler));
   long next_start_sample = 0;
   long duration_samples = duration * SAMPLE_FREQ;
   float next_phase = 0;
@@ -193,9 +215,9 @@ FiniteSequence make_sequence(float* freqs, int nfreqs, float amp,
     float added_phase = duration * freqs[ii];
     next_phase = fmodf(next_phase + added_phase, 1.0);
 
-    samplers[ii] = finitesampler_make((Sampler)sin_sampler,
-                                      next_start_sample,
-                                      duration_samples);
+    samplers[ii] = (FiniteSampler)stepsampler_make((Sampler)sin_sampler,
+                                                   next_start_sample,
+                                                   duration_samples);
     next_start_sample = next_start_sample + duration_samples;
   }
   return finitesequence_make(samplers, nfreqs);

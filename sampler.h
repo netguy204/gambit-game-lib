@@ -47,19 +47,32 @@ typedef struct SawSampler_ {
 
 SawSampler sawsampler_make(float freq, float amp, float phase);
 
+#define DURATION(f) (((FiniteSampler)f)->duration(f))
+#define START(f) (((FiniteSampler)f)->start(f))
+#define END(f) (START(f) + DURATION(f))
+
+typedef long(*SamplerDuration)(void*);
+typedef long(*SamplerStart)(void*);
+
 typedef struct FiniteSampler_ {
   struct Sampler_ sampler;
+  SamplerDuration duration;
+  SamplerStart start;
+} *FiniteSampler;
+
+typedef struct StepSampler_ {
+  struct FiniteSampler_ sampler;
   Sampler nested_sampler;
   long start_sample;
   long duration_samples;
-} *FiniteSampler;
+} *StepSampler;
 
-FiniteSampler finitesampler_make(Sampler nested_sampler,
-                                 long start_sample,
-                                 long duration_samples);
+StepSampler stepsampler_make(Sampler nested_sampler,
+                             long start_sample,
+                             long duration_samples);
 
 typedef struct FiniteSequence_ {
-  struct Sampler_ sampler;
+  struct FiniteSampler_ sampler;
   int nsamplers;
   FiniteSampler* samplers;
 } *FiniteSequence;
