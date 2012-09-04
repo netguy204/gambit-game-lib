@@ -1,5 +1,6 @@
 C_SRC+= \
 	threadlib.c memory.c listlib.c testlib.c \
+	sampler.c audio.c \
 	gambitmain.c realmain.c stb_image.c
 
 SCM_LIB_SRC=link.scm

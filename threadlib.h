@@ -17,6 +17,7 @@ void queue_free(Queue queue);
 
 void enqueue(Queue queue, DLLNode item);
 DLLNode dequeue(Queue queue);
+DLLNode dequeue_noblock(Queue queue);
 
 typedef struct ThreadBarrier_ {
   pthread_mutex_t mutex;

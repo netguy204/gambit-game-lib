@@ -1,4 +1,4 @@
-C_SRC=testlib_sdl.c
+C_SRC=testlib_sdl.c audio_sdl.c
 BIN=sdlmain
 
 SDL_LIBS:=`sdl-config --libs`
