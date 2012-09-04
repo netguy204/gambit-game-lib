@@ -16,6 +16,8 @@ void queue_free(Queue queue) {
 void enqueue(Queue queue, DLLNode item) {
   pthread_mutex_lock(&queue->mutex);
   if(queue->head == NULL) {
+    item->next = NULL;
+    item->prev = NULL;
     queue->head = item;
     queue->tail = item;
   } else {

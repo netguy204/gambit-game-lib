@@ -328,7 +328,12 @@
          (add-pretty-particles! (spawn-smoke-particle enemy))
          (add-pretty-particles! (spawn-hulk-particle
                                  bullet
-                                 "spacer/ship-right.png")))))
+                                 "spacer/ship-right.png"))
+
+         (audio-enqueue
+          (stepsampler-make
+           (sinsampler-make 100 8000 0)
+           (audio-current-sample) (seconds->samples 0.1))))))
 
   (if (null? *enemy-bullets*)
       '()
@@ -416,7 +421,12 @@
                 (* *player-speed* updown)))
 
     (if (repeating-latch-state *player-fire-repeater*  action1)
-        (player-fire)))
+        (begin
+          (audio-enqueue
+           (stepsampler-make
+            (sinsampler-make 400 8000 0)
+            (audio-current-sample) (seconds->samples 0.1)))
+         (player-fire))))
 
   (integrate-objects dt)
   (spawn-and-terminate dt)

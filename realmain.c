@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include "testlib.h"
-#include "audio.h"
 
 #define min_time 18
 #define max_time 100
@@ -43,7 +42,6 @@ int real_main(int argc, char ** argv) {
   gambit_running = 1;
   int last_time = time_millis();
   lib_init();
-  audio_init();
 
   while(loop_once()) {}
 

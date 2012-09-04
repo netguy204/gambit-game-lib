@@ -54,6 +54,9 @@ void lib_init() {
   // let the renderer finish init
   renderer_enqueue_sync(renderer_init, NULL);
 
+  // kick off the audio system
+  audio_init();
+
   if(gambit_running) scm_init();
 }
 

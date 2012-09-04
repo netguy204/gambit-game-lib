@@ -22,6 +22,7 @@
 #include "threadlib.h"
 #include "memory.h"
 #include "listlib.h"
+#include "audio.h"
 
 /* allocators */
 extern ThreadBarrier render_barrier;

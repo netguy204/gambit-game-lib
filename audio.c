@@ -22,6 +22,13 @@ PlayList playlist_make() {
 void playlist_insert_sampler(PlayList list, PlayListSample sample) {
   PlayListSample last_node = NULL;
   PlayListSample current_node = list->head;
+
+  if(current_node == NULL) {
+    list->head = sample;
+    sample->node.next = NULL;
+    return;
+  }
+
   while(current_node != NULL) {
     if(START(sample->sampler) < START(current_node->sampler)) {
       // insert before this node
@@ -33,12 +40,16 @@ void playlist_insert_sampler(PlayList list, PlayListSample sample) {
         sample->node.next = (DLLNode)current_node;
         last_node->node.next = (DLLNode)sample;
       }
-      break; // done
+      return; // done
     }
 
     last_node = current_node;
     current_node = (PlayListSample)current_node->node.next;
   }
+
+  // must be after the end
+  sample->node.next = NULL;
+  last_node->node.next = (DLLNode)sample;
 }
 
 void playlist_fill_buffer(PlayList list, int16_t* buffer, int nsamples) {
