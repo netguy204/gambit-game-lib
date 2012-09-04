@@ -21,6 +21,8 @@
 
 #include "threadlib.h"
 #include "memory.h"
+#include "listlib.h"
+#include "audio.h"
 
 /* allocators */
 extern ThreadBarrier render_barrier;
@@ -82,14 +84,6 @@ long clock_time(Clock clock); /* time in cycles */
 
 float clock_cycles_to_seconds(long cycles);
 long clock_seconds_to_cycles(float seconds);
-
-typedef struct LLNode_* LLNode;
-
-#define LL_FOREACH(type, var, head) for(type var = head; var != NULL; var = (type)(((LLNode)var)->next))
-
-struct LLNode_ {
-  LLNode next;
-};
 
 typedef struct ImageResource_ {
   struct LLNode_ node;

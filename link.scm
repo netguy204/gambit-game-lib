@@ -185,6 +185,55 @@ ___arg1->scale = ___arg8;
             void
             "spritelist_enqueue_for_screen"))
 
+;;; audio
+(c-define-type Sampler (pointer (struct "Sampler_")))
+(c-define-type FiniteSampler (pointer (struct "FiniteSampler_")))
+
+(define %sinsampler-make
+  (c-lambda (float float float)
+            Sampler
+            "___result = (Sampler)sinsampler_make(___arg1, ___arg2, ___arg3);"))
+
+(define (sinsampler-make freq amp phase)
+  (%sinsampler-make (exact->inexact freq)
+                    (exact->inexact amp)
+                    (exact->inexact phase)))
+
+(define %sawsampler-make
+  (c-lambda (float float float)
+            Sampler
+            "___result = (Sampler)sawsampler_make(___arg1, ___arg2, ___arg3);"))
+
+(define (sawsampler-make freq amp phase)
+  (%sawsampler-make (exact->inexact freq)
+                    (exact->inexact amp)
+                    (exact->inexact phase)))
+
+(define *sample-freq* ((c-lambda () long "___result = SAMPLE_FREQ;")))
+
+(define (seconds->samples seconds)
+  (* *sample-freq* seconds))
+
+(define %stepsampler-make
+  (c-lambda (Sampler long long)
+            FiniteSampler
+            "___result = (FiniteSampler)stepsampler_make(___arg1, ___arg2, ___arg3);"))
+
+(define (stepsampler-make sampler start-sample duration-in-samples)
+  (%stepsampler-make sampler
+                     (inexact->exact start-sample)
+                     (inexact->exact duration-in-samples)))
+
+(define audio-current-sample
+  (c-lambda ()
+            long
+            "audio_current_sample"))
+
+(define audio-enqueue
+  (c-lambda (FiniteSampler)
+            void
+            "audio_enqueue"))
+
 ;;; game lifecycle
 (define *game-clock* #f)
 
@@ -221,7 +270,7 @@ ___arg1->scale = ___arg8;
           (thread-start!
            (make-thread
             (lambda ()
-              (##repl-debug-,bmain)))))
+              (##repl-debug-main)))))
 
 ;;; resource lifecycle
 (define *resources* (make-table))

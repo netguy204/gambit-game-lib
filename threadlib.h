@@ -3,25 +3,7 @@
 
 #include <stdlib.h>
 #include <pthread.h>
-typedef struct DLLNode_ *DLLNode;
-
-struct DLLNode_ {
-  DLLNode next;
-  DLLNode prev;
-};
-
-void llnode_insert_after(DLLNode target, DLLNode addition);
-void llnode_insert_before(DLLNode target, DLLNode addition);
-void llnode_remove(DLLNode node);
-
-#define INSERT_AFTER(target, addition) \
-  llnode_insert_after((DLLNode)target, (DLLNode)addition)
-
-#define INSERT_BEFORE(target, addition) \
-  llnode_insert_before((DLLNode)target, (DLLNode)addition)
-
-#define REMOVE(node) \
-  llnode_remove((DLLNode)node)
+#include "listlib.h"
 
 typedef struct Queue_ {
   DLLNode head;
@@ -35,6 +17,7 @@ void queue_free(Queue queue);
 
 void enqueue(Queue queue, DLLNode item);
 DLLNode dequeue(Queue queue);
+DLLNode dequeue_noblock(Queue queue);
 
 typedef struct ThreadBarrier_ {
   pthread_mutex_t mutex;

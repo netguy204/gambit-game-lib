@@ -1,38 +1,5 @@
 #include "threadlib.h"
 
-void llnode_insert_after(DLLNode target, DLLNode addition) {
-  DLLNode after = target->next;
-  target->next = addition;
-  addition->prev = target;
-  addition->next = after;
-  if(after) {
-    after->prev = addition;
-  }
-}
-
-void llnode_insert_before(DLLNode target, DLLNode addition) {
-  DLLNode before = target->prev;
-  target->prev = addition;
-  addition->next = target;
-  addition->prev = before;
-  if(before) {
-    before->next = addition;
-  }
-}
-
-void llnode_remove(DLLNode node) {
-  DLLNode after = node->next;
-  DLLNode before = node->prev;
-
-  if(after) {
-    after->prev = before;
-  }
-
-  if(before) {
-    before->next = after;
-  }
-}
-
 Queue queue_make() {
   Queue queue = (Queue)malloc(sizeof(struct Queue_));
   queue->head = NULL;
@@ -49,6 +16,8 @@ void queue_free(Queue queue) {
 void enqueue(Queue queue, DLLNode item) {
   pthread_mutex_lock(&queue->mutex);
   if(queue->head == NULL) {
+    item->next = NULL;
+    item->prev = NULL;
     queue->head = item;
     queue->tail = item;
   } else {
@@ -59,19 +28,25 @@ void enqueue(Queue queue, DLLNode item) {
   pthread_cond_signal(&queue->cond);
 }
 
+/* assumes the lock has already been taken */
+DLLNode dequeue_internal(Queue queue) {
+  DLLNode result = queue->tail;
+  DLLNode before = result->prev;
+  if(before) {
+    before->next = NULL;
+    queue->tail = before;
+  } else {
+    queue->head = NULL;
+    queue->tail = NULL;
+  }
+  return result;
+}
+
 DLLNode dequeue(Queue queue) {
   pthread_mutex_lock(&queue->mutex);
   while(1) {
     if(queue->tail) {
-      DLLNode result = queue->tail;
-      DLLNode before = result->prev;
-      if(before) {
-        before->next = NULL;
-        queue->tail = before;
-      } else {
-        queue->head = NULL;
-        queue->tail = NULL;
-      }
+      DLLNode result = dequeue_internal(queue);
       pthread_mutex_unlock(&queue->mutex);
       return result;
     } else {
@@ -79,6 +54,16 @@ DLLNode dequeue(Queue queue) {
       pthread_cond_wait(&queue->cond, &queue->mutex);
     }
   }
+}
+
+DLLNode dequeue_noblock(Queue queue) {
+  pthread_mutex_lock(&queue->mutex);
+  DLLNode result = NULL;
+  if(queue->tail) {
+    result = dequeue_internal(queue);
+  }
+  pthread_mutex_unlock(&queue->mutex);
+ return result;
 }
 
 ThreadBarrier threadbarrier_make(int nthreads) {
