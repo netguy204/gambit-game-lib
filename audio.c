@@ -59,8 +59,11 @@ void playlist_insert_sampler(PlayList list, PlayListSample sample) {
 void playlist_fill_buffer(PlayList list, int16_t* buffer, int nsamples) {
   int ii;
 
+  long next_sample = list->next_sample;
+  list->next_sample += nsamples;
+
   for(ii = 0; ii < nsamples; ++ii) {
-    long sample = list->next_sample + ii;
+    long sample = next_sample + ii;
 
     buffer[ii] = 0;
     LL_FOREACH(PlayListSample, node, list->head) {
@@ -70,8 +73,6 @@ void playlist_fill_buffer(PlayList list, int16_t* buffer, int nsamples) {
 
     buffer[ii] = filter_value(global_filter, buffer[ii]);
   }
-
-  list->next_sample += nsamples;
 
   /* remove any nodes that are no longer playable */
   while(list->head != NULL &&
