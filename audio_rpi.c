@@ -48,6 +48,12 @@ void* audio_exec(void* udata) {
     OMX_ERRORTYPE error;
     error = OMX_EmptyThisBuffer(ILC_GET_HANDLE(audio_render), hdr);
     assert(error == OMX_ErrorNone);
+
+    // drive down the latency to a buffer's length or less
+    uint32_t latency;
+    while(audio_get_latency() > NUM_SAMPLES) {
+      usleep(buffer_time_us / 2);
+    }
   }
 }
 
