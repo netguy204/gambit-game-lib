@@ -383,7 +383,7 @@
 
     (if (repeating-latch-state *player-fire-repeater*  action1)
         (begin
-          (audio-enqueue (tone-make 400 *base-volume* 0.1))
+          (audio-enqueue (tone-make 300 (* 2 *base-volume*) 0.1))
 	  (player-fire))))
 
   (integrate-objects dt)

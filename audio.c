@@ -24,26 +24,26 @@ PlayList playlist_make() {
 }
 
 void playlist_insert_sampler(PlayList list, PlayListSample sample) {
-  PlayListSample last_node = NULL;
-  PlayListSample current_node = list->head;
-
-  if(current_node == NULL) {
+  if(list->head == NULL) {
     list->head = sample;
     sample->node.next = NULL;
     return;
   }
 
+  if(START(sample->sampler) < START(list->head->sampler)) {
+    sample->node.next = (DLLNode)list->head;
+    list->head = sample;
+    return;
+  }
+
+  PlayListSample last_node = list->head;
+  PlayListSample current_node = (PlayListSample)list->head->node.next;
+
   while(current_node != NULL) {
     if(START(sample->sampler) < START(current_node->sampler)) {
       // insert before this node
-      if(last_node == NULL) {
-        // new head
-        sample->node.next = (DLLNode)current_node;
-        list->head = sample;
-      } else {
-        sample->node.next = (DLLNode)current_node;
-        last_node->node.next = (DLLNode)sample;
-      }
+      sample->node.next = (DLLNode)current_node;
+      last_node->node.next = (DLLNode)sample;
       return; // done
     }
 
@@ -61,18 +61,19 @@ void playlist_fill_buffer(PlayList list, int16_t* buffer, int nsamples) {
   long next_sample = list->next_sample;
   list->next_sample += nsamples;
 
-  for(ii = 0; ii < nsamples; ++ii) {
+  for(ii = 0; ii < nsamples; ii+=2) {
     long sample = next_sample + ii;
     PlayListSample node;
 
     buffer[ii] = 0;
     for(node = list->head; node != NULL;
 	node = (PlayListSample)node->node.next) {
-      if(END(node->sampler) < sample) break;
+      if(START(node->sampler) > sample) break;
       buffer[ii] += SAMPLE(node->sampler, sample);
     }
 
     buffer[ii] = filter_value(global_filter, buffer[ii]);
+    buffer[ii+1] = buffer[ii];
   }
 
   /* remove any nodes that are no longer playable */

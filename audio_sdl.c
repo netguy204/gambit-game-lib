@@ -12,7 +12,7 @@ void native_audio_init() {
   // Set the audio format 
   wanted.freq = SAMPLE_FREQ;
   wanted.format = AUDIO_S16SYS;
-  wanted.channels = 1;    // 1 = mono, 2 = stereo 
+  wanted.channels = 2;    // 1 = mono, 2 = stereo 
   wanted.samples = 1024;  // Good low-latency value for callback 
   //wanted.size = 4096;
   wanted.padding = 0;
