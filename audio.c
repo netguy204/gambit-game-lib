@@ -1,19 +1,21 @@
 #include "threadlib.h"
 #include "audio.h"
+#include "memory.h"
 
 PlayList playlist;
 Queue audio_queue;
 Filter global_filter;
+FixedAllocator pls_allocator;
 
 PlayListSample playlistsample_make(FiniteSampler sampler) {
-  PlayListSample pl = malloc(sizeof(struct PlayListSample_));
+  PlayListSample pl = (PlayListSample)fixed_allocator_alloc(pls_allocator);
   pl->sampler = sampler;
   return pl;
 }
 
 void playlistsample_free(PlayListSample pls) {
   RELEASE_SAMPLER(pls->sampler);
-  free(pls);
+  fixed_allocator_free(pls_allocator, pls);
 }
 
 PlayList playlist_make() {
@@ -86,6 +88,11 @@ void playlist_fill_buffer(PlayList list, int16_t* buffer, int nsamples) {
 }
 
 void audio_init() {
+  sampler_init();
+  pls_allocator = fixed_allocator_make(sizeof(struct PlayListSample_),
+                                       NUM_SAMPLERS,
+                                       "pls_allocator");
+
   playlist = playlist_make();
   audio_queue = queue_make();
   global_filter = lowpass_make(NULL, 0, 0);

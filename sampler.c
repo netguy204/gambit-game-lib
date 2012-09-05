@@ -1,21 +1,62 @@
 #include "sampler.h"
+#include "memory.h"
 
 #include <math.h>
 #include <stdlib.h>
 #include <memory.h>
 
+#define MAX(x,y) ((x)>(y) ? (x) : (y))
+
+FixedAllocator sampler_allocator;
+
+#ifdef SIN_TABLE
+#define TABLE_SIZE 1024
+float *sin_table;
+#define SIN(x) sin_table[((int)((x * TABLE_SIZE) / (2*M_PI))) % TABLE_SIZE]
+#else
+#define SIN(x) sinf(x)
+#endif
+
+void sampler_init() {
+#ifdef SIN_TABLE
+  int ii;
+  sin_table = malloc(sizeof(float) * TABLE_SIZE);
+
+  for(ii = 0; ii < TABLE_SIZE; ++ii) {
+    float factor = (float)ii/TABLE_SIZE;
+    sin_table[ii] = sin(2 * M_PI * factor);
+  }
+#endif
+
+  size_t max_sampler_size
+    = MAX(sizeof(struct SinSampler_),
+          MAX(sizeof(struct SawSampler_),
+              MAX(sizeof(struct FiniteSampler_),
+                  MAX(sizeof(struct StepSampler_),
+                      MAX(sizeof(struct FiniteSequence_),
+                          sizeof(struct Filter_))))));
+
+  sampler_allocator = fixed_allocator_make(max_sampler_size,
+                                           NUM_SAMPLERS,
+                                           "sampler_allocator");
+}
+
+void sampler_free(void* obj) {
+  fixed_allocator_free(sampler_allocator, obj);
+}
+
 int16_t sin_sample(SinSampler sampler, long sample) {
   return sampler->amp *
-    sinf(sampler->phase + sampler->radians_per_sample * sample);
+    SIN(sampler->phase + sampler->radians_per_sample * sample);
 }
 
 /** all phases are normalized phase values ranging from [0, 1)
  */
 
 SinSampler sinsampler_make(float freq, float amp, float phase) {
-  SinSampler sampler = malloc(sizeof(struct SinSampler_));
+  SinSampler sampler = (SinSampler)fixed_allocator_alloc(sampler_allocator);
   sampler->sampler.function = (SamplerFunction)sin_sample;
-  sampler->sampler.release = free;
+  sampler->sampler.release = sampler_free;
 
   float cycles_per_sample = freq / SAMPLE_FREQ;
   sampler->radians_per_sample = cycles_per_sample * 2 * M_PI;
@@ -31,9 +72,9 @@ int16_t saw_sample(SawSampler sampler, long sample) {
 }
 
 SawSampler sawsampler_make(float freq, float amp, float phase) {
-  SawSampler sampler = malloc(sizeof(struct SawSampler_));
+  SawSampler sampler = (SawSampler)fixed_allocator_alloc(sampler_allocator);
   sampler->sampler.function = (SamplerFunction)saw_sample;
-  sampler->sampler.release = free;
+  sampler->sampler.release = sampler_free;
 
   long samples_per_period = SAMPLE_FREQ / freq;
   float slope = 2 * amp / samples_per_period;
@@ -48,7 +89,7 @@ SawSampler sawsampler_make(float freq, float amp, float phase) {
 
 void stepsampler_release(StepSampler sampler) {
   RELEASE_SAMPLER(sampler->nested_sampler);
-  free(sampler);
+  sampler_free(sampler);
 }
 
 int16_t stepsampler_sample(StepSampler sampler, long sample) {
@@ -71,7 +112,7 @@ long stepsampler_duration(StepSampler sampler) {
 StepSampler stepsampler_make(Sampler nested_sampler,
                              long start_sample,
                              long duration_samples) {
-  StepSampler sampler = malloc(sizeof(struct StepSampler_));
+  StepSampler sampler = (StepSampler)fixed_allocator_alloc(sampler_allocator);
 
   sampler->sampler.sampler.function = (SamplerFunction)stepsampler_sample;
   sampler->sampler.sampler.release = (ReleaseSampler)stepsampler_release;
@@ -92,7 +133,7 @@ void finitesequence_release(FiniteSequence seq) {
   }
 
   free(seq->samplers);
-  free(seq);
+  sampler_free(seq);
 }
 
 int16_t finitesequence_sample(FiniteSequence seq, long sample) {
@@ -117,7 +158,7 @@ long finitesequence_duration(FiniteSequence seq) {
 }
 
 FiniteSequence finitesequence_make(FiniteSampler* samplers, int nsamplers) {
-  FiniteSequence seq = malloc(sizeof(struct FiniteSequence_));
+  FiniteSequence seq = (FiniteSequence)fixed_allocator_alloc(sampler_allocator);
 
   seq->sampler.sampler.function = (SamplerFunction)finitesequence_sample;
   seq->sampler.sampler.release = (ReleaseSampler)finitesequence_release;
@@ -161,6 +202,7 @@ void filter_release(Filter filter) {
   free(filter->ys);
 
   if(filter->nested_sampler) RELEASE_SAMPLER(filter->nested_sampler);
+  sampler_free(filter);
 }
 
 int16_t filter_sample(Filter filter, long sample) {
@@ -170,7 +212,7 @@ int16_t filter_sample(Filter filter, long sample) {
 
 Filter filter_make(Sampler nested_sampler,
                    float* as, int na, float* bs, int nb) {
-  Filter filter = malloc(sizeof(struct Filter_));
+  Filter filter = (Filter)fixed_allocator_alloc(sampler_allocator);
   filter->sampler.function = (SamplerFunction)filter_sample;
   filter->sampler.release = (ReleaseSampler)filter_release;
 

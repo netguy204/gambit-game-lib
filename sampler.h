@@ -15,6 +15,7 @@
 
 #define SAMPLE_FREQ 22050
 
+#define NUM_SAMPLERS 128
 #define SAMPLE(f, x) (((Sampler)(f))->function(f, x))
 #define RELEASE_SAMPLER(f) (((Sampler)(f))->release(f))
 
@@ -22,6 +23,8 @@
 
 typedef int16_t (*SamplerFunction)(void*, long);
 typedef void (*ReleaseSampler)(void*);
+
+void sampler_init();
 
 typedef struct Sampler_ {
   SamplerFunction function;
