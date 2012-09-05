@@ -79,11 +79,11 @@
   (particle-integrate (game-particle-particle gp) dt)
   gp)
 
+(define *base-volume* 8000)
 (define *player* '())
 (define *player-bullets* '())
 (define *enemy-bullets* '())
 (define *enemies* '())
-(define *enemy-bullets* '())
 (define *particles* '())
 
 (define *enemy-speed* 50)
@@ -162,7 +162,8 @@
                    (cons (spawn-bullet gp "spacer/enemy-bullet.png"
                                        *enemy-bullet-speed*)
                          *enemy-bullets*))
-             (set! next-shot (+ (clock-time *game-clock*) shot-period))))
+             (set! next-shot (+ (clock-time *game-clock*) shot-period))
+	     (audio-enqueue (tone-make 600 *base-volume* 0.1))))
        (game-particle-integrate gp dt)))))
 
 (define (spawn-enemies n)
@@ -275,6 +276,11 @@
           (spatial-make (* *screen-width* *spatial-scale-factor*))
           gs))
 
+(define (tone-make freq amp duration)
+  (stepsampler-make
+   (sinsampler-make freq amp 0)
+   (audio-current-sample) (seconds->samples duration)))
+
 (define (handle-collisions)
   (if (or (null? *player-bullets*)
           (null? *enemies*))
@@ -291,10 +297,7 @@
                                  bullet
                                  "spacer/ship-right.png"))
 
-         (audio-enqueue
-          (stepsampler-make
-           (sinsampler-make 100 8000 0)
-           (audio-current-sample) (seconds->samples 0.1))))))
+         (audio-enqueue (tone-make 100 *base-volume* 0.1)))))
 
   (if (null? *enemy-bullets*)
       '()
@@ -380,11 +383,8 @@
 
     (if (repeating-latch-state *player-fire-repeater*  action1)
         (begin
-          (audio-enqueue
-           (stepsampler-make
-            (sinsampler-make 400 8000 0)
-            (audio-current-sample) (seconds->samples 0.1)))
-         (player-fire))))
+          (audio-enqueue (tone-make 400 *base-volume* 0.1))
+	  (player-fire))))
 
   (integrate-objects dt)
   (spawn-and-terminate dt)

@@ -1,21 +1,51 @@
+#include <stdio.h>
 #include <assert.h>
 #include "audio.h"
 #include "bcm_host.h"
 #include "ilclient.h"
+#include "threadlib.h"
 
 #define NUM_SAMPLES 1024
+
 ILCLIENT_T *client;
 COMPONENT_T *audio_render;
+pthread_t audio_thread;
 
-void input_buffer_callback(void *data, COMPONENT_T *comp) {
-  OMX_BUFFERHEADERTYPE *hdr = NULL;
-  hdr = ilclient_get_input_buffer(audio_render, 100, 0);
+int scaled_buffer_size(int samples) {
+  return (samples * 16 * 2) >> 3;
+}
 
-  if(hdr) {
-    OMX_ERRORTYPE error;
-    audio_fill_buffer((int16_t*)hdr->pBuffer, NUM_SAMPLES);
+uint32_t audio_get_latency() {
+   OMX_PARAM_U32TYPE param;
+   OMX_ERRORTYPE error;
+
+   memset(&param, 0, sizeof(OMX_PARAM_U32TYPE));
+   param.nSize = sizeof(OMX_PARAM_U32TYPE);
+   param.nVersion.nVersion = OMX_VERSION;
+   param.nPortIndex = 100;
+
+   error = OMX_GetConfig(ILC_GET_HANDLE(audio_render), OMX_IndexConfigAudioRenderingLatency, &param);
+   assert(error == OMX_ErrorNone);
+
+   return param.nU32;
+}
+
+void* audio_exec(void* udata) {
+  float buffer_time_us = (float)(1e6 * NUM_SAMPLES) / SAMPLE_FREQ;
+  while(1) {
+    /* get a buffer */
+    OMX_BUFFERHEADERTYPE *hdr;
+    while((hdr = ilclient_get_input_buffer(audio_render, 100, 0)) == NULL) {
+      usleep(buffer_time_us / 4); // wait 1/4 of the time to drain a buffer
+    }
+
+    // fill the buffer
+    audio_fill_buffer((int16_t*)hdr->pBuffer, NUM_SAMPLES * 2);
     hdr->nOffset = 0;
-    hdr->nFilledLen = NUM_SAMPLES;
+    hdr->nFilledLen = scaled_buffer_size(NUM_SAMPLES);
+
+    // submit the buffer
+    OMX_ERRORTYPE error;
     error = OMX_EmptyThisBuffer(ILC_GET_HANDLE(audio_render), hdr);
     assert(error == OMX_ErrorNone);
   }
@@ -30,8 +60,6 @@ void native_audio_init() {
   // create and start up everything
   client = ilclient_init();
   assert(client != NULL);
-  
-  ilclient_set_empty_buffer_done_callback(client, input_buffer_callback, NULL);
   
   error = OMX_Init();
   assert(error == OMX_ErrorNone);
@@ -48,8 +76,10 @@ void native_audio_init() {
   error = OMX_GetParameter(ILC_GET_HANDLE(audio_render),
 			   OMX_IndexParamPortDefinition, &param);
   assert(error == OMX_ErrorNone);
-  
-  param.nBufferSize = NUM_SAMPLES;
+
+  int size = scaled_buffer_size(NUM_SAMPLES);
+  size = (size + 15) & ~15;
+  param.nBufferSize = size;
   param.nBufferCountActual = 2;
   
   error = OMX_SetParameter(ILC_GET_HANDLE(audio_render),
@@ -61,14 +91,15 @@ void native_audio_init() {
   pcm.nSize = sizeof(OMX_AUDIO_PARAM_PCMMODETYPE);
   pcm.nVersion.nVersion = OMX_VERSION;
   pcm.nPortIndex = 100;
-  pcm.nChannels = 1;
+  pcm.nChannels = 2;
   pcm.eNumData = OMX_NumericalDataSigned;
   pcm.eEndian = OMX_EndianLittle;
   pcm.nSamplingRate = SAMPLE_FREQ;
   pcm.bInterleaved = OMX_TRUE;
   pcm.nBitPerSample = 16;
   pcm.ePCMMode = OMX_AUDIO_PCMModeLinear;
-  pcm.eChannelMapping[0] = OMX_AUDIO_ChannelCF;
+  pcm.eChannelMapping[0] = OMX_AUDIO_ChannelLF;
+  pcm.eChannelMapping[1] = OMX_AUDIO_ChannelRF;
   
   error = OMX_SetParameter(ILC_GET_HANDLE(audio_render), OMX_IndexParamAudioPcm, &pcm);
   assert(error == OMX_ErrorNone);
@@ -105,5 +136,5 @@ void native_audio_init() {
   assert(error == OMX_ErrorNone);
 
   // get the buffer flow going
-  input_buffer_callback(NULL, NULL);
+  pthread_create(&audio_thread, NULL, audio_exec, NULL);
 }
