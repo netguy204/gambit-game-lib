@@ -5,7 +5,7 @@
 #include "audio.h"
 #include "memory.h"
 
-#define NUM_SAMPLES 1024
+#define NUM_SAMPLES 2048
 
 char * audio_pre_buffer;
 CircularBuffer audio_buffer;

@@ -13,8 +13,8 @@
 #define A_(n) N_(n, 440.0)
 #define B_(n) N_(n, 493.9)
 
-#define SAMPLE_FREQ 22050
-
+#define SAMPLE_FREQ 44100
+//22050
 #define NUM_SAMPLERS 128
 #define SAMPLE(f, x) (((Sampler)(f))->function(f, x))
 #define RELEASE_SAMPLER(f) (((Sampler)(f))->release(f))

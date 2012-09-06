@@ -390,3 +390,57 @@
   (spawn-and-terminate dt)
   (handle-collisions)
   (render input))
+
+;;; tools for playing with audio
+
+(define (disable-game)
+  (set! update-view (lambda (dt input) '())))
+
+(define (enqueue-all samplers)
+  (for-each audio-enqueue samplers))
+
+(define (mix samplers duration)
+  (let ((start-sample (audio-current-sample)))
+    (map
+     (lambda (sampler)
+       (stepsampler-make sampler start-sample
+                         (seconds->samples duration)))
+     samplers)))
+
+(define (sequence-fixed-time samplers duration)
+  (let ((start-sample (audio-current-sample)))
+    (map (lambda (sampler)
+           (let ((sampler (stepsampler-make sampler start-sample
+                                            (seconds->samples duration))))
+             (set! start-sample (+ start-sample (seconds->samples duration)))
+             sampler))
+         samplers)))
+
+(define (samplers constructor amp freqs)
+  (map (lambda (f) (constructor f amp 0)) freqs))
+
+(define (sin-samplers amp freqs)
+  (samplers sinsampler-make amp freqs))
+
+(define (saw-samplers amp freqs)
+  (samplers sawsampler-make amp freqs))
+
+(define +c+ 261.6)
+(define +d+ 293.7)
+(define +e+ 329.6)
+(define +f+ 349.2)
+(define +g+ 392.0)
+(define +a+ 440.0)
+(define +b+ 493.9)
+
+;;; examples
+#|
+(enqueue-all (mix-fixed-time (saw-samplers 10000 '(20 15)) 2))
+(enqueue-all (sequence-fixed-time (saw-samplers 10000 '(20 15)) 1))
+(enqueue-all (sequence-fixed-time
+              (sin-samplers 10000
+                            (list +c+ +d+ +e+
+                                  +c+ +d+ +e+
+                                  +c+ +d+ +e+ +d+ +c+ +d+ +c+))
+              .2))
+|#
