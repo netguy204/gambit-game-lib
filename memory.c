@@ -7,7 +7,6 @@
 #define SAFETY(x) x
 #define OFFSET(idx, obj_size, ptr) ((void*)(((char*)ptr) + (idx * obj_size)))
 #define NEXT_ALIGNED_SIZE(x) ((x + 8 - 1) & ~(8 - 1))
-#define MIN(x, y) ((x) < (y) ? (x) : (y))
 
 void* fail_exit(const char * message, ...) {
   fprintf(stderr, "FAIL_EXIT: ");

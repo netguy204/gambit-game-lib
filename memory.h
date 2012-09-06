@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <pthread.h>
 
+#define MIN(x, y) ((x) < (y) ? (x) : (y))
+
 #define DEBUG_MEMORY
 
 typedef struct FixedAllocator_ {

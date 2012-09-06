@@ -241,8 +241,8 @@ Filter lowpass_make(Sampler nested_sampler, float cutoff, float sample_freq) {
   float as[] = {a, a};
   float bs[] = {omega_c};
   */
-  float as[] = {0.20};
-  float bs[] = {0.20, 0.20, 0.20, 0.20};
+  float as[] = {0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1};
+  float bs[] = {0.0};
   return filter_make(nested_sampler, as, array_size(as), bs, array_size(bs));
 }
 
