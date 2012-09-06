@@ -37,5 +37,31 @@ StackAllocator stack_allocator_make(size_t stack_size,
 void* stack_allocator_alloc(StackAllocator allocator, size_t size);
 void stack_allocator_freeall(StackAllocator allocator);
 
+typedef struct CircularBuffer_ {
+  int read_index;
+  int write_index;
+  int size;
+  int filled;
+  char* data;
+} *CircularBuffer;
+
+CircularBuffer circularbuffer_make(size_t bytes);
+void circularbuffer_free(CircularBuffer buffer);
+int circularbuffer_bytes_writable(CircularBuffer buffer);
+int circularbuffer_bytes_readable(CircularBuffer buffer);
+
+void circularbuffer_read_buffers(CircularBuffer buffer,
+                                 char ** buffer1, int * size1,
+                                 char ** buffer2, int * size2,
+                                 int bytes_to_read);
+
+void circularbuffer_write_buffers(CircularBuffer buffer,
+                                  char ** buffer1, int * size1,
+                                  char ** buffer2, int * size2,
+                                  int bytes_to_write);
+
+int circularbuffer_insert(CircularBuffer buffer, char * bytes, int length);
+
+int circularbuffer_read(CircularBuffer buffer, char * target, int length);
 
 #endif

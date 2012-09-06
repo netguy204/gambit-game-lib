@@ -47,8 +47,8 @@ clean:
 	rm -rf *.o* $(SCM_LIB_C) $(BIN)
 	$(MAKE_XML2) clean
 
-test_bin: testlib.o testlib_test.o
-	$(CC) $(CFLAGS) -o $@ testlib.o testlib_test.o $(LDFLAGS)
+test_bin: memory.o testlib_test.o
+	$(CC) $(CFLAGS) -o $@ memory.o testlib_test.o $(LDFLAGS)
 
 test: test_bin
 	./test_bin

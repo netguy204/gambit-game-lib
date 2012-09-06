@@ -2,10 +2,12 @@
 
 #include <stdarg.h>
 #include <stdio.h>
+#include <memory.h>
 
 #define SAFETY(x) x
 #define OFFSET(idx, obj_size, ptr) ((void*)(((char*)ptr) + (idx * obj_size)))
 #define NEXT_ALIGNED_SIZE(x) ((x + 8 - 1) & ~(8 - 1))
+#define MIN(x, y) ((x) < (y) ? (x) : (y))
 
 void* fail_exit(const char * message, ...) {
   fprintf(stderr, "FAIL_EXIT: ");
@@ -117,3 +119,157 @@ void stack_allocator_freeall(StackAllocator allocator) {
   allocator->stack_top = allocator->stack_bottom;
 }
 
+CircularBuffer circularbuffer_make(size_t bytes) {
+  CircularBuffer buffer = malloc(sizeof(struct CircularBuffer_));
+  buffer->read_index = 0;
+  buffer->write_index = 0;
+  buffer->size = bytes;
+  buffer->filled = 0;
+  buffer->data = malloc(bytes);
+  return buffer;
+}
+
+void circularbuffer_free(CircularBuffer buffer) {
+  free(buffer->data);
+  free(buffer);
+}
+
+int circularbuffer_distance(CircularBuffer buffer, int i1, int i2) {
+  if(i2 > i1) {
+    return i2 - i1;
+  } else {
+    return i2 + buffer->size - i1;
+  }
+}
+
+int circularbuffer_bytes_writable(CircularBuffer buffer) {
+  if(!buffer->filled && (buffer->write_index == buffer->read_index)) {
+    return buffer->size;
+  } else if(buffer->filled) {
+    return 0;
+  } else {
+    return circularbuffer_distance(buffer, buffer->write_index,
+                                   buffer->read_index);
+  }
+}
+
+int circularbuffer_bytes_readable(CircularBuffer buffer) {
+  if(buffer->filled) {
+    return buffer->size;
+  } else if(buffer->read_index == buffer->write_index) {
+    return 0;
+  } else {
+    return circularbuffer_distance(buffer, buffer->read_index,
+                                   buffer->write_index);
+  }
+}
+
+int circularbuffer_add(CircularBuffer buffer, int a, int b) {
+  return (a + b) % buffer->size;
+}
+
+void circularbuffer_read_buffers(CircularBuffer buffer,
+                                 char ** buffer1, int * size1,
+                                 char ** buffer2, int * size2,
+                                 int bytes_to_read) {
+  // easy case, 1 buffer
+  if(buffer->read_index < buffer->write_index) {
+    *buffer1 = &buffer->data[buffer->read_index];
+    *size1 = buffer->write_index - buffer->read_index;
+    *buffer2 = NULL;
+    *size2 = 0;
+  } else if(!buffer->filled && buffer->read_index == buffer->write_index) {
+    *buffer1 = NULL;
+    *size1 = 0;
+    *buffer2 = NULL;
+    *size2 = 0;
+  } else {
+    // 2 buffers
+    *buffer1 = &buffer->data[buffer->read_index];
+    *size1 = buffer->size - buffer->read_index;
+    *buffer2 = buffer->data;
+    *size2 = buffer->write_index;
+  }
+
+  bytes_to_read = MIN(bytes_to_read, *size1 + *size2);
+  buffer->read_index = circularbuffer_add(buffer, buffer->read_index,
+                                          bytes_to_read);
+
+  if(bytes_to_read > 0) buffer->filled = 0;
+}
+
+void circularbuffer_write_buffers(CircularBuffer buffer,
+                                  char ** buffer1, int * size1,
+                                  char ** buffer2, int * size2,
+                                  int bytes_to_write) {
+  // 1 buffer
+  if(buffer->write_index < buffer->read_index) {
+    *buffer1 = &buffer->data[buffer->write_index];
+    *size1 = buffer->read_index - buffer->write_index;
+    *buffer2 = NULL;
+    *size2 = 0;
+  } else if (buffer->filled) {
+    *buffer1 = NULL;
+    *size1 = 0;
+    *buffer2 = NULL;
+    *size2 = 0;
+  } else {
+    // the corner case and the 2 buffer case are the same for writing
+    *buffer1 = &buffer->data[buffer->write_index];
+    *size1 = buffer->size - buffer->write_index;
+    *buffer2 = buffer->data;
+    *size2 = buffer->read_index;
+  }
+
+  bytes_to_write = MIN(bytes_to_write, *size1 + *size2);
+  buffer->write_index = circularbuffer_add(buffer, buffer->write_index,
+                                           bytes_to_write);
+
+  if(bytes_to_write > 0 && buffer->read_index == buffer->write_index) {
+    buffer->filled = 1;
+  }
+}
+
+int circularbuffer_insert(CircularBuffer buffer, char * bytes, int length) {
+  int s1, s2;
+  char *b1, *b2;
+  circularbuffer_write_buffers(buffer, &b1, &s1, &b2, &s2, length);
+
+  int to_write = MIN(length, s1);
+  int written = 0;
+
+  memcpy(b1, bytes, to_write);
+  length -= to_write;
+  written += to_write;
+
+  if(length > 0) {
+    to_write = MIN(length, s2);
+    memcpy(b2, &bytes[s1], to_write);
+    length -= to_write;
+    written += to_write;
+  }
+
+  return length == 0;
+}
+
+int circularbuffer_read(CircularBuffer buffer, char * target, int length) {
+  int s1, s2;
+  char *b1, *b2;
+  circularbuffer_read_buffers(buffer, &b1, &s1, &b2, &s2, length);
+
+  int to_read = MIN(length, s1);
+  int read = 0;
+
+  memcpy(target, b1, to_read);
+  length -= to_read;
+  read += to_read;
+
+  if(length > 0) {
+    to_read = MIN(length, s2);
+    memcpy(&target[s1], b2, to_read);
+    length -= to_read;
+    read += to_read;
+  }
+
+  return length == 0;
+}
