@@ -439,6 +439,8 @@
 (define +b+ 493.9)
 
 (define +notes+ (list +c+ +c#+ +d+ +eb+ +e+ +f+ +f#+ +g+ +g#+ +a+ +bb+ +b+))
+
+;;; scales (derived from notes)
 (define +ionian+ (list 2 2 1 2 2 2 1))
 (define +locrian+ (list 1 2 2 1 2 2 2))
 (define +aeolian+ (list 2 1 2 2 1 2 2))
@@ -462,15 +464,22 @@
 
 (define +c-major-scale+ (scale +ionian+ +c+))
 
+;;; chord forms (derived from scales)
 (define +triad+ (list 0 2 2))
+(define +diminished-triad+ (list 0 1 2))
+(define +7th+ (list 0 2 2 2))
+(define +6th+ (list 0 2 2 1))
+(define +sus2+ (list 0 1 3))
+(define +sus4+ (list 0 3 1))
 
 (define (chord scale-type chord-type center)
   (let ((scale-notes (scale scale-type center)))
-    (index-sequentially +triad+ scale-notes)))
+    (index-sequentially chord-type scale-notes)))
 
 (define +c-major+ (chord +ionian+ +triad+ +c+))
 
-(define (enqueue-chord-sequence scale-type chord-type amp freqs duration)
+(define (enqueue-chord-sequence scale-type chord-type amp freqs duration
+                                #!optional (sampler sin-samplers))
   (thread-start!
    (make-thread
     (lambda ()
@@ -478,7 +487,7 @@
        (lambda (note)
          (enqueue-all
           (mix
-           (sin-samplers amp (chord scale-type chord-type note))
+           (sampler amp (chord scale-type chord-type note))
            duration))
          (thread-sleep! duration))
        freqs)))))
@@ -493,10 +502,9 @@
                                   +c+ +d+ +e+
                                   +c+ +d+ +e+ +d+ +c+ +d+ +c+))
               .2))
-(enqueue-all
- (chord-sequence +ionian+ +triad+ 1000
-                 (list +c+ +d+ +e+
-                       +c+ +d+ +e+
-                       +c+ +d+ +e+ +d+ +c+ +d+ +c+)
-                 0.4))
+(enqueue-chord-sequence +ionian+ +sus4+ 10000
+                        (list +c+ +d+ +e+
+                              +c+ +d+ +e+
+                              +c+ +d+ +e+ +d+ +c+ +d+ +c+)
+                        0.4)
 |#
