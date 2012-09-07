@@ -63,3 +63,11 @@
 
 (define (not-null? p)
   (not (null? p)))
+
+(define (index-of item lst)
+  (let loop ((lst lst)
+             (idx 0))
+    (cond
+     ((null? lst) #f)
+     ((eq? item (car lst)) idx)
+     (#t (loop (cdr lst) (+ idx 1))))))

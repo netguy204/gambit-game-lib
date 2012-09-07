@@ -426,12 +426,34 @@
   (samplers sawsampler-make amp freqs))
 
 (define +c+ 261.6)
+(define +c#+ 277.2)
 (define +d+ 293.7)
+(define +eb+ 311.1)
 (define +e+ 329.6)
 (define +f+ 349.2)
+(define +f#+ 370.0)
 (define +g+ 392.0)
+(define +g#+ 415.3)
 (define +a+ 440.0)
+(define +bb+ 466.2)
 (define +b+ 493.9)
+
+(define +notes+ (list +c+ +c#+ +d+ +eb+ +e+ +f+ +f#+ +g+ +g#+ +a+ +bb+ +b+))
+(define +ionian+ (list 2 2 1 2 2 2 1))
+(define +locrian+ (list 1 2 2 1 2 2 2))
+(define +aeolian+ (list 2 1 2 2 1 2 2))
+
+(define (scale type center)
+  (let ((idx (index-of center +notes+))
+        (notes (length +notes+)))
+    (map
+     (lambda (offset)
+       (set! idx (+ idx offset))
+       (* (ceiling (/ (+ 1 idx) notes))
+          (list-ref +notes+ (modulo idx notes))))
+     (cons 0 type))))
+
+(define +c-major+ (scale +ionian+ +c+))
 
 ;;; examples
 #|
