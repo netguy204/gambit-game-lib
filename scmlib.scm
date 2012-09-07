@@ -443,21 +443,49 @@
 (define +locrian+ (list 1 2 2 1 2 2 2))
 (define +aeolian+ (list 2 1 2 2 1 2 2))
 
-(define (scale type center)
-  (let ((idx (index-of center +notes+))
-        (notes (length +notes+)))
+(define (index-sequentially offsets lst)
+  (let ((idx 0)
+        (lst-len (length lst)))
     (map
      (lambda (offset)
        (set! idx (+ idx offset))
-       (* (ceiling (/ (+ 1 idx) notes))
-          (list-ref +notes+ (modulo idx notes))))
-     (cons 0 type))))
+       (* (ceiling (/ (+ 1 idx) lst-len))
+          (list-ref lst (modulo idx lst-len))))
+     offsets)))
 
-(define +c-major+ (scale +ionian+ +c+))
+
+(define (scale type center)
+  (let ((idx (index-of center +notes+))
+        (notes (length +notes+)))
+    (index-sequentially (cons idx type)
+                        +notes+)))
+
+(define +c-major-scale+ (scale +ionian+ +c+))
+
+(define +triad+ (list 0 2 2))
+
+(define (chord scale-type chord-type center)
+  (let ((scale-notes (scale scale-type center)))
+    (index-sequentially +triad+ scale-notes)))
+
+(define +c-major+ (chord +ionian+ +triad+ +c+))
+
+(define (enqueue-chord-sequence scale-type chord-type amp freqs duration)
+  (thread-start!
+   (make-thread
+    (lambda ()
+      (for-each
+       (lambda (note)
+         (enqueue-all
+          (mix
+           (sin-samplers amp (chord scale-type chord-type note))
+           duration))
+         (thread-sleep! duration))
+       freqs)))))
 
 ;;; examples
 #|
-(enqueue-all (mix-fixed-time (saw-samplers 10000 '(20 15)) 2))
+(enqueue-all (mix (saw-samplers 10000 '(20 15)) 2))
 (enqueue-all (sequence-fixed-time (saw-samplers 10000 '(20 15)) 1))
 (enqueue-all (sequence-fixed-time
               (sin-samplers 10000
@@ -465,4 +493,10 @@
                                   +c+ +d+ +e+
                                   +c+ +d+ +e+ +d+ +c+ +d+ +c+))
               .2))
+(enqueue-all
+ (chord-sequence +ionian+ +triad+ 1000
+                 (list +c+ +d+ +e+
+                       +c+ +d+ +e+
+                       +c+ +d+ +e+ +d+ +c+ +d+ +c+)
+                 0.4))
 |#

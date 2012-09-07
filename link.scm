@@ -216,8 +216,8 @@ ___arg1->scale = ___arg8;
 
 (define %stepsampler-make
   (c-lambda (Sampler long long)
-            FiniteSampler
-            "___result = (FiniteSampler)stepsampler_make(___arg1, ___arg2, ___arg3);"))
+            Sampler
+            "___result = (Sampler)stepsampler_make(___arg1, ___arg2, ___arg3);"))
 
 (define (stepsampler-make sampler start-sample duration-in-samples)
   (%stepsampler-make sampler
@@ -230,9 +230,9 @@ ___arg1->scale = ___arg8;
             "audio_current_sample"))
 
 (define audio-enqueue
-  (c-lambda (FiniteSampler)
+  (c-lambda (Sampler)
             void
-            "audio_enqueue"))
+            "audio_enqueue((FiniteSampler)___arg1);"))
 
 ;;; game lifecycle
 (define *game-clock* #f)
