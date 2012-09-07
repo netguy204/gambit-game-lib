@@ -492,6 +492,20 @@
          (thread-sleep! duration))
        freqs)))))
 
+(define (enqueue-arpeggio-sequence scale-type chord-type amp freqs duration
+                                   #!optional (sampler sin-samplers))
+  (thread-start!
+   (make-thread
+    (lambda ()
+      (for-each
+       (lambda (note)
+         (enqueue-all
+          (sequence-fixed-time
+           (sampler amp (chord scale-type chord-type note))
+           (/ duration (length chord-type))))
+         (thread-sleep! duration))
+       freqs)))))
+
 ;;; examples
 #|
 (enqueue-all (mix (saw-samplers 10000 '(20 15)) 2))

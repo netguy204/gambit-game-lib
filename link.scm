@@ -212,7 +212,7 @@ ___arg1->scale = ___arg8;
 (define *sample-freq* ((c-lambda () long "___result = SAMPLE_FREQ;")))
 
 (define (seconds->samples seconds)
-  (* *sample-freq* seconds))
+  (* 2 *sample-freq* seconds))
 
 (define %stepsampler-make
   (c-lambda (Sampler long long)
