@@ -2,6 +2,12 @@
 #include "audio.h"
 #include "memory.h"
 
+#define ABS(x) ((x < 0) ? (-x) : (x))
+#define SIGN(x) ((x < 0) ? (-1) : (1))
+
+#define C1_THRESH ((INT16_MAX*2) / 3)
+#define C1_FACTOR 3
+
 PlayList playlist;
 Queue audio_queue;
 Filter global_filter;
@@ -67,14 +73,21 @@ void playlist_fill_buffer(PlayList list, int16_t* buffer, int nsamples) {
     long sample = next_sample + ii;
     PlayListSample node;
 
-    buffer[ii] = 0;
+    int32_t value = 0;
     for(node = list->head; node != NULL;
 	node = (PlayListSample)node->node.next) {
       if(START(node->sampler) > sample) break;
-      buffer[ii] += SAMPLE(node->sampler, sample);
+      value += SAMPLE(node->sampler, sample);
     }
 
-    buffer[ii] = filter_value(global_filter, buffer[ii]);
+    /* if values are greater than 2/3 max, compress a larger dynamic
+       range into the remaining 1/3 */
+    if(ABS(value) > C1_THRESH) {
+      int16_t to_compress = (ABS(value) - C1_THRESH);
+      value = SIGN(value) * (C1_THRESH + (to_compress / C1_FACTOR));
+    }
+
+    buffer[ii] = filter_value(global_filter, value);
     buffer[ii+1] = buffer[ii];
   }
 

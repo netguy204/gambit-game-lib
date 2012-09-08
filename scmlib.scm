@@ -79,7 +79,7 @@
   (particle-integrate (game-particle-particle gp) dt)
   gp)
 
-(define *base-volume* 8000)
+(define *base-volume* 6000)
 (define *player* '())
 (define *player-bullets* '())
 (define *enemy-bullets* '())

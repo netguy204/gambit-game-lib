@@ -239,9 +239,9 @@ ___arg1->scale = ___arg8;
 
 ;; wild hack to keep gambit from trying to kill our process before
 ;; we're done. We use a continuation to send the gambit exit system
-;; off into space after we've told the C side that we don't need to
-;; tear us down when it's ready. Seems to only work on non-arm. Call
-;; exit instead of giving the repl a ,q
+;; off into space after we've told the C side that we need to be torn
+;; down when it's ready. Seems to only work on non-arm. Call exit
+;; instead of giving the repl a ,q
 
 (define ##exit-cc-hack #f)
 (call/cc (lambda (cc) (set! ##exit-cc-hack cc)))
