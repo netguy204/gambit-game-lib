@@ -79,7 +79,7 @@
   (particle-integrate (game-particle-particle gp) dt)
   gp)
 
-(define *base-volume* 6000)
+(define *base-volume* 1000)
 (define *player* '())
 (define *player-bullets* '())
 (define *enemy-bullets* '())
@@ -163,7 +163,7 @@
                                        *enemy-bullet-speed*)
                          *enemy-bullets*))
              (set! next-shot (+ (clock-time *game-clock*) shot-period))
-	     (audio-enqueue (tone-make 600 *base-volume* 0.1))))
+	     (audio-enqueue (tone-make 600 (/ *base-volume* 2) 0.05))))
        (game-particle-integrate gp dt)))))
 
 (define (spawn-enemies n)
@@ -277,9 +277,11 @@
           gs))
 
 (define (tone-make freq amp duration)
-  (stepsampler-make
-   (sinsampler-make freq amp 0)
-   (audio-current-sample) (seconds->samples duration)))
+  (sinsampler-make (audio-current-sample) (seconds->samples duration)
+                   freq amp 0))
+
+(define (explosion-sound duration)
+  (saw-samplers *base-volume* '(10 5) duration))
 
 (define (handle-collisions)
   (if (or (null? *player-bullets*)
@@ -297,7 +299,7 @@
                                  bullet
                                  "spacer/ship-right.png"))
 
-         (audio-enqueue (tone-make 100 *base-volume* 0.1)))))
+         (enqueue-all (explosion-sound 0.15)))))
 
   (if (null? *enemy-bullets*)
       '()
@@ -399,31 +401,16 @@
 (define (enqueue-all samplers)
   (for-each audio-enqueue samplers))
 
-(define (mix samplers duration)
+(define (samplers constructor amp freqs duration)
   (let ((start-sample (audio-current-sample)))
-    (map
-     (lambda (sampler)
-       (stepsampler-make sampler start-sample
-                         (seconds->samples duration)))
-     samplers)))
+    (map (lambda (f) (constructor start-sample (seconds->samples duration)
+                                  f amp 0)) freqs)))
 
-(define (sequence-fixed-time samplers duration)
-  (let ((start-sample (audio-current-sample)))
-    (map (lambda (sampler)
-           (let ((sampler (stepsampler-make sampler start-sample
-                                            (seconds->samples duration))))
-             (set! start-sample (+ start-sample (seconds->samples duration)))
-             sampler))
-         samplers)))
+(define (sin-samplers amp freqs duration)
+  (samplers sinsampler-make amp freqs duration))
 
-(define (samplers constructor amp freqs)
-  (map (lambda (f) (constructor f amp 0)) freqs))
-
-(define (sin-samplers amp freqs)
-  (samplers sinsampler-make amp freqs))
-
-(define (saw-samplers amp freqs)
-  (samplers sawsampler-make amp freqs))
+(define (saw-samplers amp freqs duration)
+  (samplers sawsampler-make amp freqs duration))
 
 (define +c+ 261.6)
 (define +c#+ 277.2)
@@ -486,12 +473,11 @@
       (for-each
        (lambda (note)
          (enqueue-all
-          (mix
-           (sampler amp (chord scale-type chord-type note))
-           duration))
+          (sampler amp (chord scale-type chord-type note) duration))
          (thread-sleep! duration))
        freqs)))))
 
+;;; fixme
 (define (enqueue-arpeggio-sequence scale-type chord-type amp freqs duration
                                    #!optional (sampler sin-samplers))
   (thread-start!
@@ -500,15 +486,14 @@
       (for-each
        (lambda (note)
          (enqueue-all
-          (sequence-fixed-time
-           (sampler amp (chord scale-type chord-type note))
-           (/ duration (length chord-type))))
+          (sampler amp (chord scale-type chord-type note) duration))
          (thread-sleep! duration))
        freqs)))))
 
 ;;; examples
 #|
-(enqueue-all (mix (saw-samplers 10000 '(20 15)) 2))
+(enqueue-all (saw-samplers 6000 '(200 50) 2))
+(enqueue-all (saw-samplers 6000 '(180 50) 2))
 (enqueue-all (sequence-fixed-time (saw-samplers 10000 '(20 15)) 1))
 (enqueue-all (sequence-fixed-time
               (sin-samplers 10000

@@ -29,6 +29,8 @@ void sampler_init();
 typedef struct Sampler_ {
   SamplerFunction function;
   ReleaseSampler release;
+  long start_sample;
+  long duration_samples;
 } *Sampler;
 
 typedef struct SinSampler_ {
@@ -38,7 +40,8 @@ typedef struct SinSampler_ {
   float amp;
 } *SinSampler;
 
-SinSampler sinsampler_make(float freq, float amp, float phase);
+Sampler sinsampler_make(long start, long duration, 
+                        float freq, float amp, float phase);
 
 typedef struct SawSampler_ {
   struct Sampler_ sampler;
@@ -48,43 +51,23 @@ typedef struct SawSampler_ {
   float amp;
 } *SawSampler;
 
-SawSampler sawsampler_make(float freq, float amp, float phase);
+Sampler sawsampler_make(long start, long duration,
+                        float freq, float amp, float phase);
 
-#define DURATION(f) (((FiniteSampler)f)->duration(f))
-#define START(f) (((FiniteSampler)f)->start(f))
+#define DURATION(f) (((Sampler)f)->duration_samples)
+#define START(f) (((Sampler)f)->start_sample)
 #define END(f) (START(f) + DURATION(f))
 
-typedef long(*SamplerDuration)(void*);
-typedef long(*SamplerStart)(void*);
-
-typedef struct FiniteSampler_ {
+typedef struct Sequence_ {
   struct Sampler_ sampler;
-  SamplerDuration duration;
-  SamplerStart start;
-} *FiniteSampler;
-
-typedef struct StepSampler_ {
-  struct FiniteSampler_ sampler;
-  Sampler nested_sampler;
-  long start_sample;
-  long duration_samples;
-} *StepSampler;
-
-StepSampler stepsampler_make(Sampler nested_sampler,
-                             long start_sample,
-                             long duration_samples);
-
-typedef struct FiniteSequence_ {
-  struct FiniteSampler_ sampler;
   int nsamplers;
-  FiniteSampler* samplers;
-} *FiniteSequence;
+  Sampler* samplers;
+} *Sequence;
 
-FiniteSequence finitesequence_make(FiniteSampler* samplers, int nsamplers);
+Sampler sequence_make(long start, long duration,
+                      Sampler* samplers, int nsamplers);
 
 typedef struct Filter_ {
-  struct Sampler_ sampler;
-  Sampler nested_sampler;
   int na;
   int nb;
   int xi;
@@ -96,14 +79,10 @@ typedef struct Filter_ {
   int16_t *ys;
 } *Filter;
 
-Filter filter_make(Sampler nested_sampler,
-                   float* as, int na, float* bs, int nb);
+Filter filter_make(float* as, int na, float* bs, int nb);
 
 int16_t filter_value(Filter filter, int16_t value);
 
-Filter lowpass_make(Sampler nested_sampler, float cutoff, float sample_freq);
-
-FiniteSequence make_sequence(float* freqs, int nfreqs, float amp,
-                             float duration);
+Filter lowpass_make(float cutoff, float sample_freq);
 
 #endif

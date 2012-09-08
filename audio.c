@@ -13,7 +13,7 @@ Queue audio_queue;
 Filter global_filter;
 FixedAllocator pls_allocator;
 
-PlayListSample playlistsample_make(FiniteSampler sampler) {
+PlayListSample playlistsample_make(Sampler sampler) {
   PlayListSample pl = (PlayListSample)fixed_allocator_alloc(pls_allocator);
   pl->sampler = sampler;
   return pl;
@@ -87,7 +87,7 @@ void playlist_fill_buffer(PlayList list, int16_t* buffer, int nsamples) {
       value = SIGN(value) * (C1_THRESH + (to_compress / C1_FACTOR));
     }
 
-    buffer[ii] = filter_value(global_filter, value);
+    buffer[ii] = value; //filter_value(global_filter, value);
     buffer[ii+1] = buffer[ii];
   }
 
@@ -108,12 +108,12 @@ void audio_init() {
 
   playlist = playlist_make();
   audio_queue = queue_make();
-  global_filter = lowpass_make(NULL, 0, 0);
+  global_filter = lowpass_make(0, 0);
 
   native_audio_init();
 }
 
-void audio_enqueue(FiniteSampler sampler) {
+void audio_enqueue(Sampler sampler) {
   enqueue(audio_queue, (DLLNode)playlistsample_make(sampler));
 }
 

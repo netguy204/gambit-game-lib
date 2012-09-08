@@ -187,42 +187,36 @@ ___arg1->scale = ___arg8;
 
 ;;; audio
 (c-define-type Sampler (pointer (struct "Sampler_")))
-(c-define-type FiniteSampler (pointer (struct "FiniteSampler_")))
 
 (define %sinsampler-make
-  (c-lambda (float float float)
+  (c-lambda (long long float float float)
             Sampler
-            "___result = (Sampler)sinsampler_make(___arg1, ___arg2, ___arg3);"))
+            "sinsampler_make"))
 
-(define (sinsampler-make freq amp phase)
-  (%sinsampler-make (exact->inexact freq)
+(define (sinsampler-make start duration freq amp phase)
+  (%sinsampler-make (inexact->exact start)
+                    (inexact->exact duration)
+                    (exact->inexact freq)
                     (exact->inexact amp)
                     (exact->inexact phase)))
 
 (define %sawsampler-make
-  (c-lambda (float float float)
+  (c-lambda (long long float float float)
             Sampler
-            "___result = (Sampler)sawsampler_make(___arg1, ___arg2, ___arg3);"))
+            "sawsampler_make"))
 
-(define (sawsampler-make freq amp phase)
-  (%sawsampler-make (exact->inexact freq)
+(define (sawsampler-make start duration freq amp phase)
+  (%sawsampler-make (inexact->exact start)
+                    (inexact->exact duration)
+                    (exact->inexact freq)
                     (exact->inexact amp)
                     (exact->inexact phase)))
 
 (define *sample-freq* ((c-lambda () long "___result = SAMPLE_FREQ;")))
+(define *num-channels* 2)
 
 (define (seconds->samples seconds)
-  (* 2 *sample-freq* seconds))
-
-(define %stepsampler-make
-  (c-lambda (Sampler long long)
-            Sampler
-            "___result = (Sampler)stepsampler_make(___arg1, ___arg2, ___arg3);"))
-
-(define (stepsampler-make sampler start-sample duration-in-samples)
-  (%stepsampler-make sampler
-                     (inexact->exact start-sample)
-                     (inexact->exact duration-in-samples)))
+  (* *num-channels* *sample-freq* seconds))
 
 (define audio-current-sample
   (c-lambda ()
@@ -232,7 +226,7 @@ ___arg1->scale = ___arg8;
 (define audio-enqueue
   (c-lambda (Sampler)
             void
-            "audio_enqueue((FiniteSampler)___arg1);"))
+            "audio_enqueue"))
 
 ;;; game lifecycle
 (define *game-clock* #f)
