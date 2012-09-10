@@ -401,16 +401,24 @@
 (define (enqueue-all samplers)
   (for-each audio-enqueue samplers))
 
-(define (samplers constructor amp freqs duration)
-  (let ((start-sample (audio-current-sample)))
-    (map (lambda (f) (constructor start-sample (seconds->samples duration)
-                                  f amp 0)) freqs)))
+(define (samplers constructor amp freqs duration #!optional (mix #t))
+  (let* ((start-sample (audio-current-sample))
+         (duration (if mix duration (/ duration (length freqs)))))
+    (map
+     (lambda (f)
+       (let ((sampler (constructor start-sample
+                                   (seconds->samples duration)
+                                   f amp 0)))
+         (if (not mix)
+           (set! start-sample (+ start-sample (seconds->samples duration))))
+         sampler))
+     freqs)))
 
-(define (sin-samplers amp freqs duration)
-  (samplers sinsampler-make amp freqs duration))
+(define (sin-samplers amp freqs duration #!optional (mix #t))
+  (samplers sinsampler-make amp freqs duration mix))
 
-(define (saw-samplers amp freqs duration)
-  (samplers sawsampler-make amp freqs duration))
+(define (saw-samplers amp freqs duration #!optional (mix #t))
+  (samplers sawsampler-make amp freqs duration mix))
 
 (define +c+ 261.6)
 (define +c#+ 277.2)
@@ -486,7 +494,7 @@
       (for-each
        (lambda (note)
          (enqueue-all
-          (sampler amp (chord scale-type chord-type note) duration))
+          (sampler amp (chord scale-type chord-type note) duration #f))
          (thread-sleep! duration))
        freqs)))))
 
@@ -494,16 +502,17 @@
 #|
 (enqueue-all (saw-samplers 6000 '(200 50) 2))
 (enqueue-all (saw-samplers 6000 '(180 50) 2))
-(enqueue-all (sequence-fixed-time (saw-samplers 10000 '(20 15)) 1))
-(enqueue-all (sequence-fixed-time
-              (sin-samplers 10000
-                            (list +c+ +d+ +e+
-                                  +c+ +d+ +e+
-                                  +c+ +d+ +e+ +d+ +c+ +d+ +c+))
-              .2))
-(enqueue-chord-sequence +ionian+ +sus4+ 10000
+(enqueue-all (saw-samplers 6000 '(200 150) 2))
+(enqueue-all (saw-samplers 10000 '(200 150) 1 #f))
+(enqueue-all (sin-samplers 10000
+                           (list +c+ +d+ +e+
+                                 +c+ +d+ +e+
+                                 +c+ +d+ +e+ +d+ +c+ +d+ +c+)
+                           2 #f))
+
+(enqueue-arpeggio-sequence +ionian+ +sus2+ 10000
                         (list +c+ +d+ +e+
                               +c+ +d+ +e+
                               +c+ +d+ +e+ +d+ +c+ +d+ +c+)
-                        0.4)
+                        0.6)
 |#
