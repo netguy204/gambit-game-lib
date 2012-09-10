@@ -505,9 +505,9 @@
   (if (not +last-silent-sample+) (set! +last-silent-sample+ (audio-current-sample)))
   ;; wait till the next silence is two durations
   (let loop ((delta (- +last-silent-sample+ (audio-current-sample))))
-    (if (> delta (* (seconds->samples duration) 2))
+    (if (> delta (seconds->samples 10))
         (begin
-          (thread-sleep! (/ duration 4))
+          (thread-sleep! 0.1)
           (loop (- +last-silent-sample+ (audio-current-sample))))))
 
   (enqueue-all (sin-samplers 1000 freqs duration start: +last-silent-sample+))
