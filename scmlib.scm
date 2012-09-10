@@ -282,7 +282,7 @@
                    freq amp 0))
 
 (define (explosion-sound duration)
-  (saw-samplers *base-volume* '(10 5) duration))
+  (saw-samplers *base-volume* '(100 40) duration))
 
 (define (handle-collisions)
   (if (or (null? *player-bullets*)
@@ -298,9 +298,7 @@
          (add-pretty-particles! (spawn-smoke-particle enemy))
          (add-pretty-particles! (spawn-hulk-particle
                                  bullet
-                                 "spacer/ship-right.png"))
-
-         (enqueue-all (explosion-sound 0.15)))))
+                                 "spacer/ship-right.png")))))
 
   (if (null? *enemy-bullets*)
       '()
@@ -309,6 +307,7 @@
 
        (lambda (player bullet)
          (set! *enemy-bullets* (delete bullet *enemy-bullets*))
+         (enqueue-all (explosion-sound 0.15))
          (add-pretty-particles! (spawn-hulk-particle
                                  player
                                  "spacer/hero.png"))))))
