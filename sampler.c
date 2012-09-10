@@ -9,6 +9,8 @@
 
 FixedAllocator sampler_allocator;
 
+#define SIN_TABLE
+
 #ifdef SIN_TABLE
 #define TABLE_SIZE 1024
 float *sin_table;
