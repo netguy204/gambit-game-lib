@@ -230,7 +230,8 @@
 
 (define (ensure-resources)
   (set! *player* (spawn-player))
-  (set! *enemies* (spawn-enemies *initial-enemies*)))
+  (set! *enemies* (spawn-enemies *initial-enemies*))
+  (thread-start! (make-thread music)))
 
 (define (integrate-game-particle gp dt)
   (let ((extra (game-particle-extra gp)))
@@ -396,7 +397,8 @@
 ;;; tools for playing with audio
 
 (define (disable-game)
-  (set! update-view (lambda (dt input) '())))
+  (set! update-view (lambda (dt input) '()))
+  (set! music (lambda () '())))
 
 (define (enqueue-all samplers)
   (for-each audio-enqueue samplers))
@@ -485,7 +487,6 @@
          (thread-sleep! duration))
        freqs)))))
 
-;;; fixme
 (define (enqueue-arpeggio-sequence scale-type chord-type amp freqs duration
                                    #!optional (sampler sin-samplers))
   (thread-start!
@@ -497,6 +498,54 @@
           (sampler amp (chord scale-type chord-type note) duration #f))
          (thread-sleep! duration))
        freqs)))))
+
+(define (play freqs duration)
+  (enqueue-all (saw-samplers 2000 freqs duration))
+  (thread-sleep! duration))
+
+(define (bpm->seconds n notes-per-beat)
+  (/ n (* notes-per-beat 60)))
+
+(define (progression base)
+  (let ((duration (bpm->seconds 120 4)))
+
+    (play (list (* base 4/3) base) duration)
+    (play (list (* base 3/3) base) duration)
+    (play (list (* base 4/3) (* 2 base)) duration)
+    (play (list (* base 3/3) (* 2 base)) duration)
+
+    (play (list (* 1/3 base) (* 1 base)) (/ duration 2))
+    (play (list (* 1/3 base) (* 2 base)) (/ duration 2))
+
+    (play (list (* base 1/3) base) duration)
+
+    (play (list (* 1/3 base) (* 2 base)) (/ duration 3))
+    (play (list (* 2/3 base) (* 1 base)) (/ duration 3))
+    (thread-sleep! (/ duration 3))
+
+    (play (list (* base 2/3) base) duration)
+    (play (list (* base 1/3) (* 2 base)) duration)
+
+    (play (list (* 1/3 base) (* 2 base)) (/ duration 3))
+    (play (list (* 1/3 base) (* 1 base)) (/ duration 3))
+    (play (list (* 2/3 base) (* 1 base)) (/ duration 3))
+
+
+    (play (list (* base 4/3) (* 2 base)) duration)
+
+    (play (list (* 1/3 base) (* 2 base)) (/ duration 2))
+    (play (list (* 1/3 base) (* 1 base)) (/ duration 2))))
+
+(define (music)
+  (progression 100)
+  (progression 150)
+  (progression 75)
+  (progression 50)
+  (music))
+
+#|
+(define (music) '())
+|#
 
 ;;; examples
 #|
