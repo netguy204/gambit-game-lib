@@ -59,8 +59,8 @@ int16_t sin_sample(SinSampler sampler, long sample) {
 /** all phases are normalized phase values ranging from [0, 1)
  */
 
-SinSampler sinsampler_make(long start, long duration,
-                           float freq, float amp, float phase) {
+Sampler sinsampler_make(long start, long duration,
+			float freq, float amp, float phase) {
   SinSampler sampler = (SinSampler)fixed_allocator_alloc(sampler_allocator);
   sampler->sampler.function = (SamplerFunction)sin_sample;
   sampler->sampler.release = sampler_free;
@@ -72,7 +72,7 @@ SinSampler sinsampler_make(long start, long duration,
   sampler->amp = amp;
   sampler->phase = phase * 2 * M_PI;
 
-  return sampler;
+  return (Sampler)sampler;
 }
 
 int16_t saw_sample(SawSampler sampler, long sample) {
@@ -81,8 +81,8 @@ int16_t saw_sample(SawSampler sampler, long sample) {
   return -sampler->amp + pos * sampler->slope;
 }
 
-SawSampler sawsampler_make(long start, long duration,
-                           float freq, float amp, float phase) {
+Sampler sawsampler_make(long start, long duration,
+			float freq, float amp, float phase) {
   SawSampler sampler = (SawSampler)fixed_allocator_alloc(sampler_allocator);
   sampler->sampler.function = (SamplerFunction)saw_sample;
   sampler->sampler.release = sampler_free;
@@ -97,7 +97,7 @@ SawSampler sawsampler_make(long start, long duration,
   sampler->phase_samples = phase * samples_per_period;
   sampler->amp = amp;
 
-  return sampler;
+  return (Sampler)sampler;
 }
 
 void sequence_release(Sequence seq) {
@@ -122,8 +122,8 @@ int16_t sequence_sample(Sequence seq, long sample) {
   return result;
 }
 
-Sequence sequence_make(long start, long duration,
-                       Sampler* samplers, int nsamplers) {
+Sampler sequence_make(long start, long duration,
+		      Sampler* samplers, int nsamplers) {
   Sequence seq = (Sequence)fixed_allocator_alloc(sampler_allocator);
 
   seq->sampler.function = (SamplerFunction)sequence_sample;
@@ -133,7 +133,7 @@ Sequence sequence_make(long start, long duration,
 
   seq->nsamplers = nsamplers;
   seq->samplers = samplers;
-  return seq;
+  return (Sampler)seq;
 }
 
 int16_t filter_value(Filter filter, int16_t value) {
