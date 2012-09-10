@@ -403,9 +403,8 @@
 (define (enqueue-all samplers)
   (for-each audio-enqueue samplers))
 
-(define (samplers constructor amp freqs duration #!optional (mix #t))
-  (let* ((start-sample (audio-current-sample))
-         (duration (if mix duration (/ duration (length freqs)))))
+(define (samplers constructor amp freqs duration mix start-sample)
+  (let* ((duration (if mix duration (/ duration (length freqs)))))
     (map
      (lambda (f)
        (let ((sampler (constructor start-sample
@@ -416,11 +415,11 @@
          sampler))
      freqs)))
 
-(define (sin-samplers amp freqs duration #!optional (mix #t))
-  (samplers sinsampler-make amp freqs duration mix))
+(define (sin-samplers amp freqs duration #!key (mix #t) (start (audio-current-sample)))
+  (samplers sinsampler-make amp freqs duration mix start))
 
-(define (saw-samplers amp freqs duration #!optional (mix #t))
-  (samplers sawsampler-make amp freqs duration mix))
+(define (saw-samplers amp freqs duration #!key (mix #t) (start (audio-current-sample)))
+  (samplers sawsampler-make amp freqs duration mix start))
 
 (define +c+ 261.6)
 (define +c#+ 277.2)
@@ -495,13 +494,24 @@
       (for-each
        (lambda (note)
          (enqueue-all
-          (sampler amp (chord scale-type chord-type note) duration #f))
+          (sampler amp (chord scale-type chord-type note) duration mix: #f))
          (thread-sleep! duration))
        freqs)))))
 
+;;; TODO: let play enqueue a bit ahead to keep the thread scheduling
+;;; slop from creating gaps
+(define +last-silent-sample+ #f)
 (define (play freqs duration)
-  (enqueue-all (saw-samplers 2000 freqs duration))
-  (thread-sleep! duration))
+  (if (not +last-silent-sample+) (set! +last-silent-sample+ (audio-current-sample)))
+  ;; wait till the next silence is two durations
+  (let loop ((delta (- +last-silent-sample+ (audio-current-sample))))
+    (if (> delta (* (seconds->samples duration) 2))
+        (begin
+          (thread-sleep! (/ duration 4))
+          (loop (- +last-silent-sample+ (audio-current-sample))))))
+
+  (enqueue-all (sin-samplers 1000 freqs duration start: +last-silent-sample+))
+  (set! +last-silent-sample+ (+ +last-silent-sample+ (seconds->samples duration))))
 
 (define (bpm->seconds n notes-per-beat)
   (/ n (* notes-per-beat 60)))
@@ -510,9 +520,11 @@
   (let ((duration (bpm->seconds 120 4)))
 
     (play (list (* base 4/3) base) duration)
-    (play (list (* base 3/3) base) duration)
-    (play (list (* base 4/3) (* 2 base)) duration)
     (play (list (* base 3/3) (* 2 base)) duration)
+    (play (list (* base 4/3) (* 2 base)) (/ duration 2))
+    (play (list (* base 4/3) base) (/ duration 2))
+
+    (play (list (* base 1/3) (* 1 base)) duration)
 
     (play (list (* 1/3 base) (* 1 base)) (/ duration 2))
     (play (list (* 1/3 base) (* 2 base)) (/ duration 2))
@@ -521,15 +533,13 @@
 
     (play (list (* 1/3 base) (* 2 base)) (/ duration 3))
     (play (list (* 2/3 base) (* 1 base)) (/ duration 3))
-    (thread-sleep! (/ duration 3))
+    (play (list (* 2/3 base) (* 2 base)) (/ duration 3))
 
     (play (list (* base 2/3) base) duration)
-    (play (list (* base 1/3) (* 2 base)) duration)
 
     (play (list (* 1/3 base) (* 2 base)) (/ duration 3))
     (play (list (* 1/3 base) (* 1 base)) (/ duration 3))
     (play (list (* 2/3 base) (* 1 base)) (/ duration 3))
-
 
     (play (list (* base 4/3) (* 2 base)) duration)
 
@@ -545,6 +555,7 @@
 
 #|
 (define (music) '())
+(thread-start! (make-thread music))
 |#
 
 ;;; examples
@@ -552,12 +563,12 @@
 (enqueue-all (saw-samplers 6000 '(200 50) 2))
 (enqueue-all (saw-samplers 6000 '(180 50) 2))
 (enqueue-all (saw-samplers 6000 '(200 150) 2))
-(enqueue-all (saw-samplers 10000 '(200 150) 1 #f))
+(enqueue-all (saw-samplers 10000 '(200 150) 1 mix: #f))
 (enqueue-all (sin-samplers 10000
                            (list +c+ +d+ +e+
                                  +c+ +d+ +e+
                                  +c+ +d+ +e+ +d+ +c+ +d+ +c+)
-                           2 #f))
+                           2 mix: #f))
 
 (enqueue-arpeggio-sequence +ionian+ +sus2+ 10000
                         (list +c+ +d+ +e+

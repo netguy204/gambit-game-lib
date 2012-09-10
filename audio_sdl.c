@@ -77,8 +77,6 @@ void fill_audio(void *udata, Uint8 *stream, int len) {
     len -= tocopy;
   }
 
-  assert(len == 0);
-
   pthread_mutex_unlock(&audio_mutex);
 }
 
