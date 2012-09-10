@@ -31,8 +31,7 @@ void sampler_init() {
   size_t max_sampler_size
     = MAX(sizeof(struct SinSampler_),
           MAX(sizeof(struct SawSampler_),
-              MAX(sizeof(struct Sequence_),
-                    sizeof(struct Filter_))));
+              sizeof(struct Filter_)));
 
   sampler_allocator = fixed_allocator_make(max_sampler_size,
                                            NUM_SAMPLERS,
@@ -98,42 +97,6 @@ Sampler sawsampler_make(long start, long duration,
   sampler->amp = amp;
 
   return (Sampler)sampler;
-}
-
-void sequence_release(Sequence seq) {
-  int ii;
-  for(ii = 0; ii < seq->nsamplers; ++ii) {
-    RELEASE_SAMPLER(seq->samplers[ii]);
-  }
-
-  free(seq->samplers);
-  sampler_free(seq);
-}
-
-int16_t sequence_sample(Sequence seq, long sample) {
-  int ii = 0;
-  int16_t result = 0;
-
-  sample = sampler_offset(seq, sample);
-  for(ii = 0; ii < seq->nsamplers; ++ii) {
-    result += SAMPLE(seq->samplers[ii], sample);
-  }
-
-  return result;
-}
-
-Sampler sequence_make(long start, long duration,
-		      Sampler* samplers, int nsamplers) {
-  Sequence seq = (Sequence)fixed_allocator_alloc(sampler_allocator);
-
-  seq->sampler.function = (SamplerFunction)sequence_sample;
-  seq->sampler.release = (ReleaseSampler)sequence_release;
-  seq->sampler.start_sample = start;
-  seq->sampler.duration_samples = duration;
-
-  seq->nsamplers = nsamplers;
-  seq->samplers = samplers;
-  return (Sampler)seq;
 }
 
 int16_t filter_value(Filter filter, int16_t value) {

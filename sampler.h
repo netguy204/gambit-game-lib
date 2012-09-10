@@ -57,15 +57,6 @@ Sampler sawsampler_make(long start, long duration,
 #define START(f) (((Sampler)f)->start_sample)
 #define END(f) (START(f) + DURATION(f))
 
-typedef struct Sequence_ {
-  struct Sampler_ sampler;
-  int nsamplers;
-  Sampler* samplers;
-} *Sequence;
-
-Sampler sequence_make(long start, long duration,
-                      Sampler* samplers, int nsamplers);
-
 typedef struct Filter_ {
   int na;
   int nb;
