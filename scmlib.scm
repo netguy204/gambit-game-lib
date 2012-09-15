@@ -515,11 +515,14 @@
          (thread-sleep! duration))
        freqs)))))
 
-;;; TODO: let play enqueue a bit ahead to keep the thread scheduling
-;;; slop from creating gaps
 (define +last-silent-sample+ #f)
 (define (play freqs duration)
   (if (not +last-silent-sample+) (set! +last-silent-sample+ (audio-current-sample)))
+  (if (and (> +last-silent-sample+ 0)
+           (< (audio-current-sample) 0))
+      ;; this is an integer wraparound situation. we'll get an audio mishap
+      (set! +last-silent-sample+ (audio-current-sample)))
+
   ;; wait till the next silence is two durations
   (let loop ((delta (- +last-silent-sample+ (audio-current-sample))))
     (if (> delta (seconds->samples 10))
