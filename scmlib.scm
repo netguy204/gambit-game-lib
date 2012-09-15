@@ -2,24 +2,26 @@
 (load "common")
 (load "rect")
 (load "spatial")
+(load "sparrow")
 
-(define-structure game-particle particle img-name extra w h)
+(define-structure game-particle particle atlas img-name extra)
 
-(define (game-particle-make particle img-name #!optional (extra #f))
-  (let* ((gp (make-game-particle particle img-name extra 0 0))
-	 (img (game-particle-img gp)))
-    (game-particle-w-set! gp (image-width img))
-    (game-particle-h-set! gp (image-height img))
+(define (game-particle-make particle atlas img-name #!optional (extra #f))
+  (let* ((gp (make-game-particle particle atlas img-name extra)))
+
     gp))
+
+(define (game-particle-w particle)
+  (sparrow-width (game-particle-atlas particle) (game-particle-img-name particle)))
+
+(define (game-particle-h particle)
+  (sparrow-height (game-particle-atlas particle) (game-particle-img-name particle)))
 
 (define (game-particle-width gp)
   (* (particle-s (game-particle-particle gp)) (game-particle-w gp)))
 
 (define (game-particle-height gp)
   (* (particle-s (game-particle-particle gp)) (game-particle-h gp)))
-
-(define (game-particle-img gp)
-  (image-load (game-particle-img-name gp)))
 
 (define (game-particle-r gp)
   (particle-r (game-particle-particle gp)))
@@ -59,12 +61,18 @@
   (game-particle-rect-scaled gp 1))
 
 (define (game-particle->sprite gp ocx ocy)
-  (let ((sprite (frame/make-sprite)))
-    (sprite-parms-set! sprite (game-particle-img gp)
+  (let ((sprite (frame/make-sprite))
+        (w (game-particle-width gp))
+        (h (game-particle-height gp)))
+    (sprite-parms-set! sprite (sparrow-image (game-particle-atlas gp))
                        (game-particle-x gp) (game-particle-y gp)
-                       (+ ocx (game-particle-cx gp))
-                       (+ ocy (game-particle-cy gp))
-                       (game-particle-t gp) (game-particle-s gp))
+                       (+ ocx 0.5)
+                       (+ ocy 0.5)
+                       (game-particle-t gp)
+                       (* w (game-particle-s gp))
+                       (* h (game-particle-s gp)))
+    (sprite-sparrow-coords-set! sprite (game-particle-atlas gp)
+                                (game-particle-img-name gp))
     sprite))
 
 (define (game-particles->sprite-list gps #!optional (ocx 0) (ocy 0))
@@ -93,6 +101,8 @@
 (define *initial-enemies* 1)
 (define *max-enemies* 10)
 
+(define *texture-atlas* #f)
+
 (define (step-pretty-particles dt)
   (set! *particles*
     (mapcat (lambda (p)
@@ -110,7 +120,8 @@
       r dr
       (rand-in-range 0 360) (rand-in-range -20 20)
       0.01 (* 0.5 (rand-in-range 1 4)))
-     "spacer/smoke.png"
+     *texture-atlas*
+     "smoke.png"
      (lambda (gp dt)
        (if (> (clock-time *game-clock*) death-time)
            '()
@@ -127,6 +138,7 @@
       r dr
       180 (rand-in-range -360 360)
       1 -1)
+     *texture-atlas*
      img
      (lambda (gp dt)
        (if (> (clock-time *game-clock*) death-time)
@@ -139,27 +151,29 @@
       (set! *particles* (cons p *particles*))))
 
 (define (spawn-enemy)
-  (let* ((img-name "spacer/ship-right.png")
-         (img (image-load img-name))
-         (nrows (ceiling (/ *screen-height* (image-height img))))
+  (let* ((img-name "ship-right.png")
+         (img-height (sparrow-height *texture-atlas* img-name))
+         (img-width (sparrow-width *texture-atlas* img-name))
+         (nrows (ceiling (/ *screen-height* img-height)))
          (shot-period (seconds->cycles (rand-in-range 1 5)))
          (next-shot (+ shot-period (clock-time *game-clock*))))
 
     (game-particle-make
      (make-particle (make-vect
-                     (+ *screen-width* (/ (image-width img) 2))
-                     (+ (/ (image-height img) 2)
-                        (* (image-height img) (rand-in-range 0 nrows))))
+                     (+ *screen-width* (/ (sparrow-width *texture-atlas* img-name) 2))
+                     (+ (/ img-height 2)
+                        (* img-height (rand-in-range 0 nrows))))
                     (make-vect (- (rand-in-range *enemy-speed*
                                                  (* 2 *enemy-speed*)))
                                  0)
                     180 0 1 0)
+     *texture-atlas*
      img-name
      (lambda (gp dt)
        (if (> (clock-time *game-clock*) next-shot)
            (begin
              (set! *enemy-bullets*
-                   (cons (spawn-bullet gp "spacer/enemy-bullet.png"
+                   (cons (spawn-bullet gp "enemy-bullet.png"
                                        *enemy-bullet-speed*)
                          *enemy-bullets*))
              (set! next-shot (+ (clock-time *game-clock*) shot-period))
@@ -170,13 +184,13 @@
   (repeatedly spawn-enemy n))
 
 (define (spawn-player)
-  (let* ((img-name "spacer/hero.png")
-         (img (image-load img-name)))
+  (let* ((img-name "hero.png"))
     (game-particle-make
-     (make-particle (make-vect (image-width img)
-                                 (/ *screen-height* 2))
+     (make-particle (make-vect (sparrow-width *texture-atlas* img-name)
+                               (/ *screen-height* 2))
                     (make-vect 0 0)
                     0 0 1 0)
+     *texture-atlas*
      img-name)))
 
 (define pi 3.141592654)
@@ -200,11 +214,12 @@
                     (make-vect (* dx speed)
                                (* dy speed))
                     (rand-in-range 0 360) 500
-                    0.25 1)
+                    0.25 0.5)
+     *texture-atlas*
      img)))
 
 (define (player-fire)
-  (set! *player-bullets* (cons (spawn-bullet *player* "spacer/plasma.png"
+  (set! *player-bullets* (cons (spawn-bullet *player* "plasma.png"
                                              *player-bullet-speed*)
                                *player-bullets*)))
 
@@ -229,6 +244,7 @@
           (repeating-latch-latch-value latch))))
 
 (define (ensure-resources)
+  (set! *texture-atlas* (sparrow-load "spacer/images_default"))
   (set! *player* (spawn-player))
   (set! *enemies* (spawn-enemies *initial-enemies*))
   (thread-start! (make-thread music)))
@@ -298,7 +314,7 @@
          (add-pretty-particles! (spawn-smoke-particle enemy))
          (add-pretty-particles! (spawn-hulk-particle
                                  bullet
-                                 "spacer/ship-right.png")))))
+                                 "ship-right.png")))))
 
   (if (null? *enemy-bullets*)
       '()
@@ -310,7 +326,7 @@
          (enqueue-all (explosion-sound 0.15))
          (add-pretty-particles! (spawn-hulk-particle
                                  player
-                                 "spacer/hero.png"))))))
+                                 "hero.png"))))))
 
 (define (random-spawn? num max-num prob)
   (let ((rand (rand-in-range 0 max-num))
@@ -350,6 +366,8 @@
     (sprite-resource-set! sprite stars)
     (sprite-x-set! sprite 0)
     (sprite-y-set! sprite 0)
+    (sprite-width-set! sprite *screen-width*)
+    (sprite-height-set! sprite *screen-height*)
     (frame/spritelist-append #f sprite)))
 
 (define (render input)
@@ -367,8 +385,8 @@
 
   (if (and (= 0 (input-leftright input))
            (= 0 (input-updown input)))
-      (game-particle-img-name-set! *player* "spacer/hero.png")
-      (game-particle-img-name-set! *player* "spacer/hero-engines.png"))
+      (game-particle-img-name-set! *player* "hero.png")
+      (game-particle-img-name-set! *player* "hero-engines.png"))
   (spritelist-enqueue-for-screen!
    (game-particles->sprite-list (cons *player* *player-bullets*))))
 

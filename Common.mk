@@ -23,7 +23,7 @@ C_OBJS=$(patsubst %.c,%.o,$(C_SRC))
 SCM_GAMBIT_OBJ=$(patsubst %.scm,%.o1,$(SCM_GAMBIT_SRC))
 SCM_R5_OBJ=$(patsubst %.scm,%.o1,$(SCM_R5_SRC))
 
-all: $(BIN) $(SCM_GAMBIT_OBJ) $(SCM_R5_OBJ)
+all: $(BIN) $(SCM_GAMBIT_OBJ) $(SCM_R5_OBJ) xml2.o1.o
 
 scmlib:
 	$(GSC) math.scm common.scm scmlib.scm rect.scm spatial.scm
@@ -55,6 +55,8 @@ test: test_bin
 
 xml2.o1.o: xml2.scm
 	$(MAKE_XML2)
+
+xml2: xml2.o1.o
 
 .phony: all
 

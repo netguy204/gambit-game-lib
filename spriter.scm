@@ -107,14 +107,8 @@
        (entity->animations-markup entity-markup)))
 
 (define (scml-load filename)
-  (let* ((doc (xml:parse-file filename))
-         (node (if doc
-                   (xml:root-element doc)
-                   (error "failed to load " filename)))
-         (scml (xml->sml node))
+  (let* ((scml (sml:parse-file filename))
          (res (resources scml (path-directory filename))))
-
-    (xml:free-doc doc)
 
     (map (lambda (entity)
            (cons (sml:attr entity "id")

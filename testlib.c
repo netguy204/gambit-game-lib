@@ -173,7 +173,14 @@ Sprite frame_make_sprite() {
   sprite->angle = 0.0f;
   sprite->originX = 0.0f;
   sprite->originY = 0.0f;
-  sprite->scale = 1.0f;
+
+  sprite->u0 = 0.0f;
+  sprite->v0 = 1.0f;
+  sprite->u1 = 1.0f;
+  sprite->v1 = 0.0f;
+
+  sprite->w = 100;
+  sprite->h = 100;
   return sprite;
 }
 

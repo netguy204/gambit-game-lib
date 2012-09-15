@@ -143,21 +143,29 @@ c-declare-end
             void
             "___arg1->angle = ___arg2;"))
 
-(define %sprite-scale-set!
+(define %sprite-width-set!
   (c-lambda (Sprite float)
             void
-            "___arg1->scale = ___arg2;"))
+            "___arg1->w = ___arg2;"))
+
+(define %sprite-height-set!
+  (c-lambda (Sprite float)
+            void
+            "___arg1->h = ___arg2;"))
+
+
 
 (define sprite-x-set! (comp2 %sprite-x-set! exact->inexact))
 (define sprite-y-set! (comp2 %sprite-y-set! exact->inexact))
 (define sprite-origin-x-set! (comp2 %sprite-origin-x-set! exact->inexact))
 (define sprite-origin-y-set! (comp2 %sprite-origin-y-set! exact->inexact))
 (define sprite-angle-set! (comp2 %sprite-angle-set! exact->inexact))
-(define sprite-scale-set! (comp2 %sprite-scale-set! exact->inexact))
+(define sprite-width-set! (comp2 %sprite-width-set! exact->inexact))
+(define sprite-height-set! (comp2 %sprite-height-set! exact->inexact))
 
 (define %sprite-parms-set!
-  ;; sprite image x y cx cy angle scale
-  (c-lambda (Sprite ImageResource float float float float float float)
+  ;; sprite image x y cx cy angle width height
+  (c-lambda (Sprite ImageResource float float float float float float float)
             void
             "
 ___arg1->resource = ___arg2;
@@ -166,14 +174,31 @@ ___arg1->displayY = ___arg4;
 ___arg1->originX = ___arg5;
 ___arg1->originY = ___arg6;
 ___arg1->angle = ___arg7;
-___arg1->scale = ___arg8;
+___arg1->w = ___arg8;
+___arg1->h = ___arg9;
 "))
 
-(define (sprite-parms-set! sprite img x y cx cy angle scale)
+(define (sprite-parms-set! sprite img x y cx cy angle width height)
   (%sprite-parms-set! sprite img
                       (exact->inexact x) (exact->inexact y)
                       (exact->inexact cx) (exact->inexact cy)
-                      (exact->inexact angle) (exact->inexact scale)))
+                      (exact->inexact angle)
+                      (exact->inexact width) (exact->inexact height)))
+
+(define %sprite-coords-set!
+  ;; u0, v0, u1, v1
+  (c-lambda (Sprite float float float float)
+      void
+"
+___arg1->u0 = ___arg2;
+___arg1->v0 = ___arg3;
+___arg1->u1 = ___arg4;
+___arg1->v1 = ___arg5;"))
+
+(define (sprite-coords-set! sprite u0 v0 u1 v1)
+  (%sprite-coords-set! sprite
+                       (exact->inexact u0) (exact->inexact v0)
+                       (exact->inexact u1) (exact->inexact v1)))
 
 (define frame/spritelist-append
   (c-lambda (SpriteList Sprite)

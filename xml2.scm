@@ -139,3 +139,12 @@ c-declare-end
   (lambda (node)
     (equal? (sml:name node) name)))
 
+(define (sml:parse-file filename)
+  (let* ((doc (xml:parse-file filename))
+         (node (if doc
+                   (xml:root-element doc)
+                   (error "failed to load " filename)))
+         (scml (xml->sml node)))
+    (xml:free-doc doc)
+
+    scml))
