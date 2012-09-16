@@ -1,17 +1,23 @@
+(declare
+ (standard-bindings)
+ (extended-bindings)
+ (fixnum)
+ (not safe))
+
 (define-structure spatial obj->idxs idx->objs width)
 
 (define (spatial-calc-idx width x y)
-  (+ x (* y width)))
+  (fx+ x (fx* y width)))
 
 (define (spatial-idx spatial x y)
   (spatial-calc-idx (spatial-width spatial) x y))
 
 (define (spatial-rect->idxs spatial rect)
   (let ((width (spatial-width spatial))
-        (minx (floor (rect-minx rect)))
-        (maxx (ceiling (rect-maxx rect)))
-        (miny (floor (rect-miny rect)))
-        (maxy (ceiling (rect-maxy rect)))
+        (minx (inexact->exact (floor (rect-minx rect))))
+        (maxx (inexact->exact (ceiling (rect-maxx rect))))
+        (miny (inexact->exact (floor (rect-miny rect))))
+        (maxy (inexact->exact (ceiling (rect-maxy rect))))
         (result '()))
     (let loopy ((y miny))
       (if (< y maxy)
@@ -19,8 +25,8 @@
             (if (< x maxx)
                 (begin
                   (set! result (cons (spatial-calc-idx width x y) result))
-                  (loopx (+ x 1)))
-                (loopy (+ y 1))))
+                  (loopx (fx+ x 1)))
+                (loopy (fx+ y 1))))
           result))))
 
 (define (spatial-append-unique-pred pred new old)
@@ -78,4 +84,4 @@
   (map car (table->list (spatial-obj->idxs spatial))))
 
 (define (spatial-make width)
-  (make-spatial (make-table test: eq?) (make-table) width))
+  (make-spatial (make-table test: eq?) (make-table) (inexact->exact (ceiling width))))
