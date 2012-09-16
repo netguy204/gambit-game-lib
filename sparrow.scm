@@ -1,7 +1,7 @@
 ;;; read xml files in the sparrow format
 (load "xml2")
 
-(define-structure %sparrow table image-file)
+(define-structure %sparrow table image-file w h)
 (define-structure %sparrow-entry x y width height)
 
 (define (subtexture-markup sml)
@@ -23,7 +23,15 @@
         (table-set! table name (make-%sparrow-entry x y w h))))
      (subtexture-markup sparrow))
 
-    (make-%sparrow table image-file)))
+    (let* ((sparrow (make-%sparrow table image-file #f #f))
+           (img (sparrow-image sparrow))
+           (w (image-width img))
+           (h (image-height img)))
+
+      (%sparrow-w-set! sparrow w)
+      (%sparrow-h-set! sparrow h)
+
+      sparrow)))
 
 (define (sparrow-record sparrow name)
   (table-ref (%sparrow-table sparrow) name))
@@ -46,9 +54,8 @@
 
 (define (sparrow-texcoords sparrow name)
   (let* ((rec (sparrow-record sparrow name))
-         (img (sparrow-image sparrow))
-         (w (image-width img))
-         (h (image-height img))
+         (w (%sparrow-w sparrow))
+         (h (%sparrow-h sparrow))
          (sp-x (%sparrow-entry-x rec))
          (sp-y (%sparrow-entry-y rec))
          (sp-w (%sparrow-entry-width rec))
@@ -60,18 +67,27 @@
     (rect-make (exact->inexact u0) (exact->inexact v0)
                (exact->inexact u1) (exact->inexact v1))))
 
-(define (sprite-sparrow-coords-set! sprite sparrow name)
-  (let* ((rec (sparrow-record sparrow name))
-         (img (sparrow-image sparrow))
-         (w (image-width img))
-         (h (image-height img))
+(define (sprite-sparrow-record-coords-set! sprite sparrow rec)
+  (let* ((w (%sparrow-w sparrow))
+         (h (%sparrow-h sparrow))
          (sp-x (%sparrow-entry-x rec))
          (sp-y (%sparrow-entry-y rec))
          (sp-w (%sparrow-entry-width rec))
          (sp-h (%sparrow-entry-height rec))
          (u0 (/ sp-x w))
          (u1 (/ (+ sp-x sp-w) w))
-         (v0 (/ sp-y h))
-         (v1 (/ (+ sp-y sp-h) h)))
+         (v0 (/ (+ sp-y sp-h) h))
+         (v1 (/ sp-y h)))
+
     (sprite-coords-set! sprite u0 v0 u1 v1)))
+
+(define (sprite-sparrow-record-set! sprite sparrow rec)
+  (sprite-sparrow-record-coords-set! sprite sparrow rec)
+  (sprite-width-set! sprite (%sparrow-entry-width rec))
+  (sprite-height-set! sprite (%sparrow-entry-height rec))
+  (sprite-resource-set! sprite (sparrow-image sparrow)))
+
+(define (sprite-sparrow-coords-set! sprite sparrow name)
+  (let* ((rec (sparrow-record sparrow name)))
+    (sprite-sparrow-record-coords-set! sprite sparrow rec)))
 

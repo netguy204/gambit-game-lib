@@ -235,8 +235,52 @@
             input-state)
           (repeating-latch-latch-value latch))))
 
+(define *font-table* (make-table))
+
+(define (build-font-table atlas)
+  (let ((index 1))
+    (for-each
+     (lambda (char)
+       (let* ((name (string-append (number->string index) ".png"))
+              (rec (sparrow-record atlas name)))
+        (table-set! *font-table* char rec)
+        (set! index (+ index 1))))
+     (string->list "abcdefghijklmnopqrstuvwxyz"))))
+
+(define (char-rec char)
+  (table-ref *font-table* (char-downcase char)))
+
+(define (char->sprite char)
+  (let ((sprite (frame/make-sprite))
+        (rec (char-rec char)))
+    (sprite-sparrow-record-set! sprite *texture-atlas* rec)
+    sprite))
+
+(define (char-width char)
+  (%sparrow-entry-width (char-rec char)))
+
+(define (char-height char)
+  (%sparrow-entry-height (char-rec char)))
+
+(define (string->spritelist string x y)
+  (reduce
+   (lambda (spritelist char)
+     (if (eq? char #\space)
+         (begin
+           (set! x (+ x (char-width #\m)))
+           spritelist)
+         (let ((sprite (char->sprite char)))
+           (sprite-x-set! sprite x)
+           (sprite-y-set! sprite y)
+           (set! x (+ x (char-width char)))
+           (frame/spritelist-append spritelist sprite))))
+   #f
+   (string->list string)))
+
 (define (ensure-resources)
   (set! *texture-atlas* (sparrow-load "spacer/images_default"))
+  (build-font-table *texture-atlas*)
+
   (set! *player* (spawn-player))
   (set! *enemies* (spawn-enemies *initial-enemies*))
   (thread-start! (make-thread music)))
@@ -380,7 +424,10 @@
       (game-particle-img-name-set! *player* "hero.png")
       (game-particle-img-name-set! *player* "hero-engines.png"))
   (spritelist-enqueue-for-screen!
-   (game-particles->sprite-list (cons *player* *player-bullets*))))
+   (game-particles->sprite-list (cons *player* *player-bullets*)))
+
+  ;; draw a letter
+  (spritelist-enqueue-for-screen! (string->spritelist "Hello World" 100 100)))
 
 (define *player-fire-repeater* (repeating-latch-make 0.2 #f))
 
