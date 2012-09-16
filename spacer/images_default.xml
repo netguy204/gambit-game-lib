@@ -4,7 +4,7 @@
 	
 		<SubTexture name="enemy-bullet.png" x="0" y ="0" height="12" width="12" />
 	
-		<SubTexture name="hero-engines.png" x="396" y ="0" height="128" width="128" />
+		<SubTexture name="hero-engines.png" x="0" y ="128" height="128" width="128" />
 	
 		<SubTexture name="hero.png" x="12" y ="0" height="128" width="128" />
 	
@@ -12,6 +12,6 @@
 	
 		<SubTexture name="ship-right.png" x="140" y ="0" height="128" width="128" />
 	
-		<SubTexture name="smoke.png" x="0" y ="128" height="512" width="512" />
+		<SubTexture name="smoke.png" x="128" y ="128" height="256" width="256" />
 	
 </TextureAtlas>
