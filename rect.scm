@@ -1,12 +1,20 @@
+(declare
+ (standard-bindings)
+ (extended-bindings)
+ (not safe)
+ (flonum))
+
 (define-structure rect minx miny maxx maxy)
 
-(define rect-make make-rect)
+(define (rect-make minx miny maxx maxy)
+  (make-rect (exact->inexact minx) (exact->inexact miny)
+             (exact->inexact maxx) (exact->inexact maxy)))
 
 (define (rect-width rect)
-  (- (rect-maxx rect) (rect-minx rect)))
+  (fl- (rect-maxx rect) (rect-minx rect)))
 
 (define (rect-height rect)
-  (- (rect-maxy rect) (rect-miny rect)))
+  (fl- (rect-maxy rect) (rect-miny rect)))
 
 (define (rect-make-point x y)
   (let* ((minx (floor x))
@@ -14,19 +22,19 @@
          (miny (floor y))
          (maxy (ceiling y))
 
-         (maxx (if (= minx maxx)
-                   (+ maxx 1)
+         (maxx (if (fl= minx maxx)
+                   (fl+ maxx 1)
                    maxx))
-         (maxy (if (= miny maxy)
-                   (+ maxy 1)
+         (maxy (if (fl= miny maxy)
+                   (fl+ maxy 1)
                    maxy)))
     (rect-make minx miny maxx maxy)))
 
 (define (rect-make-radius cx cy radius)
-  (rect-make (max 0 (- cx radius))
-             (max 0 (- cy radius))
-             (+ cx radius)
-             (+ cy radius)))
+  (rect-make (max 0. (fl- cx radius))
+             (max 0. (fl- cy radius))
+             (fl+ cx radius)
+             (fl+ cy radius)))
 
 (define (rect-intersect a b)
   (let ((aminx (rect-minx a))
@@ -40,8 +48,8 @@
         (bmaxy (rect-maxy b)))
 
     (cond
-     ((< amaxx bminx) #f)
-     ((> aminx bmaxx) #f)
-     ((< amaxy bminy) #f)
-     ((> aminy bmaxy) #f)
+     ((fl< amaxx bminx) #f)
+     ((fl> aminx bmaxx) #f)
+     ((fl< amaxy bminy) #f)
+     ((fl> aminy bmaxy) #f)
      (#t #t))))
