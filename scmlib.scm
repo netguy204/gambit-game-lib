@@ -116,7 +116,7 @@
          (death-time (+ (seconds->cycles (/ (rand-in-range 500 3500) 1000))
                         (clock-time *game-clock*))))
     (game-particle-make
-     (make-particle
+     (particle-make
       r dr
       (rand-in-range 0 360) (rand-in-range -20 20)
       0.01 (* 0.5 (rand-in-range 1 4)))
@@ -134,7 +134,7 @@
          (death-time (+ (seconds->cycles (/ (rand-in-range 500 6500) 1000))
                         (clock-time *game-clock*))))
     (game-particle-make
-     (make-particle
+     (particle-make
       r dr
       180 (rand-in-range -360 360)
       1 -1)
@@ -159,11 +159,11 @@
          (next-shot (+ shot-period (clock-time *game-clock*))))
 
     (game-particle-make
-     (make-particle (make-vect
+     (particle-make (vect-make
                      (+ *screen-width* (/ (sparrow-width *texture-atlas* img-name) 2))
                      (+ (/ img-height 2)
                         (* img-height (rand-in-range 0 nrows))))
-                    (make-vect (- (rand-in-range *enemy-speed*
+                    (vect-make (- (rand-in-range *enemy-speed*
                                                  (* 2 *enemy-speed*)))
                                  0)
                     180 0 1 0)
@@ -186,20 +186,12 @@
 (define (spawn-player)
   (let* ((img-name "hero.png"))
     (game-particle-make
-     (make-particle (make-vect (sparrow-width *texture-atlas* img-name)
+     (particle-make (vect-make (sparrow-width *texture-atlas* img-name)
                                (/ *screen-height* 2))
-                    (make-vect 0 0)
+                    (vect-make 0 0)
                     0 0 1 0)
      *texture-atlas*
      img-name)))
-
-(define pi 3.141592654)
-
-(define (degrees->radians deg)
-  (/ (* pi deg) 180))
-
-(define (radians->degrees rad)
-  (/ (* rad 180) pi))
 
 (define (spawn-bullet shooter img speed)
   (let* ((sx (game-particle-x shooter))
@@ -210,8 +202,8 @@
          (dy (sin (degrees->radians ang))))
     
     (game-particle-make
-     (make-particle (make-vect sx sy)
-                    (make-vect (* dx speed)
+     (particle-make (vect-make sx sy)
+                    (vect-make (* dx speed)
                                (* dy speed))
                     (rand-in-range 0 360) 500
                     0.25 0.5)
@@ -398,7 +390,7 @@
         (action1 (input-action1 input)))
     (game-particle-dr-set!
      *player*
-     (make-vect (* *player-speed* leftright)
+     (vect-make (* *player-speed* leftright)
                 (* *player-speed* updown)))
 
     (if (repeating-latch-state *player-fire-repeater*  action1)
