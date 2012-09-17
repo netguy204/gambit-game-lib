@@ -82,8 +82,8 @@
               (rand-in-range (fl- maxy) maxy))))
 
 (define (rand-in-range min max)
-  (let ((min (inexact->exact min))
-        (max (inexact->exact max)))
+  (let ((min (->fixnum min))
+        (max (->fixnum max)))
    (fx+ min (random-integer (fx- max min)))))
 
 (define pi 3.141592654)

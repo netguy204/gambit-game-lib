@@ -15,6 +15,14 @@ c-declare-end
 (c-define-type SpriteList (pointer (struct "SpriteList_")))
 (c-define-type InputState (pointer (struct "InputState_")))
 
+(define (->fixnum x)
+  (cond
+   ((fixnum? x) x)
+   ((flonum? x) (##flonum->fixnum x))
+   (else (inexact->exact x))))
+
+(define ->flonum exact->inexact)
+
 (define image-load-internal
   (c-lambda (nonnull-char-string)
             ImageResource
@@ -66,7 +74,7 @@ c-declare-end
             float
             "clock_update"))
 
-(define clock-update (comp2 %clock-update exact->inexact))
+(define clock-update (comp2 %clock-update ->flonum))
 
 (define clock-time
   (c-lambda (Clock)
@@ -101,8 +109,8 @@ c-declare-end
 (define (input-action1 input)
   (= 1 (%input-action1 input)))
 
-(define cycles->seconds (compose %cycles->seconds inexact->exact))
-(define seconds->cycles (compose %seconds->cycles exact->inexact))
+(define cycles->seconds (compose %cycles->seconds ->fixnum))
+(define seconds->cycles (compose %seconds->cycles ->flonum))
 
 (define *screen-width* #f)
 
@@ -155,13 +163,13 @@ c-declare-end
 
 
 
-(define sprite-x-set! (comp2 %sprite-x-set! exact->inexact))
-(define sprite-y-set! (comp2 %sprite-y-set! exact->inexact))
-(define sprite-origin-x-set! (comp2 %sprite-origin-x-set! exact->inexact))
-(define sprite-origin-y-set! (comp2 %sprite-origin-y-set! exact->inexact))
-(define sprite-angle-set! (comp2 %sprite-angle-set! exact->inexact))
-(define sprite-width-set! (comp2 %sprite-width-set! exact->inexact))
-(define sprite-height-set! (comp2 %sprite-height-set! exact->inexact))
+(define sprite-x-set! (comp2 %sprite-x-set! ->flonum))
+(define sprite-y-set! (comp2 %sprite-y-set! ->flonum))
+(define sprite-origin-x-set! (comp2 %sprite-origin-x-set! ->flonum))
+(define sprite-origin-y-set! (comp2 %sprite-origin-y-set! ->flonum))
+(define sprite-angle-set! (comp2 %sprite-angle-set! ->flonum))
+(define sprite-width-set! (comp2 %sprite-width-set! ->flonum))
+(define sprite-height-set! (comp2 %sprite-height-set! ->flonum))
 
 (define %sprite-parms-set!
   ;; sprite image x y cx cy angle width height
@@ -180,10 +188,10 @@ ___arg1->h = ___arg9;
 
 (define (sprite-parms-set! sprite img x y cx cy angle width height)
   (%sprite-parms-set! sprite img
-                      (exact->inexact x) (exact->inexact y)
-                      (exact->inexact cx) (exact->inexact cy)
-                      (exact->inexact angle)
-                      (exact->inexact width) (exact->inexact height)))
+                      (->flonum x) (->flonum y)
+                      (->flonum cx) (->flonum cy)
+                      (->flonum angle)
+                      (->flonum width) (->flonum height)))
 
 (define %sprite-coords-set!
   ;; u0, v0, u1, v1
@@ -197,8 +205,8 @@ ___arg1->v1 = ___arg5;"))
 
 (define (sprite-coords-set! sprite u0 v0 u1 v1)
   (%sprite-coords-set! sprite
-                       (exact->inexact u0) (exact->inexact v0)
-                       (exact->inexact u1) (exact->inexact v1)))
+                       (->flonum u0) (->flonum v0)
+                       (->flonum u1) (->flonum v1)))
 
 (define frame/spritelist-append
   (c-lambda (SpriteList Sprite)
@@ -219,11 +227,11 @@ ___arg1->v1 = ___arg5;"))
             "sinsampler_make"))
 
 (define (sinsampler-make start duration freq amp phase)
-  (%sinsampler-make (inexact->exact start)
-                    (inexact->exact duration)
-                    (exact->inexact freq)
-                    (exact->inexact amp)
-                    (exact->inexact phase)))
+  (%sinsampler-make (->fixnum start)
+                    (->fixnum duration)
+                    (->flonum freq)
+                    (->flonum amp)
+                    (->flonum phase)))
 
 (define %sawsampler-make
   (c-lambda (long long float float float)
@@ -231,11 +239,11 @@ ___arg1->v1 = ___arg5;"))
             "sawsampler_make"))
 
 (define (sawsampler-make start duration freq amp phase)
-  (%sawsampler-make (inexact->exact start)
-                    (inexact->exact duration)
-                    (exact->inexact freq)
-                    (exact->inexact amp)
-                    (exact->inexact phase)))
+  (%sawsampler-make (->fixnum start)
+                    (->fixnum duration)
+                    (->flonum freq)
+                    (->flonum amp)
+                    (->flonum phase)))
 
 (define *sample-freq* ((c-lambda () long "___result = SAMPLE_FREQ;")))
 (define *num-channels* 2)
