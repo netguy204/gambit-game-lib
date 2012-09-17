@@ -7,6 +7,8 @@ c-declare-end
 
 (load "scmlib")
 
+(##heartbeat-interval-set! 0.5)
+
 ;(##include "scmlib.scm")
 
 (c-define-type ImageResource (pointer (struct "ImageResource_")))
