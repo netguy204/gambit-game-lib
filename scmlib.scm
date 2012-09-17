@@ -4,6 +4,10 @@
 (load "spatial")
 (load "sparrow")
 
+(declare
+ (standard-bindings)
+ (extended-bindings))
+
 (define-structure game-particle particle atlas img-name extra)
 
 (define (game-particle-make particle atlas img-name #!optional (extra #f))
@@ -36,10 +40,10 @@
   (particle-y (game-particle-particle gp)))
 
 (define (game-particle-cx gp)
-  (/ (game-particle-w gp) 2))
+  (/ (game-particle-w gp) 2.))
 
 (define (game-particle-cy gp)
-  (/ (game-particle-h gp) 2))
+  (/ (game-particle-h gp) 2.))
 
 (define (game-particle-t gp)
   (particle-t (game-particle-particle gp)))

@@ -25,8 +25,10 @@ SCM_R5_OBJ=$(patsubst %.scm,%.o1,$(SCM_R5_SRC))
 
 all: $(BIN) $(SCM_GAMBIT_OBJ) $(SCM_R5_OBJ) xml2.o1.o
 
+SCM_FILES=math.scm common.scm scmlib.scm rect.scm spatial.scm sparrow.scm
+
 scmlib:
-	$(GSC) math.scm common.scm scmlib.scm rect.scm spatial.scm sparrow.scm
+	$(GSC) -track-scheme -keep-c $(SCM_FILES)
 
 $(SCM_LIB_C): $(SCM_LIB_SRC)
 	$(GSC) -f -link -track-scheme $(SCM_LIB_SRC)
@@ -45,7 +47,7 @@ $(BIN): $(SCM_OBJ) $(C_OBJS)
 
 clean:
 	rm -rf *.o* $(SCM_LIB_C) $(BIN)
-	$(MAKE_XML2) clean
+	$(MAKE_XML2) clean $(patsubst %.scm,%.c,$(SCM_FILES))
 
 test_bin: memory.o testlib_test.o
 	$(CC) $(CFLAGS) -o $@ memory.o testlib_test.o $(LDFLAGS)
