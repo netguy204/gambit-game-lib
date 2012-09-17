@@ -14,10 +14,10 @@
 
 (define (spatial-rect->idxs spatial rect)
   (let ((width (spatial-width spatial))
-        (minx (inexact->exact (floor (rect-minx rect))))
-        (maxx (inexact->exact (ceiling (rect-maxx rect))))
-        (miny (inexact->exact (floor (rect-miny rect))))
-        (maxy (inexact->exact (ceiling (rect-maxy rect))))
+        (minx (->fixnum (floor (rect-minx rect))))
+        (maxx (->fixnum (ceiling (rect-maxx rect))))
+        (miny (->fixnum (floor (rect-miny rect))))
+        (maxy (->fixnum (ceiling (rect-maxy rect))))
         (result '()))
     (let loopy ((y miny))
       (if (< y maxy)
@@ -84,4 +84,4 @@
   (map car (table->list (spatial-obj->idxs spatial))))
 
 (define (spatial-make width)
-  (make-spatial (make-table test: eq?) (make-table) (inexact->exact (ceiling width))))
+  (make-spatial (make-table test: eq?) (make-table) (->fixnum (ceiling width))))
