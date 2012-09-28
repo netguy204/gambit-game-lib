@@ -54,8 +54,6 @@ void lib_init() {
 
   // kick off the audio system
   audio_init();
-
-  scm_init();
 }
 
 void render_loop_exit(void* empty) {

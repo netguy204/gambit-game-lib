@@ -53,12 +53,6 @@ typedef struct InputState_ {
   int action1;
 } *InputState;
 
-/* exported by test.scm */
-void scm_init();
-void step(int, InputState);
-void terminate();
-void resources_released();
-
 /* provided by system specific lib */
 void native_init();
 InputState frame_inputstate();

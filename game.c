@@ -102,7 +102,6 @@ GameParticle spawn_enemy() {
   enemy->vel.x = -rand_in_range(enemy_speed, 2*enemy_speed);
   enemy->vel.y = 0;
   enemy->angle = 180.0;
-  dll_add_head(&enemies, (DLLNode)enemy);
   return enemy;
 }
 
@@ -123,7 +122,8 @@ void enemies_update(float dt) {
   }
 
   if(dll_count(&enemies) < 10) {
-    spawn_enemy();
+    GameParticle enemy = spawn_enemy();
+    dll_add_head(&enemies, (DLLNode)enemy);
   }
 }
 
