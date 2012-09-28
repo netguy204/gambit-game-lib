@@ -4,8 +4,6 @@
 #include <stdio.h>
 #include <memory.h>
 
-#define SAFETY(x) x
-#define OFFSET(idx, obj_size, ptr) ((void*)(((char*)ptr) + (idx * obj_size)))
 #define NEXT_ALIGNED_SIZE(x) ((x + 8 - 1) & ~(8 - 1))
 
 void* fail_exit(const char * message, ...) {
@@ -24,7 +22,7 @@ void* fail_exit(const char * message, ...) {
 
 /**
  * FixedAllocator's are used to quickly allocate and free objects of
- * fixed size. They operrate in constant time but cannot allocate more
+ * fixed size. They operate in constant time but cannot allocate more
  * objects than they were initially designed to hold. This makes them
  * appropriate for holding things like resource handles (since the
  * number of resources in the system is finite), timelines, and other

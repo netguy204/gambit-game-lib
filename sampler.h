@@ -2,6 +2,7 @@
 #define SAMPLER
 
 #include <stdint.h>
+#include "config.h"
 
 #define N_(n,b) (n*b)
 
@@ -13,8 +14,6 @@
 #define A_(n) N_(n, 440.0)
 #define B_(n) N_(n, 493.9)
 
-#define SAMPLE_FREQ 22050
-#define NUM_SAMPLERS 128
 #define SAMPLE(f, x) (((Sampler)(f))->function(f, x))
 #define RELEASE_SAMPLER(f) (((Sampler)(f))->release(f))
 
@@ -39,7 +38,7 @@ typedef struct SinSampler_ {
   float amp;
 } *SinSampler;
 
-Sampler sinsampler_make(long start, long duration, 
+Sampler sinsampler_make(long start, long duration,
                         float freq, float amp, float phase);
 
 typedef struct SawSampler_ {

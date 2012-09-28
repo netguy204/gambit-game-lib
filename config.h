@@ -1,0 +1,17 @@
+#ifndef CONFIG_H
+#define CONFIG_H
+
+#define SAFETY(x) x
+#define DEBUG_MEMORY
+
+#define MAX_NUM_CLOCKS 20
+#define MAX_NUM_IMAGES 40
+#define MAX_NUM_COMMANDS 60
+
+#define MAX_NUM_GAMEPARTICLES 30
+#define MAX_NUM_PRETTYPARTICLES 30
+
+#define SAMPLE_FREQ 22050
+#define MAX_NUM_SAMPLERS 128
+
+#endif

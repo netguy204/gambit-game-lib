@@ -12,10 +12,6 @@
  * Functions that deal with objects are prefixed with objectname_
  */
 
-#define MAX_NUM_CLOCKS 20
-#define MAX_NUM_IMAGES 40
-#define MAX_NUM_COMMANDS 60
-
 #include <pthread.h>
 #include <stdint.h>
 
@@ -23,6 +19,7 @@
 #include "memory.h"
 #include "listlib.h"
 #include "audio.h"
+#include "config.h"
 
 extern uint32_t screen_width;
 extern uint32_t screen_height;

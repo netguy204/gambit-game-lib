@@ -6,11 +6,10 @@
 #include "particle.h"
 #include "rect.h"
 #include "controls.h"
+#include "config.h"
 
 #include <stdlib.h>
 #include <math.h>
-
-#define NUM_GAME_PARTICLES 30
 
 float player_speed = 600;
 float player_bullet_speed = 1200;
@@ -26,24 +25,28 @@ struct RepeatingLatch_ player_gun_latch;
 
 struct DLL_ enemies;
 struct DLL_ player_bullets;
+struct DLL_ pretty_particles;
 
 ImageResource stars;
 ImageResource image_enemy;
 ImageResource image_player_bullet;
+ImageResource image_smoke;
 
 Clock main_clock;
 
-FixedAllocator particle_allocator;
+FixedAllocator gameparticle_allocator;
 
 GameParticle gameparticle_make() {
-  GameParticle particle = fixed_allocator_alloc(particle_allocator);
-  particle->particle.scale = 1.0;
-  particle->particle.angle = 0;
+  GameParticle particle = fixed_allocator_alloc(gameparticle_allocator);
+  particle->particle.scale = 1.0f;
+  particle->particle.angle = 0.0f;
+  particle->particle.dsdt = 0.0f;
+  particle->particle.dadt = 0.0f;
   return particle;
 }
 
 void gameparticle_free(GameParticle particle) {
-  fixed_allocator_free(particle_allocator, particle);
+  fixed_allocator_free(gameparticle_allocator, particle);
 }
 
 void gameparticle_remove(DLL list, GameParticle particle) {
@@ -69,10 +72,10 @@ GameParticle spawn_enemy() {
   enemy->particle.image = image_enemy;
   enemy->particle.pos.x = screen_width + (image_enemy->w / 2);
 
-  int nrows = ceil(screen_height / image_enemy->h);
+  int nrows = floor(screen_height / image_enemy->h);
   enemy->particle.pos.y =
     image_enemy->h * rand_in_range(0, nrows)
-    - (image_enemy->h / 2);
+    + (image_enemy->h / 2);
   enemy->particle.vel.x = -rand_in_range(enemy_speed, 2*enemy_speed);
   enemy->particle.vel.y = 0;
   enemy->particle.angle = 180.0;
@@ -84,33 +87,80 @@ GameParticle spawn_bullet(Vector pos, Vector vel, ImageResource image) {
   bullet->particle.image = image;
   bullet->particle.pos = *pos;
   bullet->particle.vel = *vel;
+  bullet->particle.scale = 0.25f;
+  bullet->particle.dsdt = 0.5;
+  bullet->particle.angle = rand_in_range(0, 360);
+  bullet->particle.dadt = 500;
   return bullet;
 }
 
-typedef int(*GameParticleTest)(GameParticle p);
+typedef struct PrettyParticle_ {
+  struct Particle_ particle;
+  long end_time;
+} *PrettyParticle;
+
+FixedAllocator prettyparticle_allocator;
+
+PrettyParticle prettyparticle_make() {
+  PrettyParticle p = fixed_allocator_alloc(prettyparticle_allocator);
+  p->particle.scale = 1.0f;
+  p->particle.angle = 0.0f;
+  p->particle.dsdt = 0.0f;
+  p->particle.dadt = 0.0f;
+  return p;
+}
+
+void prettyparticle_free(PrettyParticle particle) {
+  fixed_allocator_free(prettyparticle_allocator, particle);
+}
+
+void prettyparticle_remove(DLL list, PrettyParticle particle) {
+  dll_remove(list, (DLLNode)particle);
+  prettyparticle_free(particle);
+}
+
+PrettyParticle spawn_smoke(Vector pos, Vector vel) {
+  PrettyParticle smoke = prettyparticle_make();
+  smoke->particle.image = image_smoke;
+  smoke->particle.pos = *pos;
+  smoke->particle.vel = *vel;
+  smoke->particle.angle = rand_in_range(0, 360);
+  smoke->particle.dsdt = 0.5f * rand_in_range(1, 4);
+  smoke->particle.dadt = rand_in_range(-20, 20);
+  smoke->end_time =
+    clock_time(main_clock) +
+    clock_seconds_to_cycles(rand_in_range(500, 3500) / 1000.0f);
+
+  return smoke;
+}
+
+typedef int(*ParticleTest)(Particle p);
+typedef void(*ParticleRemove)(DLL, Particle);
 
 // step all particles forward and remove those that fail the test
-void gameparticles_update(DLL list, float dt, GameParticleTest test) {
-  GameParticle p = (GameParticle)list->head;
+void gameparticles_update(DLL list, float dt,
+                          ParticleTest test, ParticleRemove remove) {
+  Particle p = (Particle)list->head;
 
   while(p != NULL) {
-    particle_integrate((Particle)p, dt);
-    GameParticle next = (GameParticle)p->particle.node.next;
+    particle_integrate(p, dt);
+    Particle next = (Particle)p->node.next;
 
     if(!test(p)) {
-      gameparticle_remove(list, p);
+      remove(list, p);
     }
 
     p = next;
   }
 }
 
-int enemy_boundary_test(GameParticle p) {
-  return p->particle.pos.x > -(particle_width((Particle)p) / 2.0f);
+int enemy_boundary_test(Particle p) {
+  return p->pos.x > -(particle_width(p) / 2.0f);
 }
 
 void enemies_update(float dt) {
-  gameparticles_update(&enemies, dt, &enemy_boundary_test);
+  gameparticles_update(&enemies, dt, &enemy_boundary_test,
+                       (ParticleRemove)&gameparticle_remove);
 
   if(dll_count(&enemies) < 10) {
     GameParticle enemy = spawn_enemy();
@@ -118,12 +168,23 @@ void enemies_update(float dt) {
   }
 }
 
-int player_bullet_boundary_test(GameParticle p) {
-  return p->particle.pos.x < screen_width + (particle_width((Particle)p) / 2.0f);
+int player_bullet_boundary_test(Particle p) {
+  return p->pos.x < screen_width + (particle_width(p) / 2.0f);
 }
 
 void player_bullets_update(float dt) {
-  gameparticles_update(&player_bullets, dt, &player_bullet_boundary_test);
+  gameparticles_update(&player_bullets, dt, &player_bullet_boundary_test,
+                       (ParticleRemove)&gameparticle_remove);
+}
+
+int particle_timeout_test(Particle p) {
+  PrettyParticle smoke = (PrettyParticle)p;
+  return clock_time(main_clock) < smoke->end_time;
+}
+
+void prettyparticles_update(float dt) {
+  gameparticles_update(&pretty_particles, dt, &particle_timeout_test,
+                       (ParticleRemove)&prettyparticle_remove);
 }
 
 typedef struct CollisionRecord_ {
@@ -154,14 +215,14 @@ void collide_arrays(CollisionRecord as, int na, CollisionRecord bs, int nb,
   }
 }
 
-CollisionRecord particles_collisionrecords(DLL list, int* count) {
+CollisionRecord particles_collisionrecords(DLL list, int* count, float scale) {
   *count = dll_count(list);
   CollisionRecord crs = frame_alloc(sizeof(struct CollisionRecord_) *
                                     *count);
   DLLNode node = list->head;
   int ii = 0;
   while(node) {
-    rect_for_particle(&(crs[ii].rect), (Particle)node, 1.0f);
+    rect_for_particle(&(crs[ii].rect), (Particle)node, scale);
     crs[ii].data = node;
     crs[ii].skip = 0;
     node = node->next;
@@ -172,10 +233,15 @@ CollisionRecord particles_collisionrecords(DLL list, int* count) {
 }
 
 void bullet_vs_enemy(CollisionRecord bullet, CollisionRecord enemy) {
+  // add a particle
+  GameParticle ep = (GameParticle)enemy->data;
+  PrettyParticle smoke = spawn_smoke(&ep->particle.pos, &ep->particle.vel);
+  dll_add_head(&pretty_particles, (DLLNode)smoke);
+
   gameparticle_remove(&player_bullets, bullet->data);
   gameparticle_remove(&enemies, enemy->data);
-  bullet->data = NULL;
-  enemy->data = NULL;
+  SAFETY(bullet->data = NULL);
+  SAFETY(enemy->data = NULL);
   bullet->skip = 1;
   enemy->skip = 1;
 }
@@ -184,9 +250,9 @@ void check_collisions() {
   int num_bullets;
   int num_enemies;
   CollisionRecord pbs =
-    particles_collisionrecords(&player_bullets, &num_bullets);
+    particles_collisionrecords(&player_bullets, &num_bullets, 0.7f);
   CollisionRecord es =
-    particles_collisionrecords(&enemies, &num_enemies);
+    particles_collisionrecords(&enemies, &num_enemies, 0.8f);
 
   collide_arrays(pbs, num_bullets, es, num_enemies, &bullet_vs_enemy);
 }
@@ -197,17 +263,26 @@ void sprite_submit(Sprite sprite) {
 }
 
 void game_init() {
-  particle_allocator = fixed_allocator_make(sizeof(struct GameParticle_),
-                                            NUM_GAME_PARTICLES,
-                                            "particle_allocator");
+  gameparticle_allocator =
+    fixed_allocator_make(sizeof(struct GameParticle_),
+                         MAX_NUM_GAMEPARTICLES,
+                         "gameparticle_allocator");
+
+  prettyparticle_allocator =
+    fixed_allocator_make(sizeof(struct PrettyParticle_),
+                         MAX_NUM_PRETTYPARTICLES,
+                         "prettyparticle_allocator");
+
   main_clock = clock_make();
 
   stars = image_load("spacer/night-sky-stars.jpg");
   image_enemy = image_load("spacer/ship-right.png");
   image_player_bullet = image_load("spacer/plasma.png");
+  image_smoke = image_load("spacer/smoke.png");
 
   dll_zero(&enemies);
   dll_zero(&player_bullets);
+  dll_zero(&pretty_particles);
 
   player = gameparticle_make();
   player->particle.image = image_load("spacer/hero.png");
@@ -253,8 +328,14 @@ void game_step(long delta, InputState state) {
   // update bullets
   player_bullets_update(dt);
 
+  // update particles
+  prettyparticles_update(dt);
+
   // collision detection
   check_collisions();
+
+  // draw the particles
+  spritelist_enqueue_for_screen(particles_spritelist(&pretty_particles));
 
   // draw the enemies
   spritelist_enqueue_for_screen(particles_spritelist(&enemies));

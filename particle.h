@@ -12,7 +12,9 @@ typedef struct Particle_ {
   struct Vector_ vel;
   ImageResource image;
   float scale;
+  float dsdt;
   float angle;
+  float dadt;
 } *Particle;
 
 float particle_width(Particle particle);

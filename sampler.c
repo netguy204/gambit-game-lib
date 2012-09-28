@@ -36,7 +36,7 @@ void sampler_init() {
               sizeof(struct Filter_)));
 
   sampler_allocator = fixed_allocator_make(max_sampler_size,
-                                           NUM_SAMPLERS,
+                                           MAX_NUM_SAMPLERS,
                                            "sampler_allocator");
 }
 
@@ -61,7 +61,7 @@ int16_t sin_sample(SinSampler sampler, long sample) {
  */
 
 Sampler sinsampler_make(long start, long duration,
-			float freq, float amp, float phase) {
+                        float freq, float amp, float phase) {
   SinSampler sampler = (SinSampler)fixed_allocator_alloc(sampler_allocator);
   sampler->sampler.function = (SamplerFunction)sin_sample;
   sampler->sampler.release = sampler_free;
@@ -83,7 +83,7 @@ int16_t saw_sample(SawSampler sampler, long sample) {
 }
 
 Sampler sawsampler_make(long start, long duration,
-			float freq, float amp, float phase) {
+                        float freq, float amp, float phase) {
   SawSampler sampler = (SawSampler)fixed_allocator_alloc(sampler_allocator);
   sampler->sampler.function = (SamplerFunction)saw_sample;
   sampler->sampler.release = sampler_free;
@@ -92,7 +92,7 @@ Sampler sawsampler_make(long start, long duration,
 
   long samples_per_period = SAMPLE_FREQ / freq;
   float slope = 2 * amp / samples_per_period;
-  
+
   sampler->samples_per_period = samples_per_period;
   sampler->slope = slope;
   sampler->phase_samples = phase * samples_per_period;

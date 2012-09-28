@@ -1,12 +1,12 @@
 #ifndef MEMORY_H
 #define MEMORY_H
 
+#include "config.h"
+
 #include <stdlib.h>
 #include <pthread.h>
 
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
-
-#define DEBUG_MEMORY
 
 typedef struct FixedAllocator_ {
 #ifdef DEBUG_MEMORY

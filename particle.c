@@ -13,8 +13,8 @@ float particle_height(Particle particle) {
 Sprite particle_sprite(Particle particle) {
   Sprite sprite = frame_make_sprite();
   sprite->resource = particle->image;
-  sprite->w = particle_width(particle);
-  sprite->h = particle_height(particle);
+  sprite->w = particle_width(particle) * particle->scale;
+  sprite->h = particle_height(particle) * particle->scale;
   sprite->displayX = particle->pos.x;
   sprite->displayY = particle->pos.y;
   sprite->originX = 0.5;
@@ -25,6 +25,8 @@ Sprite particle_sprite(Particle particle) {
 
 void particle_integrate(Particle particle, float dt) {
   vector_integrate(&particle->pos, &particle->pos, &particle->vel, dt);
+  particle->scale += (particle->dsdt * dt);
+  particle->angle += (particle->dadt * dt);
 }
 
 SpriteList particles_spritelist(DLL list) {

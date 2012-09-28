@@ -95,7 +95,7 @@ void playlist_fill_buffer(PlayList list, int16_t* buffer, int nsamples) {
 void audio_init() {
   sampler_init();
   pls_allocator = fixed_allocator_make(sizeof(struct PlayListSample_),
-                                       NUM_SAMPLERS,
+                                       MAX_NUM_SAMPLERS,
                                        "pls_allocator");
 
   playlist = playlist_make();
