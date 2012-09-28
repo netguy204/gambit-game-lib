@@ -55,8 +55,8 @@
   (particle-s (game-particle-particle gp)))
 
 (define (game-particle-rect-scaled gp s)
-  (let* ((hw (* s (/ (game-particle-width gp) 2)))
-         (hh (* s (/ (game-particle-width gp) 2)))
+  (let* ((hw (* s (/ (game-particle-width gp) 2.)))
+         (hh (* s (/ (game-particle-width gp) 2.)))
          (cx (* s (game-particle-x gp)))
          (cy (* s (game-particle-y gp))))
     (rect-make (- cx hw) (- cy hh) (+ cx hw) (+ cy hh))))
@@ -117,7 +117,7 @@
   (let* ((r (vect-copy (game-particle-r source)))
          (dr (vect-copy (game-particle-dr source)))
          (dr (vect-add-into! dr dr (random-vector 50 100)))
-         (death-time (+ (seconds->cycles (/ (rand-in-range 500 3500) 1000))
+         (death-time (+ (seconds->cycles (/ (rand-in-range 500 3500) 1000.))
                         (clock-time *game-clock*))))
     (game-particle-make
      (particle-make
@@ -135,7 +135,7 @@
   (let* ((r (vect-copy (game-particle-r source)))
          (dr (vect-copy (game-particle-dr source)))
          (dr (vect-add-into! dr dr (random-vector 300 600)))
-         (death-time (+ (seconds->cycles (/ (rand-in-range 500 6500) 1000))
+         (death-time (+ (seconds->cycles (/ (rand-in-range 500 6500) 1000.))
                         (clock-time *game-clock*))))
     (game-particle-make
      (particle-make
@@ -164,8 +164,8 @@
 
     (game-particle-make
      (particle-make (vect-make
-                     (+ *screen-width* (/ (sparrow-width *texture-atlas* img-name) 2))
-                     (+ (/ img-height 2)
+                     (+ *screen-width* (/ (sparrow-width *texture-atlas* img-name) 2.))
+                     (+ (/ img-height 2.)
                         (* img-height (rand-in-range 0 nrows))))
                     (vect-make (- (rand-in-range *enemy-speed*
                                                  (* 2 *enemy-speed*)))
@@ -181,7 +181,7 @@
                                        *enemy-bullet-speed*)
                          *enemy-bullets*))
              (set! next-shot (+ (clock-time *game-clock*) shot-period))
-	     (audio-enqueue (tone-make 600 (/ *base-volume* 2) 0.05))))
+	     (audio-enqueue (tone-make 600 (/ *base-volume* 2.) 0.05))))
        (game-particle-integrate gp dt)))))
 
 (define (spawn-enemies n)
@@ -191,7 +191,7 @@
   (let* ((img-name "hero.png"))
     (game-particle-make
      (particle-make (vect-make (sparrow-width *texture-atlas* img-name)
-                               (/ *screen-height* 2))
+                               (/ *screen-height* 2.))
                     (vect-make 0 0)
                     0 0 1 0)
      *texture-atlas*
@@ -377,7 +377,7 @@
   ;; remove bullets that go off the right
   (for-each
    (lambda (bullet)
-     (if (> (game-particle-x bullet) (+ (/ (game-particle-width bullet) 2)
+     (if (> (game-particle-x bullet) (+ (/ (game-particle-width bullet) 2.)
                                         *screen-width*))
          (set! *player-bullets* (delete bullet *player-bullets*))))
    *player-bullets*)
@@ -385,14 +385,14 @@
   ;; remove bullets that go off the left
   (for-each
    (lambda (bullet)
-     (if (< (game-particle-x bullet) (- (/ (game-particle-width bullet) 2)))
+     (if (< (game-particle-x bullet) (- (/ (game-particle-width bullet) 2.)))
          (set! *enemy-bullets* (delete bullet *enemy-bullets*))))
    *enemy-bullets*)
 
   ;; remove enemies that go off the left
   (for-each
    (lambda (enemy)
-     (if (< (game-particle-x enemy) (- (/ (game-particle-width enemy) 2)))
+     (if (< (game-particle-x enemy) (- (/ (game-particle-width enemy) 2.)))
          (set! *enemies* (delete enemy *enemies*))))
    *enemies*)
 
@@ -577,43 +577,43 @@
   (set! +last-silent-sample+ (+ +last-silent-sample+ (seconds->samples duration))))
 
 (define (bpm->seconds n notes-per-beat)
-  (/ n (* notes-per-beat 60)))
+  (/ n (* notes-per-beat 60.)))
 
 (define (progression base)
   (let ((duration (bpm->seconds 120 4)))
 
     (play (list (* base 4/3) base) duration)
     (play (list (* base 3/3) (* 2 base)) duration)
-    (play (list (* base 4/3) (* 2 base)) (/ duration 2))
-    (play (list (* base 4/3) base) (/ duration 2))
+    (play (list (* base 4/3) (* 2 base)) (/ duration 2.))
+    (play (list (* base 4/3) base) (/ duration 2.))
 
     (play (list (* base 1/3) (* 1 base)) duration)
 
-    (play (list (* 1/3 base) (* 1 base)) (/ duration 2))
-    (play (list (* 1/3 base) (* 2 base)) (/ duration 2))
+    (play (list (* 1/3 base) (* 1 base)) (/ duration 2.))
+    (play (list (* 1/3 base) (* 2 base)) (/ duration 2.))
 
     (play (list (* base 1/3) base) duration)
 
-    (play (list (* 1/3 base) (* 2 base)) (/ duration 3))
-    (play (list (* 2/3 base) (* 1 base)) (/ duration 3))
-    (play (list (* 2/3 base) (* 2 base)) (/ duration 3))
+    (play (list (* 1/3 base) (* 2 base)) (/ duration 3.))
+    (play (list (* 2/3 base) (* 1 base)) (/ duration 3.))
+    (play (list (* 2/3 base) (* 2 base)) (/ duration 3.))
 
     (play (list (* base 2/3) base) duration)
 
-    (play (list (* 1/3 base) (* 2 base)) (/ duration 3))
-    (play (list (* 1/3 base) (* 1 base)) (/ duration 3))
-    (play (list (* 2/3 base) (* 1 base)) (/ duration 3))
+    (play (list (* 1/3 base) (* 2 base)) (/ duration 3.))
+    (play (list (* 1/3 base) (* 1 base)) (/ duration 3.))
+    (play (list (* 2/3 base) (* 1 base)) (/ duration 3.))
 
     (play (list (* base 4/3) (* 2 base)) duration)
 
-    (play (list (* 1/3 base) (* 2 base)) (/ duration 2))
-    (play (list (* 1/3 base) (* 1 base)) (/ duration 2))))
+    (play (list (* 1/3 base) (* 2 base)) (/ duration 2.))
+    (play (list (* 1/3 base) (* 1 base)) (/ duration 2.))))
 
 (define (music)
-  (progression 100)
-  (progression 150)
-  (progression 75)
-  (progression 50)
+  (progression 100.)
+  (progression 150.)
+  (progression 75.)
+  (progression 50.)
   (music))
 
 #|

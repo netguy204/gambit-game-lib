@@ -20,7 +20,7 @@ int main(int argc, char ** argv) {
   ___setup_params_reset(&setup_params);
   setup_params.version = ___VERSION;
   setup_params.linker = SCHEME_LIBRARY_LINKER;
-  setup_params.min_heap = 20000;
+  setup_params.min_heap = 5000000;
 
   ___setup(&setup_params);
 
