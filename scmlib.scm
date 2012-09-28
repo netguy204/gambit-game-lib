@@ -181,7 +181,7 @@
                                        *enemy-bullet-speed*)
                          *enemy-bullets*))
              (set! next-shot (+ (clock-time *game-clock*) shot-period))
-	     (audio-enqueue (tone-make 600 (/ *base-volume* 2) 0.05))))
+             (audio-enqueue (tone-make 600 (/ *base-volume* 2) 0.05))))
        (game-particle-integrate gp dt)))))
 
 (define (spawn-enemies n)
@@ -201,10 +201,10 @@
   (let* ((sx (game-particle-x shooter))
          (sy (game-particle-y shooter))
          (ang (game-particle-t shooter))
-         
+
          (dx (cos (degrees->radians ang)))
          (dy (sin (degrees->radians ang))))
-    
+
     (game-particle-make
      (particle-make (vect-make sx sy)
                     (vect-make (* dx speed)
@@ -436,23 +436,7 @@
 (define *player-fire-repeater* (repeating-latch-make 0.2 #f))
 
 (define (update-view dt input)
-  (let ((updown (input-updown input))
-        (leftright (input-leftright input))
-        (action1 (input-action1 input)))
-    (game-particle-dr-set!
-     *player*
-     (vect-make (* *player-speed* leftright)
-                (* *player-speed* updown)))
-
-    (if (repeating-latch-state *player-fire-repeater*  action1)
-        (begin
-          (audio-enqueue (tone-make 300 (* 2 *base-volume*) 0.1))
-	  (player-fire))))
-
-  (integrate-objects dt)
-  (spawn-and-terminate dt)
-  (handle-collisions)
-  (render input))
+  '())
 
 ;;; tools for playing with audio
 

@@ -1,6 +1,6 @@
 C_SRC+= \
 	threadlib.c memory.c listlib.c testlib.c \
-	sampler.c audio.c \
+	sampler.c audio.c game.c vector.c \
 	gambitmain.c realmain.c stb_image.c
 
 SCM_LIB_SRC=link.scm
@@ -61,4 +61,3 @@ xml2.o1.o: xml2.scm
 xml2: xml2.o1.o
 
 .phony: all
-

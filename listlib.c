@@ -33,3 +33,61 @@ void llnode_remove(DLLNode node) {
   }
 }
 
+#define NULL 0
+
+void dll_add_head(DLL list, DLLNode addition) {
+  if(list->head == NULL) {
+    addition->next = NULL;
+    addition->prev = NULL;
+    list->head = addition;
+    list->tail = addition;
+  } else {
+    INSERT_BEFORE(list->head, addition);
+    list->head = addition;
+  }
+}
+
+DLLNode dll_remove_tail(DLL list) {
+  if (list->tail == NULL) return NULL;
+
+  DLLNode result = list->tail;
+  DLLNode before = result->prev;
+  if(before) {
+    before->next = NULL;
+    list->tail = before;
+  } else {
+    list->head = NULL;
+    list->tail = NULL;
+  }
+  return result;
+}
+
+void dll_remove(DLL list, DLLNode node) {
+  if(list->head == node) {
+    DLLNode next = node->next;
+    if(next) {
+      next->prev = NULL;
+      list->head = node->next;
+    } else {
+      list->head = NULL;
+      list->tail = NULL;
+    }
+    return;
+  }
+
+  if(list->tail == node) {
+    dll_remove_tail(list);
+  }
+
+  REMOVE(node);
+}
+
+int dll_count(DLL list) {
+  int count = 0;
+  DLLNode node = list->head;
+  while(node) {
+    ++count;
+    node = node->next;
+  }
+  return count;
+}

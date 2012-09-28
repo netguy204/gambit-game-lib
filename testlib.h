@@ -59,11 +59,6 @@ void step(int, InputState);
 void terminate();
 void resources_released();
 
-/* filled by the gambit repl when gambit is shutting down. no more
-   calls to gabmit should happen after this is set */
-extern int gambit_running;
-void notify_gambit_terminated();
-
 /* provided by system specific lib */
 void native_init();
 InputState frame_inputstate();

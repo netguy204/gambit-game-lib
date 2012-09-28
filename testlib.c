@@ -16,8 +16,6 @@ Queue render_queue;
 uint32_t screen_width;
 uint32_t screen_height;
 
-int gambit_running;
-
 static pthread_t renderer_thread;
 
 void process_render_command() {
@@ -57,11 +55,7 @@ void lib_init() {
   // kick off the audio system
   audio_init();
 
-  if(gambit_running) scm_init();
-}
-
-void notify_gambit_terminated() {
-  gambit_running = 0;
+  scm_init();
 }
 
 void render_loop_exit(void* empty) {
@@ -130,7 +124,6 @@ void images_free() {
     head = next;
   }
   last_resource = NULL;
-  if(gambit_running) resources_released();
 }
 
 /* portable implementation */

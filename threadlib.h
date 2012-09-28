@@ -6,8 +6,7 @@
 #include "listlib.h"
 
 typedef struct Queue_ {
-  DLLNode head;
-  DLLNode tail;
+  struct DLL_ list;
   pthread_mutex_t mutex;
   pthread_cond_t cond;
 } *Queue;

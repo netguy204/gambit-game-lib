@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "testlib.h"
+#include "game.h"
 
 #define min_time 18
 #define max_time 100
@@ -10,8 +11,7 @@ int loop_once() {
   int new_time;
 
   InputState state = frame_inputstate();
-  if(!gambit_running || state->quit_requested) {
-    if(gambit_running) terminate();
+  if(state->quit_requested) {
     lib_shutdown();
     return 0;
   }
@@ -30,7 +30,7 @@ int loop_once() {
   }
 
   begin_frame();
-  if(gambit_running) step(delta, state);
+  game_step(delta, state);
   end_frame();
 
   last_time = new_time;
@@ -39,11 +39,12 @@ int loop_once() {
 }
 
 int real_main(int argc, char ** argv) {
-  gambit_running = 1;
   int last_time = time_millis();
   lib_init();
+  game_init();
 
   while(loop_once()) {}
 
+  game_shutdown();
   return 0;
 }

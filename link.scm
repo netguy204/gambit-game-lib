@@ -93,13 +93,13 @@ c-declare-end
 
 (define input-leftright
   (c-lambda (InputState)
-	    float
-	    "___result = ___arg1->leftright;"))
+            float
+            "___result = ___arg1->leftright;"))
 
 (define input-updown
   (c-lambda (InputState)
-	    float
-	    "___result = ___arg1->updown;"))
+            float
+            "___result = ___arg1->updown;"))
 
 (define %input-action1
   (c-lambda (InputState)
@@ -274,8 +274,7 @@ ___arg1->v1 = ___arg5;"))
 (call/cc (lambda (cc) (set! ##exit-cc-hack cc)))
 
 (define (exit)
-  (terminate)
-  (%notify-terminate))
+  (terminate))
 
 (define quit exit)
 
@@ -283,8 +282,8 @@ ___arg1->v1 = ___arg5;"))
           (set! *game-clock* (clock-make))
           (##add-exit-job!
            (lambda ()
-	     (exit)
-	     (##exit-cc-hack)))
+             (exit)
+             (##exit-cc-hack)))
 
           (set! *screen-width*
                 ((c-lambda () int "___result = screen_width;")))
@@ -323,9 +322,3 @@ ___arg1->v1 = ___arg5;"))
 ;; c tells us to terminate
 (c-define (terminate) () void "terminate" ""
           (display "terminating") (newline))
-
-;; we tell c to terminate
-(define %notify-terminate
-  (c-lambda ()
-            void
-            "notify_gambit_terminated"))

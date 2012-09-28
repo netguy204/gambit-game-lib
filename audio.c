@@ -2,12 +2,6 @@
 #include "audio.h"
 #include "memory.h"
 
-#define ABS(x) ((x < 0) ? (-x) : (x))
-#define SIGN(x) ((x < 0) ? (-1) : (1))
-
-#define C1_THRESH ((INT16_MAX*2) / 3)
-#define C1_FACTOR 3
-
 PlayList playlist;
 Queue audio_queue;
 Filter global_filter;
@@ -78,7 +72,7 @@ void playlist_fill_buffer(PlayList list, int16_t* buffer, int nsamples) {
      */
     float value = 0;
     for(node = list->head; node != NULL;
-	node = (PlayListSample)node->node.next) {
+        node = (PlayListSample)node->node.next) {
       if(START(node->sampler) > sample) break;
       int16_t sampled = SAMPLE(node->sampler, sample);
       float normalized = (float)sampled / INT16_MAX;
