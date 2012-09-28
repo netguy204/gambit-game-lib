@@ -5,6 +5,7 @@
 #include "memory.h"
 #include "particle.h"
 #include "rect.h"
+#include "controls.h"
 
 #include <stdlib.h>
 #include <math.h>
@@ -21,6 +22,8 @@ typedef struct GameParticle_ {
 } *GameParticle;
 
 GameParticle player;
+struct RepeatingLatch_ player_gun_latch;
+
 struct DLL_ enemies;
 struct DLL_ player_bullets;
 
@@ -41,6 +44,11 @@ GameParticle gameparticle_make() {
 
 void gameparticle_free(GameParticle particle) {
   fixed_allocator_free(particle_allocator, particle);
+}
+
+void gameparticle_remove(DLL list, GameParticle particle) {
+  dll_remove(list, (DLLNode)particle);
+  gameparticle_free(particle);
 }
 
 int rand_in_range(int lower, int upper) {
@@ -90,8 +98,7 @@ void gameparticles_update(DLL list, float dt, GameParticleTest test) {
     GameParticle next = (GameParticle)p->particle.node.next;
 
     if(!test(p)) {
-      dll_remove(list, (DLLNode)p);
-      gameparticle_free(p);
+      gameparticle_remove(list, p);
     }
 
     p = next;
@@ -119,37 +126,75 @@ void player_bullets_update(float dt) {
   gameparticles_update(&player_bullets, dt, &player_bullet_boundary_test);
 }
 
-void sprite_submit(Sprite sprite) {
-  SpriteList sl = frame_spritelist_append(NULL, sprite);
-  spritelist_enqueue_for_screen(sl);
-}
+typedef struct CollisionRecord_ {
+  struct Rect_ rect;
+  void * data;
+  char skip;
+} *CollisionRecord;
 
-typedef struct RepeatingLatch_ {
-  long last_time;
-  float period;
-  int latch_value, last_state;
-} *RepeatingLatch;
+typedef void(*OnCollision)(CollisionRecord, CollisionRecord);
 
-int repeatinglatch_state(RepeatingLatch latch, int input_state) {
-  if(latch->last_state != input_state) {
-    latch->last_state = input_state;
-    latch->last_time = clock_time(main_clock);
-    return input_state;
-  } else {
-    // has the clock expired?
-    long dt_ticks = clock_time(main_clock) - latch->last_time;
-    float dt = clock_cycles_to_seconds(dt_ticks);
-    if(dt >= latch->period) {
-      latch->last_time = clock_time(main_clock);
-      return input_state;
-    } else {
-      // return the default value
-      return latch->latch_value;
+void collide_arrays(CollisionRecord as, int na, CollisionRecord bs, int nb,
+                    OnCollision on_collision) {
+  int ia;
+  int ib;
+
+  for(ia = 0; ia < na; ++ia) {
+    CollisionRecord a = &as[ia];
+    if(a->skip) continue;
+
+    for(ib = 0; ib < nb; ++ib) {
+      CollisionRecord b = &bs[ib];
+      if(a->skip || b->skip) break;
+
+      if(rect_intersect(&a->rect, &b->rect)) {
+        on_collision(a, b);
+      }
     }
   }
 }
 
-struct RepeatingLatch_ player_gun_latch;
+CollisionRecord particles_collisionrecords(DLL list, int* count) {
+  *count = dll_count(list);
+  CollisionRecord crs = frame_alloc(sizeof(struct CollisionRecord_) *
+                                    *count);
+  DLLNode node = list->head;
+  int ii = 0;
+  while(node) {
+    rect_for_particle(&(crs[ii].rect), (Particle)node, 1.0f);
+    crs[ii].data = node;
+    crs[ii].skip = 0;
+    node = node->next;
+    ++ii;
+  }
+
+  return crs;
+}
+
+void bullet_vs_enemy(CollisionRecord bullet, CollisionRecord enemy) {
+  gameparticle_remove(&player_bullets, bullet->data);
+  gameparticle_remove(&enemies, enemy->data);
+  bullet->data = NULL;
+  enemy->data = NULL;
+  bullet->skip = 1;
+  enemy->skip = 1;
+}
+
+void check_collisions() {
+  int num_bullets;
+  int num_enemies;
+  CollisionRecord pbs =
+    particles_collisionrecords(&player_bullets, &num_bullets);
+  CollisionRecord es =
+    particles_collisionrecords(&enemies, &num_enemies);
+
+  collide_arrays(pbs, num_bullets, es, num_enemies, &bullet_vs_enemy);
+}
+
+void sprite_submit(Sprite sprite) {
+  SpriteList sl = frame_spritelist_append(NULL, sprite);
+  spritelist_enqueue_for_screen(sl);
+}
 
 void game_init() {
   particle_allocator = fixed_allocator_make(sizeof(struct GameParticle_),
@@ -180,7 +225,7 @@ void game_init() {
 void handle_input(InputState state) {
   player->particle.vel.x = state->leftright * player_speed;
   player->particle.vel.y = state->updown * player_speed;
-  if(repeatinglatch_state(&player_gun_latch, state->action1)) {
+  if(repeatinglatch_state(&player_gun_latch, main_clock, state->action1)) {
     struct Vector_ v = { player_bullet_speed, 0.0f };
     GameParticle bullet = spawn_bullet(&player->particle.pos, &v,
                                        image_player_bullet);
@@ -207,6 +252,9 @@ void game_step(long delta, InputState state) {
 
   // update bullets
   player_bullets_update(dt);
+
+  // collision detection
+  check_collisions();
 
   // draw the enemies
   spritelist_enqueue_for_screen(particles_spritelist(&enemies));
