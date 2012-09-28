@@ -2,27 +2,6 @@
 #include "testlib.h"
 #include "vector.h"
 
-#define NUM_GAME_PARTICLES 30
-
-FixedAllocator particle_allocator;
-
-void particles_init() {
-  particle_allocator = fixed_allocator_make(sizeof(struct Particle_),
-                                            NUM_GAME_PARTICLES,
-                                            "particle_allocator");
-}
-
-Particle particle_make() {
-  Particle particle = fixed_allocator_alloc(particle_allocator);
-  particle->scale = 1.0;
-  particle->angle = 0;
-  return particle;
-}
-
-void particle_free(Particle particle) {
-  fixed_allocator_free(particle_allocator, particle);
-}
-
 float particle_width(Particle particle) {
   return particle->image->w;
 }
@@ -56,4 +35,14 @@ SpriteList particles_spritelist(DLL list) {
     p = (Particle)p->node.next;
   }
   return result;
+}
+
+void rect_for_particle(Rect rect, Particle particle, float scale) {
+  float hw = (particle_width(particle) * scale) / 2.0f;
+  float hh = (particle_height(particle) * scale) / 2.0f;
+
+  rect->minx = particle->pos.x - hw;
+  rect->maxx = particle->pos.x + hw;
+  rect->miny = particle->pos.y - hh;
+  rect->maxy = particle->pos.y + hh;
 }

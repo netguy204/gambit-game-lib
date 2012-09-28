@@ -27,6 +27,7 @@ void dll_add_head(DLL list, DLLNode addition);
 DLLNode dll_remove_tail(DLL list);
 void dll_remove(DLL list, DLLNode node);
 int dll_count(DLL list);
+void dll_zero(DLL list);
 
 #define INSERT_AFTER(target, addition) \
   llnode_insert_after((DLLNode)target, (DLLNode)addition)

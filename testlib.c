@@ -73,6 +73,10 @@ void begin_frame() {
   renderer_enqueue(renderer_begin_frame, NULL);
 }
 
+void* frame_alloc(size_t bytes) {
+  return stack_allocator_alloc(frame_allocator, bytes);
+}
+
 void end_frame() {
   renderer_enqueue_sync(signal_render_complete, NULL);
 }
@@ -160,7 +164,7 @@ long clock_seconds_to_cycles(float seconds) {
 }
 
 Sprite frame_make_sprite() {
-  Sprite sprite = stack_allocator_alloc(frame_allocator, sizeof(struct Sprite_));
+  Sprite sprite = frame_alloc(sizeof(struct Sprite_));
   sprite->angle = 0.0f;
   sprite->originX = 0.0f;
   sprite->originY = 0.0f;
@@ -176,7 +180,7 @@ Sprite frame_make_sprite() {
 }
 
 SpriteList frame_spritelist_append(SpriteList rest, Sprite sprite) {
-  SpriteList list = stack_allocator_alloc(frame_allocator, sizeof(struct SpriteList_));
+  SpriteList list = frame_alloc(sizeof(struct SpriteList_));
   list->node.next = (LLNode)rest;
   list->sprite = sprite;
   return list;

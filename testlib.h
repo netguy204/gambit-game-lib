@@ -24,14 +24,6 @@
 #include "listlib.h"
 #include "audio.h"
 
-/* allocators */
-extern ThreadBarrier render_barrier;
-extern FixedAllocator clock_allocator;
-extern FixedAllocator image_resource_allocator;
-extern StackAllocator frame_allocator;
-extern FixedAllocator command_allocator;
-extern Queue render_queue;
-
 extern uint32_t screen_width;
 extern uint32_t screen_height;
 
@@ -44,6 +36,7 @@ void lib_init();
 void lib_shutdown();
 
 void begin_frame();
+void* frame_alloc(size_t bytes);
 void end_frame();
 
 typedef struct InputState_ {

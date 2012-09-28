@@ -1,6 +1,7 @@
 C_SRC+= \
 	threadlib.c memory.c listlib.c testlib.c \
 	sampler.c audio.c game.c vector.c particle.c \
+	rect.c \
 	gambitmain.c realmain.c stb_image.c
 
 XML_INCLUDE:=-I/usr/include/libxml2

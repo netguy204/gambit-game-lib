@@ -91,3 +91,8 @@ int dll_count(DLL list) {
   }
   return count;
 }
+
+void dll_zero(DLL list) {
+  list->head = NULL;
+  list->tail = NULL;
+}
