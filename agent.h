@@ -50,11 +50,12 @@ typedef struct Dispatcher_ {
   struct DLL_ dispatchees;
 } *Dispatcher;
 
+#define COLLECTIVE_SUB_DISPATCHERS 2
+
 typedef struct Collective_ {
   struct Dispatcher_ dispatcher;
   struct DLL_ children;
-  Dispatcher collision_dispatcher;
-  //Dispatcher attack_dispatcher;
+  Dispatcher sub_dispatchers[COLLECTIVE_SUB_DISPATCHERS];
 } *Collective;
 
 typedef struct EnemyAgent_ {
@@ -64,7 +65,7 @@ typedef struct EnemyAgent_ {
 } *EnemyAgent;
 
 enum MessageKind {
-  COLLECTIVE_ADD_ENEMY,   // collective should own enemy
+  COLLECTIVE_ADD_AGENT,   // collective should own agent
   MESSAGE_MAX0,
   MESSAGE_TERMINATE,      // command agent to terminate
   MESSAGE_TERMINATING,    // agent is terminating
@@ -93,8 +94,8 @@ void messages_dropall(Agent agent);
 void enemyagent_fill(EnemyAgent agent, AgentUpdate update, AgentFree agentfree);
 
 // eventually orchestrates the scenario
-Collective collective_make();
-Dispatcher collision_dispatcher_make();
+Collective collective_make(Dispatcher sub_dispatchers[COLLECTIVE_SUB_DISPATCHERS]);
+Dispatcher dispatcher_make(AgentUpdate update);
 
 void dispatcher_add_agent(Dispatcher dispatcher, Agent agent);
 void dispatcher_remove_agent(Dispatcher dispatcher, Agent agent);
@@ -104,6 +105,10 @@ void agent_update(Agent agent);
 typedef void(*OutboxMessageCallback)(Dispatcher dispatcher, Message message, void * udata);
 typedef void(*InboxMessageCallback)(Agent agent, Message message, void * udata);
 
+void agent_send_terminate(Agent agent, Agent source);
+
+// callback for TERMINATING outbox messages. completes graceful agent
+// termination.
 void agent_terminate_report_complete(Message message);
 
 void foreach_dispatcheemessage(Dispatcher dispatcher, OutboxMessageCallback callback,

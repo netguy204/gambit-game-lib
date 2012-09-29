@@ -215,7 +215,7 @@ void enemies_update(float dt) {
     Enemy enemy = spawn_enemy();
     dll_add_head(&enemies, (DLLNode)&enemy->particle);
 
-    Message spawn = message_make(NULL, COLLECTIVE_ADD_ENEMY, &enemy->agent);
+    Message spawn = message_make(NULL, COLLECTIVE_ADD_AGENT, &enemy->agent);
     message_postinbox((Agent)collective, spawn);
   }
 }
@@ -285,6 +285,68 @@ CollisionRecord particles_collisionrecords(DLL list, int* count, float scale) {
   return crs;
 }
 
+CollisionRecord enemies_collisionrecords(DLL list, int* count, float scale) {
+  *count = dll_count(list);
+  CollisionRecord crs = frame_alloc(sizeof(struct CollisionRecord_) *
+                                    *count);
+  DLLNode node = list->head;
+  int ii = 0;
+  while(node) {
+    EnemyAgent enemyagent = (EnemyAgent)(((Dispatchee)node)->agent);
+    Particle ep = enemyagent_particle(enemyagent);
+
+    rect_for_particle(&(crs[ii].rect), ep, scale);
+    crs[ii].data = enemyagent;
+    crs[ii].skip = 0;
+    node = node->next;
+    ++ii;
+  }
+
+  return crs;
+}
+
+void bullet_vs_agent(CollisionRecord bullet, CollisionRecord enemy, void* dispatcher_) {
+  Dispatcher dispatcher = (Dispatcher)dispatcher_;
+  particle_remove(&player_bullets, bullet->data);
+
+  Agent enemyagent = (Agent)enemy->data;
+  agent_send_terminate(enemyagent, (Agent)dispatcher);
+
+  bullet->skip = 1;
+  enemy->skip = 1;
+}
+
+void collision_dispatcher_update(Agent agent) {
+  Dispatcher dispatcher = (Dispatcher)agent;
+
+  // drain our inbox
+  foreach_inboxmessage(agent, NULL, NULL);
+
+  // drain the outboxes of our dispatchees
+  foreach_dispatcheemessage(dispatcher, NULL, NULL);
+
+  int num_bullets;
+  int num_enemies;
+
+  CollisionRecord pbs =
+    particles_collisionrecords(&player_bullets, &num_bullets, 0.7f);
+  CollisionRecord es =
+    enemies_collisionrecords(&dispatcher->dispatchees, &num_enemies, 0.8f);
+
+  // disregard any enemies that have crossed the screen
+  int ii;
+  for(ii = 0; ii < num_enemies; ++ii) {
+    CollisionRecord rec = &es[ii];
+    EnemyAgent enemyagent = (EnemyAgent)rec->data;
+    Particle p = enemyagent_particle(enemyagent);
+    if(p->pos.x < -(particle_width(p) / 2.0f)) {
+      agent_send_terminate((Agent)enemyagent, (Agent)dispatcher);
+    }
+  }
+
+  collide_arrays(pbs, num_bullets, es, num_enemies, &bullet_vs_agent, dispatcher);
+}
+
 void sprite_submit(Sprite sprite) {
   SpriteList sl = frame_spritelist_append(NULL, sprite);
   spritelist_enqueue_for_screen(sl);
@@ -333,7 +395,12 @@ void game_init() {
   player_gun_latch.last_time = 0;
   player_gun_latch.last_state = 0;
 
-  collective = collective_make();
+  Dispatcher dispatcher = dispatcher_make(collision_dispatcher_update);
+  Dispatcher dispatchers[COLLECTIVE_SUB_DISPATCHERS] = {
+    dispatcher
+  };
+
+  collective = collective_make(dispatchers);
 }
 
 void player_fire() {

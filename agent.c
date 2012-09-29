@@ -104,40 +104,9 @@ void agent_free(Agent agent) {
   agent->free(agent);
 }
 
-CollisionRecord enemies_collisionrecords(DLL list, int* count, float scale) {
-  *count = dll_count(list);
-  CollisionRecord crs = frame_alloc(sizeof(struct CollisionRecord_) *
-                                    *count);
-  DLLNode node = list->head;
-  int ii = 0;
-  while(node) {
-    EnemyAgent enemyagent = (EnemyAgent)(((Dispatchee)node)->agent);
-    Particle ep = enemyagent_particle(enemyagent);
-
-    rect_for_particle(&(crs[ii].rect), ep, scale);
-    crs[ii].data = enemyagent;
-    crs[ii].skip = 0;
-    node = node->next;
-    ++ii;
-  }
-
-  return crs;
-}
-
 void agent_send_terminate(Agent agent, Agent source) {
   Message terminate = message_make(source, MESSAGE_TERMINATE, NULL);
   message_postinbox(agent, terminate);
-}
-
-void bullet_vs_agent(CollisionRecord bullet, CollisionRecord enemy, void* dispatcher_) {
-  Dispatcher dispatcher = (Dispatcher)dispatcher_;
-  particle_remove(&player_bullets, bullet->data);
-
-  Agent enemyagent = (Agent)enemy->data;
-  agent_send_terminate(enemyagent, (Agent)dispatcher);
-
-  bullet->skip = 1;
-  enemy->skip = 1;
 }
 
 // a null callback will result in proper dispatchee exit handling and
@@ -211,44 +180,15 @@ void foreach_inboxmessage(Agent agent, InboxMessageCallback callback, void * uda
   }
 }
 
-void collision_dispatcher_update(Dispatcher dispatcher) {
-  // drain our inbox
-
-  // drain the outboxes of our dispatchees
-  foreach_dispatcheemessage(dispatcher, NULL, NULL);
-
-  int num_bullets;
-  int num_enemies;
-
-  CollisionRecord pbs =
-    particles_collisionrecords(&player_bullets, &num_bullets, 0.7f);
-  CollisionRecord es =
-    enemies_collisionrecords(&dispatcher->dispatchees, &num_enemies, 0.8f);
-
-  // disregard any enemies that have crossed the screen
-  int ii;
-  for(ii = 0; ii < num_enemies; ++ii) {
-    CollisionRecord rec = &es[ii];
-    EnemyAgent enemyagent = (EnemyAgent)rec->data;
-    Particle p = enemyagent_particle(enemyagent);
-    if(p->pos.x < -(particle_width(p) / 2.0f)) {
-      agent_send_terminate((Agent)enemyagent, (Agent)dispatcher);
-    }
-  }
-
-  collide_arrays(pbs, num_bullets, es, num_enemies, &bullet_vs_agent, dispatcher);
-}
-
 void dispatcher_fill(Dispatcher dispatcher, AgentUpdate update,
                      AgentFree agentfree, int state) {
   agent_fill((Agent)dispatcher, update, agentfree, state);
   dll_zero(&dispatcher->dispatchees);
 }
 
-Dispatcher collision_dispatcher_make() {
+Dispatcher dispatcher_make(AgentUpdate update) {
   Dispatcher dispatcher = fixed_allocator_alloc(agent_allocator);
-  dispatcher_fill(dispatcher, (AgentUpdate)&collision_dispatcher_update,
-                  basicagent_free, COLLISION_IDLE);
+  dispatcher_fill(dispatcher, update, basicagent_free, COLLISION_IDLE);
   return dispatcher;
 }
 
@@ -289,12 +229,18 @@ void collective_remove(Collective collective, Agent agent) {
   dispatcher_remove_agent((Dispatcher)collective, agent);
 }
 
-void collective_add_enemy(Collective collective, void * data) {
-  Agent enemyagent = (Agent)data;
+void collective_add_agent(Collective collective, void * data) {
+  Agent agent = (Agent)data;
 
-  collective_add(collective, enemyagent);
-  dispatcher_add_agent(collective->collision_dispatcher, enemyagent);
-  //dispatcher_add_agent(collective->attack_dispatcher, (Agent)&enemy->agent);
+  collective_add(collective, agent);
+
+  int ii = 0;
+  for(ii = 0; ii < COLLECTIVE_SUB_DISPATCHERS; ++ii) {
+    Dispatcher dispatcher = collective->sub_dispatchers[ii];
+    if(dispatcher) {
+      dispatcher_add_agent(dispatcher, agent);
+    }
+  }
 }
 
 void collective_handle_outboxes(Dispatcher dispatcher, Message message, void * udata) {
@@ -315,8 +261,8 @@ void collective_update(Collective collective) {
   Message message = (Message)dll_remove_tail(&collective->dispatcher.agent.inbox);
   while(message) {
     switch(message->kind) {
-    case COLLECTIVE_ADD_ENEMY:
-      collective_add_enemy(collective, message->data);
+    case COLLECTIVE_ADD_AGENT:
+      collective_add_agent(collective, message->data);
       break;
 
     default:
@@ -337,17 +283,21 @@ void collective_update(Collective collective) {
   foreach_dispatcheemessage((Dispatcher)collective, collective_handle_outboxes, NULL);
 }
 
-Collective collective_make() {
+Collective collective_make(Dispatcher dispatchers[COLLECTIVE_SUB_DISPATCHERS]) {
   Collective collective = fixed_allocator_alloc(agent_allocator);
   dispatcher_fill((Dispatcher)collective, (AgentUpdate)collective_update,
                   basicagent_free, COLLECTIVE_IDLE);
   dll_zero(&collective->children);
 
-  collective->collision_dispatcher = collision_dispatcher_make();
-  collective_add(collective, (Agent)collective->collision_dispatcher);
+  int ii = 0;
+  for(ii = 0; ii < COLLECTIVE_SUB_DISPATCHERS; ++ii) {
+    Dispatcher dispatcher = dispatchers[ii];
+    collective->sub_dispatchers[ii] = dispatcher;
 
-  //collective->attack_dispatcher = attach_dispatcher_make();
-  //collective_add(collective, (Agent)collective->attack_dispatcher);
+    if(dispatcher) {
+      collective_add(collective, (Agent)dispatcher);
+    }
+  }
 
   return collective;
 }
