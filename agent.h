@@ -54,12 +54,12 @@ typedef struct Collective_ {
   Dispatcher collision_dispatcher;
 } *Collective;
 
-typedef struct Enemy_ {
+typedef struct EnemyAgent_ {
   struct Agent_ agent;
   struct Particle_* visual;
   long last_fire;
   int hp;
-} *Enemy;
+} *EnemyAgent;
 
 enum MessageKind {
   COLLECTIVE_SPAWN_ENEMY, // collective should create enemy
@@ -98,7 +98,7 @@ void dispatcher_remove_agent(Dispatcher dispatcher, Agent agent);
 void agent_update(Agent agent);
 
 struct Particle_;
-Enemy enemy_make(struct Particle_* particle, int hp);
-void enemy_free(Enemy enemy);
+EnemyAgent enemyagent_make(struct Particle_* particle, int hp);
+void enemyagent_free(EnemyAgent enemy);
 
 #endif

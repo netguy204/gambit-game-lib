@@ -17,7 +17,7 @@ void agent_init() {
                          "message_allocator");
 
   agent_allocator =
-    fixed_allocator_make(MAX(sizeof(struct Enemy_),
+    fixed_allocator_make(MAX(sizeof(struct EnemyAgent_),
                              MAX(sizeof(struct Dispatcher_),
                                  sizeof(struct Collective_))),
                          MAX_NUM_AGENTS,
@@ -98,7 +98,7 @@ CollisionRecord enemies_collisionrecords(DLL list, int* count, float scale) {
   DLLNode node = list->head;
   int ii = 0;
   while(node) {
-    Enemy enemy = (Enemy)(((Dispatchee)node)->agent);
+    EnemyAgent enemy = (EnemyAgent)(((Dispatchee)node)->agent);
     rect_for_particle(&(crs[ii].rect), enemy->visual, scale);
     crs[ii].data = enemy;
     crs[ii].skip = 0;
@@ -167,7 +167,7 @@ void collision_dispatcher_update(Dispatcher dispatcher) {
   int ii;
   for(ii = 0; ii < num_enemies; ++ii) {
     CollisionRecord rec = &es[ii];
-    Enemy enemy = (Enemy)rec->data;
+    EnemyAgent enemy = (EnemyAgent)rec->data;
     Particle p = (Particle)enemy->visual;
     if(p->pos.x < -(particle_width(p) / 2.0f)) {
       agent_send_terminate((Agent)enemy, (Agent)dispatcher);
@@ -229,7 +229,7 @@ void collective_spawn_enemy(Collective collective, void * data) {
   Particle enemy_particle = (Particle)spawn_enemy();
   dll_add_head(&enemies, (DLLNode)enemy_particle);
 
-  Enemy enemy = enemy_make((Particle)enemy_particle, 100);
+  EnemyAgent enemy = enemyagent_make((Particle)enemy_particle, 100);
   collective_add(collective, (Agent)enemy);
   dispatcher_add_agent(collective->collision_dispatcher, (Agent)enemy);
 }
@@ -292,13 +292,13 @@ Collective collective_make() {
   return collective;
 }
 
-void enemy_terminate_report_complete(Message message) {
+void enemyagent_terminate_report_complete(Message message) {
   // now we can free ourselves
-  Enemy enemy = (Enemy)message->source;
-  enemy_free(enemy);
+  EnemyAgent enemy = (EnemyAgent)message->source;
+  enemyagent_free(enemy);
 }
 
-void enemy_update(Enemy enemy) {
+void enemyagent_update(EnemyAgent enemy) {
   // drain our inbox
   Message message = (Message)dll_remove_tail(&enemy->agent.inbox);
   Message reply;
@@ -308,7 +308,7 @@ void enemy_update(Enemy enemy) {
     case MESSAGE_TERMINATE:
       enemy->agent.state = ENEMY_DYING;
       reply = message_make((Agent)enemy, MESSAGE_TERMINATING, NULL);
-      message_postoutbox((Agent)enemy, reply, &enemy_terminate_report_complete);
+      message_postoutbox((Agent)enemy, reply, &enemyagent_terminate_report_complete);
       break;
     default:
       printf("Unhandled message kind: %d\n", message->kind);
@@ -338,16 +338,16 @@ void enemy_update(Enemy enemy) {
   }
 }
 
-Enemy enemy_make(Particle particle, int hp) {
-  Enemy enemy = fixed_allocator_alloc(agent_allocator);
-  agent_fill((Agent)enemy, (AgentUpdate)enemy_update, ENEMY_IDLE);
+EnemyAgent enemyagent_make(Particle particle, int hp) {
+  EnemyAgent enemy = fixed_allocator_alloc(agent_allocator);
+  agent_fill((Agent)enemy, (AgentUpdate)enemyagent_update, ENEMY_IDLE);
   enemy->visual = particle;
   enemy->last_fire = 0;
   enemy->hp = hp;
   return enemy;
 }
 
-void enemy_free(Enemy enemy) {
+void enemyagent_free(EnemyAgent enemy) {
   // is it possible to leak messages at this point?
   particle_remove(&enemies, (Particle)enemy->visual);
 
