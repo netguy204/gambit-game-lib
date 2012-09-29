@@ -2,7 +2,7 @@
 #include "testlib.h"
 #include "game.h"
 
-#define min_time 18
+#define min_time 15
 #define max_time 100
 
 int last_time;

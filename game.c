@@ -15,11 +15,6 @@ float player_speed = 600;
 float player_bullet_speed = 1200;
 float enemy_speed = 50;
 
-typedef struct GameParticle_ {
-  struct Particle_ particle;
-  struct Rect_ rect;
-} *GameParticle;
-
 GameParticle player;
 struct RepeatingLatch_ player_gun_latch;
 
@@ -35,6 +30,8 @@ ImageResource image_smoke;
 Clock main_clock;
 
 FixedAllocator gameparticle_allocator;
+FixedAllocator prettyparticle_allocator;
+
 
 GameParticle gameparticle_make() {
   GameParticle particle = fixed_allocator_alloc(gameparticle_allocator);
@@ -52,6 +49,24 @@ void gameparticle_free(GameParticle particle) {
 void gameparticle_remove(DLL list, GameParticle particle) {
   dll_remove(list, (DLLNode)particle);
   gameparticle_free(particle);
+}
+
+PrettyParticle prettyparticle_make() {
+  PrettyParticle p = fixed_allocator_alloc(prettyparticle_allocator);
+  p->particle.scale = 1.0f;
+  p->particle.angle = 0.0f;
+  p->particle.dsdt = 0.0f;
+  p->particle.dadt = 0.0f;
+  return p;
+}
+
+void prettyparticle_free(PrettyParticle particle) {
+  fixed_allocator_free(prettyparticle_allocator, particle);
+}
+
+void prettyparticle_remove(DLL list, PrettyParticle particle) {
+  dll_remove(list, (DLLNode)particle);
+  prettyparticle_free(particle);
 }
 
 int rand_in_range(int lower, int upper) {
@@ -92,31 +107,6 @@ GameParticle spawn_bullet(Vector pos, Vector vel, ImageResource image) {
   bullet->particle.angle = rand_in_range(0, 360);
   bullet->particle.dadt = 500;
   return bullet;
-}
-
-typedef struct PrettyParticle_ {
-  struct Particle_ particle;
-  long end_time;
-} *PrettyParticle;
-
-FixedAllocator prettyparticle_allocator;
-
-PrettyParticle prettyparticle_make() {
-  PrettyParticle p = fixed_allocator_alloc(prettyparticle_allocator);
-  p->particle.scale = 1.0f;
-  p->particle.angle = 0.0f;
-  p->particle.dsdt = 0.0f;
-  p->particle.dadt = 0.0f;
-  return p;
-}
-
-void prettyparticle_free(PrettyParticle particle) {
-  fixed_allocator_free(prettyparticle_allocator, particle);
-}
-
-void prettyparticle_remove(DLL list, PrettyParticle particle) {
-  dll_remove(list, (DLLNode)particle);
-  prettyparticle_free(particle);
 }
 
 PrettyParticle spawn_smoke(Vector pos, Vector vel) {
@@ -187,16 +177,8 @@ void prettyparticles_update(float dt) {
                        (ParticleRemove)&prettyparticle_remove);
 }
 
-typedef struct CollisionRecord_ {
-  struct Rect_ rect;
-  void * data;
-  char skip;
-} *CollisionRecord;
-
-typedef void(*OnCollision)(CollisionRecord, CollisionRecord);
-
 void collide_arrays(CollisionRecord as, int na, CollisionRecord bs, int nb,
-                    OnCollision on_collision) {
+                    OnCollision on_collision, void * udata) {
   int ia;
   int ib;
 
@@ -209,7 +191,7 @@ void collide_arrays(CollisionRecord as, int na, CollisionRecord bs, int nb,
       if(a->skip || b->skip) break;
 
       if(rect_intersect(&a->rect, &b->rect)) {
-        on_collision(a, b);
+        on_collision(a, b, udata);
       }
     }
   }
@@ -232,7 +214,7 @@ CollisionRecord particles_collisionrecords(DLL list, int* count, float scale) {
   return crs;
 }
 
-void bullet_vs_enemy(CollisionRecord bullet, CollisionRecord enemy) {
+void bullet_vs_enemy(CollisionRecord bullet, CollisionRecord enemy, void * udata) {
   // add a particle
   GameParticle ep = (GameParticle)enemy->data;
   PrettyParticle smoke = spawn_smoke(&ep->particle.pos, &ep->particle.vel);
@@ -254,7 +236,7 @@ void check_collisions() {
   CollisionRecord es =
     particles_collisionrecords(&enemies, &num_enemies, 0.8f);
 
-  collide_arrays(pbs, num_bullets, es, num_enemies, &bullet_vs_enemy);
+  collide_arrays(pbs, num_bullets, es, num_enemies, &bullet_vs_enemy, NULL);
 }
 
 void sprite_submit(Sprite sprite) {
@@ -314,6 +296,8 @@ void game_step(long delta, InputState state) {
   Sprite background = frame_resource_sprite(stars);
   background->displayX = 0;
   background->displayY = 0;
+  background->w = screen_width;
+  background->h = screen_height;
   sprite_submit(background);
 
   // read player input

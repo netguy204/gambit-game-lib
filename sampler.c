@@ -1,11 +1,10 @@
 #include "sampler.h"
 #include "memory.h"
+#include "config.h"
 
 #include <math.h>
 #include <stdlib.h>
 #include <memory.h>
-
-#define MAX(x,y) ((x)>(y) ? (x) : (y))
 
 FixedAllocator sampler_allocator;
 

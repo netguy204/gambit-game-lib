@@ -8,6 +8,8 @@
 
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
 
+void* fail_exit(const char * message, ...);
+
 typedef struct FixedAllocator_ {
 #ifdef DEBUG_MEMORY
   const char* name;

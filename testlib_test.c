@@ -1,5 +1,7 @@
 #include "memory.h"
 #include "testcase.h"
+#include "agent.h"
+#include "game.h"
 
 int main(int argc, char ** argv) {
   int ii;
@@ -58,6 +60,88 @@ int main(int argc, char ** argv) {
       ASSERT(morebytes[ii] == ii - 50);
     }
   }
+
+  testlib_init();
+  screen_width = 640;
+  screen_height = 480;
+
+  game_init();
+  agent_init();
+
+  GameParticle particle = gameparticle_make();
+  Enemy enemy = enemy_make((Particle)particle, 100);
+
+  ASSERT(enemy->agent.inbox.head == NULL);
+  ASSERT(enemy->agent.outbox.head == NULL);
+
+  agent_update((Agent)enemy);
+  ASSERT(enemy->agent.state == ENEMY_IDLE);
+
+  ASSERT(enemy->agent.inbox.head == NULL);
+  ASSERT(enemy->agent.outbox.head == NULL);
+
+  Message terminate = message_make(NULL, MESSAGE_TERMINATE, NULL);
+  message_postinbox((Agent)enemy, terminate);
+
+  agent_update((Agent)enemy);
+
+  ASSERT(enemy->agent.inbox.head == NULL);
+  ASSERT(enemy->agent.outbox.head != NULL);
+
+  Message reply = (Message)dll_remove_tail(&enemy->agent.outbox);
+  ASSERT(reply->kind == MESSAGE_TERMINATING);
+  ASSERT(enemy->agent.state != ENEMY_MAX);
+  message_report_read(reply);
+  ASSERT(enemy->agent.state == ENEMY_MAX);
+
+  // now use a collective
+  Collective collective = collective_make();
+  Agent ca = (Agent)collective;
+
+  ASSERT(ca->inbox.head == NULL);
+  ASSERT(ca->outbox.head == NULL);
+  ASSERT(dll_count(&collective->children) == 1);
+
+  Dispatcher dispatcher = (Dispatcher)collective->children.head;
+  ASSERT(dll_count(&dispatcher->dispatchees) == 0);
+
+  agent_update((Agent)collective);
+
+  ASSERT(ca->inbox.head == NULL);
+  ASSERT(ca->outbox.head == NULL);
+  ASSERT(dll_count(&collective->children) == 1);
+
+  Message spawn = message_make(NULL, COLLECTIVE_SPAWN_ENEMY, NULL);
+  message_postinbox((Agent)collective, spawn);
+
+  agent_update((Agent)collective);
+
+  ASSERT(ca->inbox.head == NULL);
+  ASSERT(ca->outbox.head == NULL);
+  ASSERT(dll_count(&collective->children) == 2);
+  ASSERT(dll_count(&dispatcher->dispatchees) == 1);
+
+  Dispatchee entry = (Dispatchee)dispatcher->dispatchees.head;
+  enemy = (Enemy)entry->agent;
+  Particle ep = enemy->visual;
+
+  // park a bullet on top of the enemy and see if the notifications
+  // flow
+  struct ImageResource_ image;
+  image.w = 128;
+  image.h = 128;
+
+  Particle bullet =
+    (Particle)spawn_bullet(&ep->pos, &ep->vel, &image);
+  dll_add_head(&player_bullets, (DLLNode)bullet);
+
+  // current update strategy takes two cycles to push through the
+  // deletion
+  agent_update((Agent)collective);
+  agent_update((Agent)collective);
+
+  ASSERT(dll_count(&collective->children) == 1);
+  ASSERT(dll_count(&dispatcher->dispatchees) == 0);
 
   END_MAIN();
 }

@@ -26,6 +26,7 @@ extern uint32_t screen_height;
 
 /* initialize the internal allocators for the library. Must be called
    before other functions */
+void testlib_init(); // called by lib_init
 void lib_init();
 
 /* shuts down the renderer and frees memory. Must be called before

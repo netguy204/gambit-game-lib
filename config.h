@@ -11,7 +11,15 @@
 #define MAX_NUM_GAMEPARTICLES 30
 #define MAX_NUM_PRETTYPARTICLES 30
 
+#define MAX_NUM_AGENTS MAX_NUM_GAMEPARTICLES
+#define MAX_NUM_MESSAGES (MAX_NUM_AGENTS * 2)
+#define MAX_NUM_DISPATCHEES (MAX_NUM_AGENTS * 4)
+
 #define SAMPLE_FREQ 22050
 #define MAX_NUM_SAMPLERS 128
+
+
+#define MAX(x,y) ((x)>(y) ? (x) : (y))
+
 
 #endif

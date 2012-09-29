@@ -36,13 +36,17 @@ void renderer_await_startup(void* empty) {
   threadbarrier_wait(render_barrier);
 }
 
-void lib_init() {
+void testlib_init() {
   clock_allocator = fixed_allocator_make(sizeof(struct Clock_), MAX_NUM_CLOCKS, "clock_allocator");
   image_resource_allocator = fixed_allocator_make(sizeof(struct ImageResource_), MAX_NUM_IMAGES, "image_resource_allocator");
   frame_allocator = stack_allocator_make(1024 * 1024, "frame_allocator");
   command_allocator = fixed_allocator_make(sizeof(struct Command_), MAX_NUM_COMMANDS, "command_allocator");
   render_queue = queue_make();
   render_barrier = threadbarrier_make(2);
+}
+
+void lib_init() {
+  testlib_init();
 
   native_init();
 
