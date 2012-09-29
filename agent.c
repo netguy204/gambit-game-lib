@@ -45,11 +45,17 @@ void message_free(Message message) {
 void message_report_read(Message message) {
   message->read_count += 1;
   if(message->read_count >= message->source->subscribers) {
+    dll_remove(&message->source->outbox, (DLLNode)message);
+
     if(message->report_completed) {
       message->report_completed(message);
     }
     message_free(message);
   }
+}
+
+void basicagent_free(Agent agent) {
+  fixed_allocator_free(agent_allocator, agent);
 }
 
 void message_postinbox(Agent dst, Message message) {
@@ -74,10 +80,11 @@ void messages_dropall(Agent agent) {
   messages_drop(&agent->outbox);
 }
 
-void agent_fill(Agent agent, AgentUpdate update, int state) {
+void agent_fill(Agent agent, AgentUpdate update, AgentFree agentfree, int state) {
   dll_zero(&agent->inbox);
   dll_zero(&agent->outbox);
   agent->update = update;
+  agent->free = agentfree;
   agent->subscribers = 0;
   agent->delta_subscribers = 0;
   agent->state = state;
@@ -90,6 +97,13 @@ void agent_update(Agent agent) {
   agent->update(agent);
 }
 
+void agent_free(Agent agent) {
+  // should we do something with the agent's mailboxes?
+  SAFETY(if(agent->inbox.head != NULL) fail_exit("agent inbox not empty"));
+  SAFETY(if(agent->outbox.head != NULL) fail_exit("agent outbox not empty"));
+  agent->free(agent);
+}
+
 CollisionRecord enemies_collisionrecords(DLL list, int* count, float scale) {
   *count = dll_count(list);
   CollisionRecord crs = frame_alloc(sizeof(struct CollisionRecord_) *
@@ -98,9 +112,9 @@ CollisionRecord enemies_collisionrecords(DLL list, int* count, float scale) {
   int ii = 0;
   while(node) {
     EnemyAgent enemyagent = (EnemyAgent)(((Dispatchee)node)->agent);
-    Enemy enemy = container_of(enemyagent, struct Enemy_, agent);
+    Particle ep = enemyagent_particle(enemyagent);
 
-    rect_for_particle(&(crs[ii].rect), &enemy->particle, scale);
+    rect_for_particle(&(crs[ii].rect), ep, scale);
     crs[ii].data = enemyagent;
     crs[ii].skip = 0;
     node = node->next;
@@ -126,12 +140,11 @@ void bullet_vs_agent(CollisionRecord bullet, CollisionRecord enemy, void* dispat
   enemy->skip = 1;
 }
 
-typedef void(*DispatcherMessageCallback)(Dispatcher dispatcher, Message message, void * udata);
-
 // a null callback will result in proper dispatchee exit handling and
-// will mark all messages read
+// will mark all messages read. Assumed to be called by a outbox
+// reader (a dispatcher)
 void foreach_outboxmessage(Dispatcher dispatcher, Agent agent,
-                          DispatcherMessageCallback callback, void * udata) {
+                           OutboxMessageCallback callback, void * udata) {
 
   Message message = (Message)agent->outbox.head;
   int agent_terminating = 0;
@@ -156,7 +169,7 @@ void foreach_outboxmessage(Dispatcher dispatcher, Agent agent,
   }
 }
 
-void foreach_dispatcheemessage(Dispatcher dispatcher, DispatcherMessageCallback callback,
+void foreach_dispatcheemessage(Dispatcher dispatcher, OutboxMessageCallback callback,
                                void * udata) {
 
   Dispatchee entry = (Dispatchee)dispatcher->dispatchees.head;
@@ -164,6 +177,37 @@ void foreach_dispatcheemessage(Dispatcher dispatcher, DispatcherMessageCallback 
     Dispatchee nentry = (Dispatchee)entry->node.next;
     foreach_outboxmessage(dispatcher, entry->agent, callback, udata);
     entry = nentry;
+  }
+}
+
+void agent_terminate_report_complete(Message message) {
+  // now we can free ourselves
+  Agent agent = (Agent)message->source;
+  SAFETY(agent->state = ENEMY_MAX);
+  agent_free(agent);
+}
+
+void foreach_inboxmessage(Agent agent, InboxMessageCallback callback, void * udata) {
+  Message message = (Message)dll_remove_tail(&agent->inbox);
+
+  int terminate_requested = 0;
+
+  while(message) {
+    if(message->kind == MESSAGE_TERMINATE) {
+      terminate_requested = 1;
+
+      if(!callback) {
+        Message reply = message_make(agent, MESSAGE_TERMINATING, NULL);
+        message_postoutbox(agent, reply, &agent_terminate_report_complete);
+      } else {
+        callback(agent, message, udata);
+      }
+    } else if(!terminate_requested && callback) {
+      callback(agent, message, udata);
+    }
+
+    message_free(message);
+    message = (Message)dll_remove_tail(&agent->inbox);
   }
 }
 
@@ -186,8 +230,7 @@ void collision_dispatcher_update(Dispatcher dispatcher) {
   for(ii = 0; ii < num_enemies; ++ii) {
     CollisionRecord rec = &es[ii];
     EnemyAgent enemyagent = (EnemyAgent)rec->data;
-    Enemy enemy = container_of(enemyagent, struct Enemy_, agent);
-    Particle p = &enemy->particle;
+    Particle p = enemyagent_particle(enemyagent);
     if(p->pos.x < -(particle_width(p) / 2.0f)) {
       agent_send_terminate((Agent)enemyagent, (Agent)dispatcher);
     }
@@ -196,14 +239,16 @@ void collision_dispatcher_update(Dispatcher dispatcher) {
   collide_arrays(pbs, num_bullets, es, num_enemies, &bullet_vs_agent, dispatcher);
 }
 
-void dispatcher_fill(Dispatcher dispatcher, AgentUpdate update, int state) {
-  agent_fill((Agent)dispatcher, update, state);
+void dispatcher_fill(Dispatcher dispatcher, AgentUpdate update,
+                     AgentFree agentfree, int state) {
+  agent_fill((Agent)dispatcher, update, agentfree, state);
   dll_zero(&dispatcher->dispatchees);
 }
 
 Dispatcher collision_dispatcher_make() {
   Dispatcher dispatcher = fixed_allocator_alloc(agent_allocator);
-  dispatcher_fill(dispatcher, (AgentUpdate)&collision_dispatcher_update, COLLISION_IDLE);
+  dispatcher_fill(dispatcher, (AgentUpdate)&collision_dispatcher_update,
+                  basicagent_free, COLLISION_IDLE);
   return dispatcher;
 }
 
@@ -245,10 +290,10 @@ void collective_remove(Collective collective, Agent agent) {
 }
 
 void collective_add_enemy(Collective collective, void * data) {
-  Enemy enemy = (Enemy)data;
+  Agent enemyagent = (Agent)data;
 
-  collective_add(collective, (Agent)&enemy->agent);
-  dispatcher_add_agent(collective->collision_dispatcher, (Agent)&enemy->agent);
+  collective_add(collective, enemyagent);
+  dispatcher_add_agent(collective->collision_dispatcher, enemyagent);
   //dispatcher_add_agent(collective->attack_dispatcher, (Agent)&enemy->agent);
 }
 
@@ -294,7 +339,8 @@ void collective_update(Collective collective) {
 
 Collective collective_make() {
   Collective collective = fixed_allocator_alloc(agent_allocator);
-  dispatcher_fill((Dispatcher)collective, (AgentUpdate)collective_update, COLLECTIVE_IDLE);
+  dispatcher_fill((Dispatcher)collective, (AgentUpdate)collective_update,
+                  basicagent_free, COLLECTIVE_IDLE);
   dll_zero(&collective->children);
 
   collective->collision_dispatcher = collision_dispatcher_make();
@@ -306,65 +352,7 @@ Collective collective_make() {
   return collective;
 }
 
-void enemyagent_terminate_report_complete(Message message) {
-  // now we can free ourselves
-  EnemyAgent enemy = (EnemyAgent)message->source;
-  enemyagent_free(enemy);
-}
-
-void enemyagent_update(EnemyAgent enemyagent) {
-  // drain our inbox
-  Message message = (Message)dll_remove_tail(&enemyagent->agent.inbox);
-  Message reply;
-
-  while(message) {
-    switch(message->kind) {
-    case MESSAGE_TERMINATE:
-      enemyagent->agent.state = ENEMY_DYING;
-      reply = message_make((Agent)enemyagent, MESSAGE_TERMINATING, NULL);
-      message_postoutbox((Agent)enemyagent, reply, &enemyagent_terminate_report_complete);
-      break;
-    default:
-      printf("Unhandled message kind: %d\n", message->kind);
-    }
-
-    message_free(message);
-    message = (Message)dll_remove_tail(&enemyagent->agent.inbox);
-  }
-
-  if(enemyagent->agent.state != ENEMY_DYING) {
-    // bail if we can't hit the player
-    Enemy enemy = container_of(enemyagent, struct Enemy_, agent);
-
-    if((enemy->particle.pos.x < player->pos.x) ||
-       (abs(enemy->particle.pos.y - player->pos.y)
-        > particle_height(player))) {
-      return;
-    }
-
-    // take a shot if we can
-    long current_time = clock_time(main_clock);
-    long dtl = current_time - enemyagent->last_fire;
-    float dt = clock_cycles_to_seconds(dtl);
-
-    if(dt > enemy_fire_rate) {
-      enemy_fire(&enemy->particle);
-      enemyagent->last_fire = current_time;
-    }
-  }
-}
-
-void enemyagent_fill(EnemyAgent enemy) {
-  agent_fill((Agent)enemy, (AgentUpdate)enemyagent_update, ENEMY_IDLE);
-  enemy->last_fire = 0;
-}
-
-void enemyagent_free(EnemyAgent enemyagent) {
-  // is it possible to leak messages at this point?
-  Enemy enemy = container_of(enemyagent, struct Enemy_, agent);
-  dll_remove(&enemies, (DLLNode)&enemy->particle);
-
-  // sentinal so our unit tests will know we did right
-  SAFETY(enemy->agent.agent.state = ENEMY_MAX);
-  enemy_free(enemy);
+void enemyagent_fill(EnemyAgent enemy, AgentUpdate update, AgentFree agentfree) {
+  agent_fill((Agent)enemy, update, agentfree, ENEMY_IDLE);
+  enemy->next_timer = 0;
 }

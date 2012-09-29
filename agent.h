@@ -25,12 +25,14 @@ typedef struct Message_ {
 struct Agent_;
 
 typedef void(*AgentUpdate)(struct Agent_*);
+typedef void(*AgentFree)(struct Agent_*);
 
 typedef struct Agent_ {
   struct DLLNode_ node; // list of ownership siblings
   struct DLL_ inbox;
   struct DLL_ outbox;
   AgentUpdate update;
+  AgentFree free;
   int delta_subscribers; // subscriber count update is deferred
   int subscribers;
   int state;
@@ -57,7 +59,7 @@ typedef struct Collective_ {
 
 typedef struct EnemyAgent_ {
   struct Agent_ agent;
-  long last_fire;
+  long next_timer;
   int hp;
 } *EnemyAgent;
 
@@ -88,7 +90,7 @@ void message_postinbox(Agent dst, Message message);
 void message_postoutbox(Agent src, Message message, ReportCompleted report_completed);
 void messages_dropall(Agent agent);
 
-void enemyagent_fill(EnemyAgent agent);
+void enemyagent_fill(EnemyAgent agent, AgentUpdate update, AgentFree agentfree);
 
 // eventually orchestrates the scenario
 Collective collective_make();
@@ -99,6 +101,16 @@ void dispatcher_remove_agent(Dispatcher dispatcher, Agent agent);
 
 void agent_update(Agent agent);
 
-void enemyagent_free(EnemyAgent enemy);
+typedef void(*OutboxMessageCallback)(Dispatcher dispatcher, Message message, void * udata);
+typedef void(*InboxMessageCallback)(Agent agent, Message message, void * udata);
+
+void agent_terminate_report_complete(Message message);
+
+void foreach_dispatcheemessage(Dispatcher dispatcher, OutboxMessageCallback callback,
+                               void * udata);
+void foreach_outboxmessage(Dispatcher dispatcher, Agent agent,
+                           OutboxMessageCallback callback, void * udata);
+void foreach_inboxmessage(Agent agent, InboxMessageCallback callback, void * udata);
+
 
 #endif

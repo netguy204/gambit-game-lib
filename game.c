@@ -98,6 +98,45 @@ Sprite frame_resource_sprite(ImageResource resource) {
   return sprite;
 }
 
+Particle enemyagent_particle(EnemyAgent enemyagent) {
+  Enemy enemy = container_of(enemyagent, struct Enemy_, agent);
+  return &enemy->particle;
+}
+
+void enemyagent_free(Agent agent) {
+  EnemyAgent enemyagent = (EnemyAgent)agent;
+  Enemy enemy = container_of(enemyagent, struct Enemy_, agent);
+  dll_remove(&enemies, (DLLNode)&enemy->particle);
+  enemy_free(enemy);
+}
+
+void enemyagent_update(Agent agent) {
+  EnemyAgent enemyagent = (EnemyAgent)agent;
+
+  // drain our inbox. only terminates are handled at the moment
+  foreach_inboxmessage((Agent)enemyagent, NULL, NULL);
+
+  // see if we can roll a new behavior yet
+  if(clock_time(main_clock) < enemyagent->next_timer) return;
+
+  // we can do something new... what will it be?
+
+  if(enemyagent->agent.state != ENEMY_DYING) {
+    // bail if we can't hit the player
+    Particle ep = enemyagent_particle(enemyagent);
+
+    if((ep->pos.x < player->pos.x) ||
+       (abs(ep->pos.y - player->pos.y)
+        > particle_height(player))) {
+      return;
+    }
+
+    enemy_fire(ep);
+    enemyagent->next_timer = clock_time(main_clock) +
+      clock_seconds_to_cycles(enemy_fire_rate);
+  }
+}
+
 Enemy spawn_enemy() {
   Enemy enemy = enemy_make();
   enemy->particle.image = image_enemy;
@@ -114,7 +153,7 @@ Enemy spawn_enemy() {
   enemy->particle.dsdt = 0.0f;
   enemy->particle.dadt = 0.0f;
   enemy->agent.hp = 100;
-  enemyagent_fill(&enemy->agent);
+  enemyagent_fill(&enemy->agent, enemyagent_update, enemyagent_free);
   return enemy;
 }
 
@@ -176,7 +215,7 @@ void enemies_update(float dt) {
     Enemy enemy = spawn_enemy();
     dll_add_head(&enemies, (DLLNode)&enemy->particle);
 
-    Message spawn = message_make(NULL, COLLECTIVE_ADD_ENEMY, enemy);
+    Message spawn = message_make(NULL, COLLECTIVE_ADD_ENEMY, &enemy->agent);
     message_postinbox((Agent)collective, spawn);
   }
 }
