@@ -43,11 +43,6 @@ void message_free(Message message) {
   fixed_allocator_free(message_allocator, message);
 }
 
-void message_remove(DLL list, Message message) {
-  dll_remove(list, (DLLNode)message);
-  message_free(message);
-}
-
 void message_report_read(Message message) {
   message->read_count += 1;
   if(message->read_count >= message->source->subscribers) {
@@ -114,13 +109,17 @@ CollisionRecord enemies_collisionrecords(DLL list, int* count, float scale) {
   return crs;
 }
 
+void agent_send_terminate(Agent agent, Agent source) {
+  Message terminate = message_make(source, MESSAGE_TERMINATE, NULL);
+  message_postinbox(agent, terminate);
+}
+
 void bullet_vs_agent(CollisionRecord bullet, CollisionRecord enemy, void* dispatcher_) {
   Dispatcher dispatcher = (Dispatcher)dispatcher_;
   gameparticle_remove(&player_bullets, bullet->data);
 
   Agent enemy_agent = (Agent)enemy->data;
-  Message terminate = message_make((Agent)dispatcher, MESSAGE_TERMINATE, NULL);
-  message_postinbox(enemy_agent, terminate);
+  agent_send_terminate(enemy_agent, (Agent)dispatcher);
 
   bullet->skip = 1;
   enemy->skip = 1;
@@ -163,6 +162,17 @@ void collision_dispatcher_update(Dispatcher dispatcher) {
     particles_collisionrecords(&player_bullets, &num_bullets, 0.7f);
   CollisionRecord es =
     enemies_collisionrecords(&dispatcher->dispatchees, &num_enemies, 0.8f);
+
+  // disregard any enemies that have crossed the screen
+  int ii;
+  for(ii = 0; ii < num_enemies; ++ii) {
+    CollisionRecord rec = &es[ii];
+    Enemy enemy = (Enemy)rec->data;
+    Particle p = (Particle)enemy->visual;
+    if(p->pos.x < -(particle_width(p) / 2.0f)) {
+      agent_send_terminate((Agent)enemy, (Agent)dispatcher);
+    }
+  }
 
   collide_arrays(pbs, num_bullets, es, num_enemies, &bullet_vs_agent, dispatcher);
 }
@@ -236,6 +246,7 @@ void collective_update(Collective collective) {
     default:
       printf("COLLECTIVE: Unhandled message kind: %d\n", message->kind);
     }
+    message_free(message);
     message = (Message)dll_remove_tail(&collective->dispatcher.agent.inbox);
   }
 
@@ -317,8 +328,9 @@ Enemy enemy_make(Particle particle, int hp) {
 }
 
 void enemy_free(Enemy enemy) {
+  // is it possible to leak messages at this point?
   gameparticle_remove(&enemies, (GameParticle)enemy->visual);
-  messages_dropall((Agent)enemy);
+
   // sentinal so our unit tests will know we did right
   SAFETY(enemy->agent.state = ENEMY_MAX);
   fixed_allocator_free(agent_allocator, enemy);

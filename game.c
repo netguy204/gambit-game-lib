@@ -6,6 +6,8 @@
 #include "particle.h"
 #include "rect.h"
 #include "controls.h"
+#include "agent.h"
+
 #include "config.h"
 
 #include <stdlib.h>
@@ -18,6 +20,7 @@ float enemy_speed = 50;
 GameParticle player;
 struct RepeatingLatch_ player_gun_latch;
 
+Collective collective;
 struct DLL_ enemies;
 struct DLL_ player_bullets;
 struct DLL_ pretty_particles;
@@ -144,17 +147,16 @@ void gameparticles_update(DLL list, float dt,
   }
 }
 
-int enemy_boundary_test(Particle p) {
-  return p->pos.x > -(particle_width(p) / 2.0f);
-}
-
 void enemies_update(float dt) {
-  gameparticles_update(&enemies, dt, &enemy_boundary_test,
-                       (ParticleRemove)&gameparticle_remove);
+  Particle p = (Particle)enemies.head;
+  while(p != NULL) {
+    particle_integrate(p, dt);
+    p = (Particle)p->node.next;
+  }
 
   if(dll_count(&enemies) < 10) {
-    GameParticle enemy = spawn_enemy();
-    dll_add_head(&enemies, (DLLNode)enemy);
+    Message spawn = message_make(NULL, COLLECTIVE_SPAWN_ENEMY, NULL);
+    message_postinbox((Agent)collective, spawn);
   }
 }
 
@@ -214,37 +216,14 @@ CollisionRecord particles_collisionrecords(DLL list, int* count, float scale) {
   return crs;
 }
 
-void bullet_vs_enemy(CollisionRecord bullet, CollisionRecord enemy, void * udata) {
-  // add a particle
-  GameParticle ep = (GameParticle)enemy->data;
-  PrettyParticle smoke = spawn_smoke(&ep->particle.pos, &ep->particle.vel);
-  dll_add_head(&pretty_particles, (DLLNode)smoke);
-
-  gameparticle_remove(&player_bullets, bullet->data);
-  gameparticle_remove(&enemies, enemy->data);
-  SAFETY(bullet->data = NULL);
-  SAFETY(enemy->data = NULL);
-  bullet->skip = 1;
-  enemy->skip = 1;
-}
-
-void check_collisions() {
-  int num_bullets;
-  int num_enemies;
-  CollisionRecord pbs =
-    particles_collisionrecords(&player_bullets, &num_bullets, 0.7f);
-  CollisionRecord es =
-    particles_collisionrecords(&enemies, &num_enemies, 0.8f);
-
-  collide_arrays(pbs, num_bullets, es, num_enemies, &bullet_vs_enemy, NULL);
-}
-
 void sprite_submit(Sprite sprite) {
   SpriteList sl = frame_spritelist_append(NULL, sprite);
   spritelist_enqueue_for_screen(sl);
 }
 
 void game_init() {
+  agent_init();
+
   gameparticle_allocator =
     fixed_allocator_make(sizeof(struct GameParticle_),
                          MAX_NUM_GAMEPARTICLES,
@@ -277,6 +256,8 @@ void game_init() {
   player_gun_latch.latch_value = 0;
   player_gun_latch.last_time = 0;
   player_gun_latch.last_state = 0;
+
+  collective = collective_make();
 }
 
 void handle_input(InputState state) {
@@ -315,8 +296,8 @@ void game_step(long delta, InputState state) {
   // update particles
   prettyparticles_update(dt);
 
-  // collision detection
-  check_collisions();
+  // AI and collision detection
+  agent_update((Agent)collective);
 
   // draw the particles
   spritelist_enqueue_for_screen(particles_spritelist(&pretty_particles));

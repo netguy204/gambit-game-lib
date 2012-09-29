@@ -82,7 +82,6 @@ enum State {
 
 Message message_make(Agent source, int kind, void* data);
 void message_free(Message message);
-void message_remove(DLL list, Message message);
 void message_report_read(Message message);
 void message_postinbox(Agent dst, Message message);
 void message_postoutbox(Agent src, Message message, ReportCompleted report_completed);
