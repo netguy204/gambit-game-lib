@@ -38,7 +38,7 @@ Clock main_clock;
 
 FixedAllocator particle_allocator;
 FixedAllocator prettyparticle_allocator;
-
+FixedAllocator enemy_allocator;
 
 Particle particle_make() {
   Particle particle = fixed_allocator_alloc(particle_allocator);
@@ -77,6 +77,14 @@ void prettyparticle_remove(DLL list, PrettyParticle particle) {
   prettyparticle_free(particle);
 }
 
+Enemy enemy_make() {
+  return fixed_allocator_alloc(enemy_allocator);
+}
+
+void enemy_free(Enemy enemy) {
+  fixed_allocator_free(enemy_allocator, enemy);
+}
+
 int rand_in_range(int lower, int upper) {
   int range = upper - lower;
   return lower + (rand() % range);
@@ -90,18 +98,23 @@ Sprite frame_resource_sprite(ImageResource resource) {
   return sprite;
 }
 
-Particle spawn_enemy() {
-  Particle enemy = particle_make();
-  enemy->image = image_enemy;
-  enemy->pos.x = screen_width + (image_enemy->w / 2);
+Enemy spawn_enemy() {
+  Enemy enemy = enemy_make();
+  enemy->particle.image = image_enemy;
+  enemy->particle.scale = 1.0f;
 
   int nrows = floor(screen_height / image_enemy->h);
-  enemy->pos.y =
+  enemy->particle.pos.x = screen_width + (image_enemy->w / 2);
+  enemy->particle.pos.y =
     image_enemy->h * rand_in_range(0, nrows)
     + (image_enemy->h / 2);
-  enemy->vel.x = -rand_in_range(enemy_speed, 2*enemy_speed);
-  enemy->vel.y = 0;
-  enemy->angle = 180.0;
+  enemy->particle.vel.x = -rand_in_range(enemy_speed, 2*enemy_speed);
+  enemy->particle.vel.y = 0;
+  enemy->particle.angle = 180.0;
+  enemy->particle.dsdt = 0.0f;
+  enemy->particle.dadt = 0.0f;
+  enemy->agent.hp = 100;
+  enemyagent_fill(&enemy->agent);
   return enemy;
 }
 
@@ -160,7 +173,10 @@ void enemies_update(float dt) {
   }
 
   if(dll_count(&enemies) < 10) {
-    Message spawn = message_make(NULL, COLLECTIVE_SPAWN_ENEMY, NULL);
+    Enemy enemy = spawn_enemy();
+    dll_add_head(&enemies, (DLLNode)&enemy->particle);
+
+    Message spawn = message_make(NULL, COLLECTIVE_ADD_ENEMY, enemy);
     message_postinbox((Agent)collective, spawn);
   }
 }
@@ -247,6 +263,11 @@ void game_init() {
     fixed_allocator_make(sizeof(struct PrettyParticle_),
                          MAX_NUM_PRETTYPARTICLES,
                          "prettyparticle_allocator");
+
+  enemy_allocator =
+    fixed_allocator_make(sizeof(struct Enemy_),
+                         MAX_NUM_PARTICLES,
+                         "enemy_allocator");
 
   main_clock = clock_make();
 

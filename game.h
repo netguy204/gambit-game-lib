@@ -12,6 +12,10 @@ void game_step(long delta, struct InputState_* state);
 void game_shutdown();
 
 // implementation specific stuff
+typedef struct Enemy_ {
+  struct Particle_ particle;
+  struct EnemyAgent_ agent;
+} *Enemy;
 
 typedef struct PrettyParticle_ {
   struct Particle_ particle;
@@ -41,7 +45,8 @@ Particle particle_make();
 void particle_free(Particle particle);
 void particle_remove(DLL list, Particle particle);
 
-Particle spawn_enemy();
+Enemy spawn_enemy();
+void enemy_free(Enemy enemy);
 Particle spawn_bullet(Vector pos, Vector vel, ImageResource image);
 void enemy_fire(Particle enemy);
 

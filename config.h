@@ -22,8 +22,26 @@
 #define MAX(x,y) ((x)>(y) ? (x) : (y))
 
 #include <stddef.h>
-#define container_of(ptr, type, member) ({ \
-                const typeof( ((type *)0)->member ) *__mptr = (ptr); \
-                (type *)( (char *)__mptr - offsetof(type,member) );})
+
+// from http://gitorious.org/cmus/cmus/commit/b10c26c8e65686b8e63cafd4231d4ef02079e86b/diffs
+/**
+ * container_of - cast a member of a structure out to the containing structure
+ *
+ * @ptr:	the pointer to the member.
+ * @type:	the type of the container struct this is embedded in.
+ * @member:	the name of the member within the struct.
+ *
+ */
+#define container_of_portable(ptr, type, member)        \
+  ((type *)( (char *)(ptr) - offsetof(type,member) ))
+#undef container_of
+#if defined(__GNUC__)
+#define container_of(ptr, type, member) ({                              \
+      const __typeof__( ((type *)0)->member ) *__mptr = (ptr);          \
+      container_of_portable(__mptr, type, member);})
+#else
+#define container_of(ptr, type, member) container_of_portable(ptr, type, member)
+#endif
+
 
 #endif

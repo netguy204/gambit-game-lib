@@ -56,13 +56,12 @@ typedef struct Collective_ {
 
 typedef struct EnemyAgent_ {
   struct Agent_ agent;
-  struct Particle_* visual;
   long last_fire;
   int hp;
 } *EnemyAgent;
 
 enum MessageKind {
-  COLLECTIVE_SPAWN_ENEMY, // collective should create enemy
+  COLLECTIVE_ADD_ENEMY,   // collective should own enemy
   MESSAGE_MAX0,
   MESSAGE_TERMINATE,      // command agent to terminate
   MESSAGE_TERMINATING,    // agent is terminating
@@ -88,6 +87,8 @@ void message_postinbox(Agent dst, Message message);
 void message_postoutbox(Agent src, Message message, ReportCompleted report_completed);
 void messages_dropall(Agent agent);
 
+void enemyagent_fill(EnemyAgent agent);
+
 // eventually orchestrates the scenario
 Collective collective_make();
 Dispatcher collision_dispatcher_make();
@@ -97,8 +98,6 @@ void dispatcher_remove_agent(Dispatcher dispatcher, Agent agent);
 
 void agent_update(Agent agent);
 
-struct Particle_;
-EnemyAgent enemyagent_make(struct Particle_* particle, int hp);
 void enemyagent_free(EnemyAgent enemy);
 
 #endif
