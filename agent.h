@@ -52,6 +52,7 @@ typedef struct Collective_ {
   struct Dispatcher_ dispatcher;
   struct DLL_ children;
   Dispatcher collision_dispatcher;
+  //Dispatcher attack_dispatcher;
 } *Collective;
 
 typedef struct EnemyAgent_ {

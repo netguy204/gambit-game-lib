@@ -126,35 +126,52 @@ void bullet_vs_agent(CollisionRecord bullet, CollisionRecord enemy, void* dispat
   enemy->skip = 1;
 }
 
+typedef void(*DispatcherMessageCallback)(Dispatcher dispatcher, Message message, void * udata);
+
+// a null callback will result in proper dispatchee exit handling and
+// will mark all messages read
+void foreach_outboxmessage(Dispatcher dispatcher, Agent agent,
+                          DispatcherMessageCallback callback, void * udata) {
+
+  Message message = (Message)agent->outbox.head;
+  int agent_terminating = 0;
+
+  while(message) {
+    Message next = (Message)message->node.next;
+
+    if(message->kind == MESSAGE_TERMINATING) {
+      if(!callback) {
+        dispatcher_remove_agent(dispatcher, message->source);
+      } else {
+        callback(dispatcher, message, udata);
+      }
+
+      agent_terminating = 1;
+    } else if(!agent_terminating && callback) {
+      callback(dispatcher, message, udata);
+    }
+
+    message_report_read(message);
+    message = next;
+  }
+}
+
+void foreach_dispatcheemessage(Dispatcher dispatcher, DispatcherMessageCallback callback,
+                               void * udata) {
+
+  Dispatchee entry = (Dispatchee)dispatcher->dispatchees.head;
+  while(entry) {
+    Dispatchee nentry = (Dispatchee)entry->node.next;
+    foreach_outboxmessage(dispatcher, entry->agent, callback, udata);
+    entry = nentry;
+  }
+}
+
 void collision_dispatcher_update(Dispatcher dispatcher) {
   // drain our inbox
 
   // drain the outboxes of our dispatchees
-  Dispatchee entry = (Dispatchee)dispatcher->dispatchees.head;
-  while(entry) {
-    Dispatchee nentry = (Dispatchee)entry->node.next;
-
-    Message message = (Message)entry->agent->outbox.head;
-    while(message) {
-      Message next = (Message)message->node.next;
-
-      switch(message->kind) {
-      case MESSAGE_TERMINATING:
-        dispatcher_remove_agent(dispatcher, message->source);
-        break;
-
-      default:
-        printf("DISPATCHER: outbox unhandled message kind: %d\n",
-               message->kind);
-      }
-
-      message_report_read(message);
-      message = next;
-    }
-
-    entry = nentry;
-  }
-
+  foreach_dispatcheemessage(dispatcher, NULL, NULL);
 
   int num_bullets;
   int num_enemies;
@@ -232,6 +249,20 @@ void collective_add_enemy(Collective collective, void * data) {
 
   collective_add(collective, (Agent)&enemy->agent);
   dispatcher_add_agent(collective->collision_dispatcher, (Agent)&enemy->agent);
+  //dispatcher_add_agent(collective->attack_dispatcher, (Agent)&enemy->agent);
+}
+
+void collective_handle_outboxes(Dispatcher dispatcher, Message message, void * udata) {
+  Collective collective = (Collective)dispatcher;
+
+  switch(message->kind) {
+  case MESSAGE_TERMINATING:
+    collective_remove(collective, message->source);
+    break;
+  default:
+    printf("COLLECTIVE: outbox unhandled message kind: %d\n",
+           message->kind);
+  }
 }
 
 void collective_update(Collective collective) {
@@ -258,37 +289,20 @@ void collective_update(Collective collective) {
   }
 
   // drain the outboxes of our dispatchees
-  Dispatchee entry = (Dispatchee)collective->dispatcher.dispatchees.head;
-  while(entry) {
-    Dispatchee nentry = (Dispatchee)entry->node.next;
-
-    Message message = (Message)entry->agent->outbox.head;
-    while(message) {
-      Message next = (Message)message->node.next;
-
-      switch(message->kind) {
-      case MESSAGE_TERMINATING:
-        collective_remove(collective, message->source);
-        break;
-
-      default:
-        printf("COLLECTIVE: outbox unhandled message kind: %d\n",
-               message->kind);
-      }
-
-      message_report_read(message);
-      message = next;
-    }
-    entry = nentry;
-  }
+  foreach_dispatcheemessage((Dispatcher)collective, collective_handle_outboxes, NULL);
 }
 
 Collective collective_make() {
   Collective collective = fixed_allocator_alloc(agent_allocator);
   dispatcher_fill((Dispatcher)collective, (AgentUpdate)collective_update, COLLECTIVE_IDLE);
   dll_zero(&collective->children);
+
   collective->collision_dispatcher = collision_dispatcher_make();
   collective_add(collective, (Agent)collective->collision_dispatcher);
+
+  //collective->attack_dispatcher = attach_dispatcher_make();
+  //collective_add(collective, (Agent)collective->attack_dispatcher);
+
   return collective;
 }
 
