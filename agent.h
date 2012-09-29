@@ -7,7 +7,6 @@ void agent_init();
 
 struct Message_;
 struct Agent_;
-struct Particle_;
 
 typedef void(*ReportCompleted)(struct Message_*);
 
@@ -98,6 +97,7 @@ void dispatcher_remove_agent(Dispatcher dispatcher, Agent agent);
 
 void agent_update(Agent agent);
 
+struct Particle_;
 Enemy enemy_make(struct Particle_* particle, int hp);
 void enemy_free(Enemy enemy);
 

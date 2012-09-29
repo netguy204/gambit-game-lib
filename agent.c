@@ -116,7 +116,7 @@ void agent_send_terminate(Agent agent, Agent source) {
 
 void bullet_vs_agent(CollisionRecord bullet, CollisionRecord enemy, void* dispatcher_) {
   Dispatcher dispatcher = (Dispatcher)dispatcher_;
-  gameparticle_remove(&player_bullets, bullet->data);
+  particle_remove(&player_bullets, bullet->data);
 
   Agent enemy_agent = (Agent)enemy->data;
   agent_send_terminate(enemy_agent, (Agent)dispatcher);
@@ -226,7 +226,7 @@ void collective_remove(Collective collective, Agent agent) {
 }
 
 void collective_spawn_enemy(Collective collective, void * data) {
-  GameParticle enemy_particle = (GameParticle)spawn_enemy();
+  Particle enemy_particle = (Particle)spawn_enemy();
   dll_add_head(&enemies, (DLLNode)enemy_particle);
 
   Enemy enemy = enemy_make((Particle)enemy_particle, 100);
@@ -320,8 +320,8 @@ void enemy_update(Enemy enemy) {
 
   if(enemy->agent.state != ENEMY_DYING) {
     // bail if we can't hit the player
-    if((enemy->visual->pos.x < player->particle.pos.x) ||
-       (abs(enemy->visual->pos.y - player->particle.pos.y)
+    if((enemy->visual->pos.x < player->pos.x) ||
+       (abs(enemy->visual->pos.y - player->pos.y)
         > particle_height((Particle)player))) {
       return;
     }
@@ -332,7 +332,7 @@ void enemy_update(Enemy enemy) {
     float dt = clock_cycles_to_seconds(dtl);
 
     if(dt > enemy_fire_rate) {
-      enemy_fire((GameParticle)enemy->visual);
+      enemy_fire((Particle)enemy->visual);
       enemy->last_fire = current_time;
     }
   }
@@ -349,7 +349,7 @@ Enemy enemy_make(Particle particle, int hp) {
 
 void enemy_free(Enemy enemy) {
   // is it possible to leak messages at this point?
-  gameparticle_remove(&enemies, (GameParticle)enemy->visual);
+  particle_remove(&enemies, (Particle)enemy->visual);
 
   // sentinal so our unit tests will know we did right
   SAFETY(enemy->agent.state = ENEMY_MAX);

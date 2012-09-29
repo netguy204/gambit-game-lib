@@ -68,7 +68,7 @@ int main(int argc, char ** argv) {
   game_init();
   agent_init();
 
-  GameParticle particle = gameparticle_make();
+  Particle particle = particle_make();
   Enemy enemy = enemy_make((Particle)particle, 100);
 
   ASSERT(enemy->agent.inbox.head == NULL);
