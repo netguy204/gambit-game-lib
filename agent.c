@@ -317,12 +317,32 @@ void enemy_update(Enemy enemy) {
     message_free(message);
     message = (Message)dll_remove_tail(&enemy->agent.inbox);
   }
+
+  if(enemy->agent.state != ENEMY_DYING) {
+    // bail if we can't hit the player
+    if((enemy->visual->pos.x < player->particle.pos.x) ||
+       (abs(enemy->visual->pos.y - player->particle.pos.y)
+        > particle_height((Particle)player))) {
+      return;
+    }
+
+    // take a shot if we can
+    long current_time = clock_time(main_clock);
+    long dtl = current_time - enemy->last_fire;
+    float dt = clock_cycles_to_seconds(dtl);
+
+    if(dt > enemy_fire_rate) {
+      enemy_fire((GameParticle)enemy->visual);
+      enemy->last_fire = current_time;
+    }
+  }
 }
 
 Enemy enemy_make(Particle particle, int hp) {
   Enemy enemy = fixed_allocator_alloc(agent_allocator);
   agent_fill((Agent)enemy, (AgentUpdate)enemy_update, ENEMY_IDLE);
   enemy->visual = particle;
+  enemy->last_fire = 0;
   enemy->hp = hp;
   return enemy;
 }

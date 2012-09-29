@@ -16,6 +16,8 @@
 float player_speed = 600;
 float player_bullet_speed = 1200;
 float enemy_speed = 50;
+float enemy_bullet_speed = 400;
+float enemy_fire_rate = 1;
 
 GameParticle player;
 struct RepeatingLatch_ player_gun_latch;
@@ -23,11 +25,13 @@ struct RepeatingLatch_ player_gun_latch;
 Collective collective;
 struct DLL_ enemies;
 struct DLL_ player_bullets;
+struct DLL_ enemy_bullets;
 struct DLL_ pretty_particles;
 
 ImageResource stars;
 ImageResource image_enemy;
 ImageResource image_player_bullet;
+ImageResource image_enemy_bullet;
 ImageResource image_smoke;
 
 Clock main_clock;
@@ -169,6 +173,15 @@ void player_bullets_update(float dt) {
                        (ParticleRemove)&gameparticle_remove);
 }
 
+int enemy_bullet_boundary_test(Particle p) {
+  return p->pos.x > -(particle_width(p) / 2.0f);
+}
+
+void enemy_bullets_update(float dt) {
+  gameparticles_update(&enemy_bullets, dt, &enemy_bullet_boundary_test,
+                       (ParticleRemove)&gameparticle_remove);
+}
+
 int particle_timeout_test(Particle p) {
   PrettyParticle smoke = (PrettyParticle)p;
   return clock_time(main_clock) < smoke->end_time;
@@ -239,10 +252,12 @@ void game_init() {
   stars = image_load("spacer/night-sky-stars.jpg");
   image_enemy = image_load("spacer/ship-right.png");
   image_player_bullet = image_load("spacer/plasma.png");
+  image_enemy_bullet = image_load("spacer/enemy-bullet.png");
   image_smoke = image_load("spacer/smoke.png");
 
   dll_zero(&enemies);
   dll_zero(&player_bullets);
+  dll_zero(&enemy_bullets);
   dll_zero(&pretty_particles);
 
   player = gameparticle_make();
@@ -260,14 +275,25 @@ void game_init() {
   collective = collective_make();
 }
 
+void player_fire() {
+  struct Vector_ v = { player_bullet_speed, 0.0f };
+  GameParticle bullet = spawn_bullet(&player->particle.pos, &v,
+                                     image_player_bullet);
+  dll_add_head(&player_bullets, (DLLNode)bullet);
+}
+
+void enemy_fire(GameParticle enemy) {
+  struct Vector_ v = { -enemy_bullet_speed, 0.0f };
+  GameParticle bullet = spawn_bullet(&enemy->particle.pos, &v,
+                                     image_enemy_bullet);
+  dll_add_head(&enemy_bullets, (DLLNode)bullet);
+}
+
 void handle_input(InputState state) {
   player->particle.vel.x = state->leftright * player_speed;
   player->particle.vel.y = state->updown * player_speed;
   if(repeatinglatch_state(&player_gun_latch, main_clock, state->action1)) {
-    struct Vector_ v = { player_bullet_speed, 0.0f };
-    GameParticle bullet = spawn_bullet(&player->particle.pos, &v,
-                                       image_player_bullet);
-    dll_add_head(&player_bullets, (DLLNode)bullet);
+    player_fire();
   }
 }
 
@@ -292,6 +318,7 @@ void game_step(long delta, InputState state) {
 
   // update bullets
   player_bullets_update(dt);
+  enemy_bullets_update(dt);
 
   // update particles
   prettyparticles_update(dt);
@@ -307,6 +334,7 @@ void game_step(long delta, InputState state) {
 
   // draw the bullets
   spritelist_enqueue_for_screen(particles_spritelist(&player_bullets));
+  spritelist_enqueue_for_screen(particles_spritelist(&enemy_bullets));
 
   // draw the player
   sprite_submit(particle_sprite((Particle)player));

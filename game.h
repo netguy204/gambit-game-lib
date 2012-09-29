@@ -12,9 +12,9 @@ void game_shutdown();
 
 // implementation specific stuff
 
+// probably could put the enemy agent in here...
 typedef struct GameParticle_ {
   struct Particle_ particle;
-  struct Rect_ rect;
 } *GameParticle;
 
 typedef struct PrettyParticle_ {
@@ -25,14 +25,18 @@ typedef struct PrettyParticle_ {
 extern float player_speed;
 extern float player_bullet_speed;
 extern float enemy_speed;
+extern float enemy_bullet_speed;
+extern float enemy_fire_rate;
 extern GameParticle player;
 extern struct DLL_ enemies;
 extern struct DLL_ player_bullets;
+extern struct DLL_ enemy_bullets;
 extern struct DLL_ pretty_particles;
 
 extern ImageResource stars;
 extern ImageResource image_enemy;
 extern ImageResource image_player_bullet;
+extern ImageResource image_enemy_bullet;
 extern ImageResource image_smoke;
 
 extern Clock main_clock;
@@ -43,6 +47,7 @@ void gameparticle_remove(DLL list, GameParticle particle);
 
 GameParticle spawn_enemy();
 GameParticle spawn_bullet(Vector pos, Vector vel, ImageResource image);
+void enemy_fire(GameParticle enemy);
 
 typedef struct CollisionRecord_ {
   struct Rect_ rect;

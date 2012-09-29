@@ -58,6 +58,7 @@ typedef struct Collective_ {
 typedef struct Enemy_ {
   struct Agent_ agent;
   struct Particle_* visual;
+  long last_fire;
   int hp;
 } *Enemy;
 
@@ -76,6 +77,7 @@ enum State {
   COLLISION_IDLE,
   ENEMY_ATACKING,
   ENEMY_IDLE,
+  ENEMY_ATTACKING,
   ENEMY_DYING,
   ENEMY_MAX
 };
