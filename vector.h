@@ -15,5 +15,6 @@ void vector_norm(Vector dst, Vector src);
 float vector_angle(Vector v);
 int vector_direction_scaled(Vector dst, Vector a, Vector b, float s);
 void vector_integrate(Vector dst, Vector r, Vector dr, float dt);
+void vector_clamp(Vector dst, Vector src, float max);
 
 #endif

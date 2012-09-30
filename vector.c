@@ -50,3 +50,12 @@ void vector_integrate(Vector dst, Vector r, Vector dr, float dt) {
   dst->x = r->x + (dr->x * dt);
   dst->y = r->y + (dr->y * dt);
 }
+
+void vector_clamp(Vector dst, Vector src, float max) {
+  float mag = vector_mag(src);
+  if(mag > max) {
+    vector_scale(dst, src, max / mag);
+  } else {
+    *dst = *src;
+  }
+}

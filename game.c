@@ -7,6 +7,7 @@
 #include "rect.h"
 #include "controls.h"
 #include "agent.h"
+#include "steering.h"
 
 #include "config.h"
 
@@ -112,7 +113,7 @@ void enemyagent_free(Agent agent) {
 }
 
 // coordinate joint enemy behavior
-void coordinator_update(Agent agent) {
+void coordinator_update(Agent agent, float dt) {
   Dispatcher dispatcher = (Dispatcher)agent;
 
   // drain and ignore our inbox
@@ -175,7 +176,7 @@ void vector_tween(Vector dst, Vector a, Vector b, float deltamax) {
   }
 }
 
-void enemyagent_update(Agent agent) {
+void enemyagent_update(Agent agent, float dt) {
   EnemyAgent enemyagent = (EnemyAgent)agent;
 
   // drain our inbox. only terminates are handled at the moment
@@ -212,6 +213,13 @@ void enemyagent_update(Agent agent) {
   }
 
   // we are attacking turn towards the player and try to fire
+  struct SteeringResult_ result;
+  struct SteeringParams_ params = { 1.0, enemy_speed, p->angle };
+
+  steering_seek(&result, &player->pos, &p->pos, &p->vel, &params);
+  steeringresult_complete(&result, &params);
+  particle_applysteering(p, &result, &params, dt);
+
   struct Vector_ target;
   vector_sub(&target, &player->pos, &p->pos);
   vector_norm(&target, &target);
@@ -279,7 +287,7 @@ typedef void(*ParticleRemove)(DLL, Particle);
 
 // step all particles forward and remove those that fail the test
 void particles_update(DLL list, float dt,
-                          ParticleTest test, ParticleRemove remove) {
+                      ParticleTest test, ParticleRemove remove) {
   Particle p = (Particle)list->head;
 
   while(p != NULL) {
@@ -417,7 +425,7 @@ void bullet_vs_agent(CollisionRecord bullet, CollisionRecord enemy, void* dispat
   enemy->skip = 1;
 }
 
-void collision_dispatcher_update(Agent agent) {
+void collision_dispatcher_update(Agent agent, float dt) {
   Dispatcher dispatcher = (Dispatcher)agent;
 
   // drain our inbox
@@ -559,7 +567,7 @@ void game_step(long delta, InputState state) {
   prettyparticles_update(dt);
 
   // AI and collision detection
-  agent_update((Agent)collective);
+  agent_update((Agent)collective, dt);
 
   // draw the particles
   spritelist_enqueue_for_screen(particles_spritelist(&pretty_particles));

@@ -91,11 +91,11 @@ void agent_fill(Agent agent, AgentUpdate update, AgentFree agentfree, int state)
   agent->next_timer = 0;
 }
 
-void agent_update(Agent agent) {
+void agent_update(Agent agent, float dt) {
   // update the subscriber count
   agent->subscribers += agent->delta_subscribers;
   agent->delta_subscribers = 0;
-  agent->update(agent);
+  agent->update(agent, dt);
 }
 
 void agent_free(Agent agent) {
@@ -270,7 +270,9 @@ void collective_handle_inbox(Agent agent, Message message, void * udata) {
   }
 }
 
-void collective_update(Collective collective) {
+void collective_update(Agent agent, float dt) {
+  Collective collective = (Collective)agent;
+
   // drain inbox
   foreach_inboxmessage((Agent)collective, collective_handle_inbox, NULL);
 
@@ -283,7 +285,7 @@ void collective_update(Collective collective) {
   // update all of our sub-agents
   Agent child = (Agent)collective->children.head;
   while(child) {
-    agent_update(child);
+    agent_update(child, dt);
     child = (Agent)child->node.next;
   }
 
@@ -293,7 +295,7 @@ void collective_update(Collective collective) {
 
 Collective collective_make(Dispatcher dispatchers[COLLECTIVE_SUB_DISPATCHERS]) {
   Collective collective = fixed_allocator_alloc(agent_allocator);
-  dispatcher_fill((Dispatcher)collective, (AgentUpdate)collective_update,
+  dispatcher_fill((Dispatcher)collective, collective_update,
                   basicagent_free, COLLECTIVE_IDLE);
   dll_zero(&collective->children);
 

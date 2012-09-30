@@ -24,7 +24,7 @@ typedef struct Message_ {
 
 struct Agent_;
 
-typedef void(*AgentUpdate)(struct Agent_*);
+typedef void(*AgentUpdate)(struct Agent_*, float dt);
 typedef void(*AgentFree)(struct Agent_*);
 
 typedef struct Agent_ {
@@ -103,7 +103,7 @@ Dispatcher dispatcher_make(AgentUpdate update);
 void dispatcher_add_agent(Dispatcher dispatcher, Agent agent);
 void dispatcher_remove_agent(Dispatcher dispatcher, Agent agent);
 
-void agent_update(Agent agent);
+void agent_update(Agent agent, float dt);
 
 typedef void(*OutboxMessageCallback)(Dispatcher dispatcher, Message message, void * udata);
 typedef void(*InboxMessageCallback)(Agent agent, Message message, void * udata);
