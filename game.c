@@ -17,7 +17,7 @@
 
 float player_speed = 600;
 float player_bullet_speed = 1200;
-float enemy_speed = 50;
+float enemy_speed = 100;
 float enemy_bullet_speed = 400;
 float enemy_fire_rate = 1;
 
@@ -145,7 +145,8 @@ void coordinator_update(Agent agent, float dt) {
       Message command = message_make(agent, AGENT_START_ATTACK, NULL);
       message_postinbox(entry->agent, command);
       n--;
-    } else if(entry->agent->state == ENEMY_ATTACKING) {
+    }
+    else if(entry->agent->state == ENEMY_ATTACKING) {
       Message command = message_make(agent, AGENT_FLEE, NULL);
       message_postinbox(entry->agent, command);
     } else if(entry->agent->state == ENEMY_FLEEING) {
@@ -228,7 +229,16 @@ void enemyagent_update(Agent agent, float dt) {
     break;
 
   case ENEMY_ATTACKING:
-    steering_seek(&result, &player->pos, &p->pos, &p->vel, &params);
+    steering_offsetarrival(&result, &player->pos, &p->pos, &p->vel,
+                           2.0f * particle_width(player), 3.0f * particle_width(player),
+                           &params);
+    /*
+    // use our bullet speed as the predictor
+    params.speed_max = enemy_bullet_speed;
+    steering_offsetpursuit(&result, &player->pos, &player->vel, &p->pos, &p->vel,
+                           2.0f * particle_width(player), &params);
+    params.speed_max = enemy_speed;
+    */
     break;
 
   case ENEMY_FLEEING:
@@ -263,7 +273,7 @@ Enemy spawn_enemy() {
   enemy->particle.pos.y =
     image_enemy->h * rand_in_range(0, nrows)
     + (image_enemy->h / 2);
-  enemy->particle.vel.x = -rand_in_range(enemy_speed, 2*enemy_speed);
+  enemy->particle.vel.x = -enemy_speed;
   enemy->particle.vel.y = 0;
   enemy->particle.angle = 180.0;
   enemy->particle.dsdt = 0.0f;

@@ -6,8 +6,6 @@
 #include <stdlib.h>
 #include <pthread.h>
 
-#define MIN(x, y) ((x) < (y) ? (x) : (y))
-
 void* fail_exit(const char * message, ...);
 
 typedef struct FixedAllocator_ {
