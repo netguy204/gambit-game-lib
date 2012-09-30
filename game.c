@@ -310,22 +310,33 @@ void enemies_update(float dt) {
   }
 }
 
-int player_bullet_boundary_test(Particle p) {
-  return p->pos.x < screen_width + (particle_width(p) / 2.0f);
+int staying_onscreen_test(Particle p) {
+  float hw = particle_width(p) / 2.0f;
+  float hh = particle_height(p) / 2.0f;
+
+  if(p->vel.x > 0) {
+    if(p->pos.x > screen_width + hw) return 0;
+  } else {
+    if(p->pos.x < -hw) return 0;
+  }
+
+  if(p->vel.y > 0) {
+    if(p->pos.y > screen_height + hh) return 0;
+  } else {
+    if(p->pos.y < -hh) return 0;
+  }
+
+  return 1;
 }
 
 void player_bullets_update(float dt) {
-  particles_update(&player_bullets, dt, &player_bullet_boundary_test,
-                       (ParticleRemove)&particle_remove);
-}
-
-int enemy_bullet_boundary_test(Particle p) {
-  return p->pos.x > -(particle_width(p) / 2.0f);
+  particles_update(&player_bullets, dt, staying_onscreen_test,
+                   particle_remove);
 }
 
 void enemy_bullets_update(float dt) {
-  particles_update(&enemy_bullets, dt, &enemy_bullet_boundary_test,
-                       (ParticleRemove)&particle_remove);
+  particles_update(&enemy_bullets, dt, staying_onscreen_test,
+                   particle_remove);
 }
 
 int particle_timeout_test(Particle p) {
@@ -518,8 +529,11 @@ void handle_input(InputState state) {
   }
 }
 
+long step_number = 0;
+
 void game_step(long delta, InputState state) {
   float dt = clock_update(main_clock, delta / 1000.0);
+  ++step_number;
 
   Sprite background = frame_resource_sprite(stars);
   background->displayX = 0;
@@ -559,6 +573,12 @@ void game_step(long delta, InputState state) {
 
   // draw the player
   sprite_submit(particle_sprite((Particle)player));
+
+  if(step_number % 100 == 0) {
+    printf("particle_allocator: %ld (%ld)\n",
+           particle_allocator->inflight,
+           particle_allocator->max_inflight);
+  }
 }
 
 void game_shutdown() {
