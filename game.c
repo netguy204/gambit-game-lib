@@ -127,20 +127,30 @@ void coordinator_update(Agent agent, float dt) {
 
   // schedule our next update
   agent->next_timer = clock_time(main_clock) +
-    clock_seconds_to_cycles(2 * enemy_fire_rate);
+    clock_seconds_to_cycles(10 * enemy_fire_rate);
+
+  // send attack command to n agents, also transition non-idlers
+  int n = 3;
 
   // feat roll... can we do it?
-  if(rand_in_range(0, 10) > (agent->state == DISPATCHER_ATTACKING ? 7 : 3)) return;
+  /*
+  if(rand_in_range(0, 10) > 3) {
+    n = 0;
+  }
+  */
 
-  // send a command to N agents
-  int n = 0;
   Dispatchee entry = (Dispatchee)dispatcher->dispatchees.head;
   while(entry) {
-    if(n > 3) break;
-    if(entry->agent->state != ENEMY_ATTACKING) {
+    if(n >= 0 && entry->agent->state == ENEMY_IDLE) {
       Message command = message_make(agent, AGENT_START_ATTACK, NULL);
       message_postinbox(entry->agent, command);
-      n++;
+      n--;
+    } else if(entry->agent->state == ENEMY_ATTACKING) {
+      Message command = message_make(agent, AGENT_FLEE, NULL);
+      message_postinbox(entry->agent, command);
+    } else if(entry->agent->state == ENEMY_FLEEING) {
+      Message command = message_make(agent, AGENT_IDLE, NULL);
+      message_postinbox(entry->agent, command);
     }
     entry = (Dispatchee)entry->node.next;
   }
@@ -161,7 +171,10 @@ void enemyagent_process_inbox(Agent agent, Message message, void * udata) {
   case AGENT_START_ATTACK:
     agent->state = ENEMY_ATTACKING;
     break;
-  case AGENT_STOP_ATTACK:
+  case AGENT_FLEE:
+    agent->state = ENEMY_FLEEING;
+    break;
+  case AGENT_IDLE:
     agent->state = ENEMY_IDLE;
     break;
   default:
@@ -179,8 +192,8 @@ void vector_tween(Vector dst, Vector a, Vector b, float deltamax) {
 void enemyagent_update(Agent agent, float dt) {
   EnemyAgent enemyagent = (EnemyAgent)agent;
 
-  // drain our inbox. only terminates are handled at the moment
-  foreach_inboxmessage((Agent)enemyagent, enemyagent_process_inbox, NULL);
+  // drain our inbox
+  foreach_inboxmessage(agent, enemyagent_process_inbox, NULL);
 
   if(agent->state == ENEMY_DYING) return;
 
@@ -201,38 +214,43 @@ void enemyagent_update(Agent agent, float dt) {
     np = (Particle)np->node.next;
   }
 
+  // we are attacking or fleeing
+  struct Vector_ idle_target = {-enemy_speed, 0};
+  struct SteeringResult_ result = { {0, 0}, 0 };
+  struct SteeringParams_ params = { 100.0, enemy_speed, p->angle };
 
-  // if we're not attacking... then turn to horizontal. also prevent
-  // backtracking
-  if(agent->state == ENEMY_IDLE ||
-     p->pos.x < (player->pos.x + particle_width(player))) {
-    struct Vector_ target = {-enemy_speed, 0};
-    vector_tween(&p->vel, &p->vel, &target, 0.5);
+  switch(agent->state) {
+  case ENEMY_IDLE:
+    // if we're not attacking... then turn to horizontal. also prevent
+    // backtracking
+    vector_tween(&p->vel, &p->vel, &idle_target, 0.5);
     p->angle = vector_angle(&p->vel);
-    return;
+    break;
+
+  case ENEMY_ATTACKING:
+    steering_seek(&result, &player->pos, &p->pos, &p->vel, &params);
+    break;
+
+  case ENEMY_FLEEING:
+    steering_flee(&result, &player->pos, &p->pos, &p->vel, &params);
+    break;
+
+  default:
+    printf("enemyagent_update unknown state: %d\n", agent->state);
   }
 
-  // we are attacking turn towards the player and try to fire
-  struct SteeringResult_ result;
-  struct SteeringParams_ params = { 1.0, enemy_speed, p->angle };
-
-  steering_seek(&result, &player->pos, &p->pos, &p->vel, &params);
-  steeringresult_complete(&result, &params);
-  particle_applysteering(p, &result, &params, dt);
-
-  struct Vector_ target;
-  vector_sub(&target, &player->pos, &p->pos);
-  vector_norm(&target, &target);
-  vector_scale(&target, &target, enemy_speed);
-  vector_tween(&p->vel, &p->vel, &target, 0.5);
-  p->angle = vector_angle(&p->vel);
+  if(result.computed) {
+    steeringresult_complete(&result, &params);
+    particle_applysteering(p, &result, &params, dt);
+  }
 
   if(clock_time(main_clock) < agent->next_timer) return;
-
-
-  enemy_fire(p);
-  enemyagent->agent.next_timer = clock_time(main_clock) +
+  agent->next_timer = clock_time(main_clock) +
     clock_seconds_to_cycles(enemy_fire_rate);
+
+  if(agent->state == ENEMY_ATTACKING) {
+    enemy_fire(p);
+  }
 }
 
 Enemy spawn_enemy() {

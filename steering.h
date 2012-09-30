@@ -6,7 +6,6 @@
 
 typedef struct SteeringResult_ {
   struct Vector_ force;
-  float angle;
   char computed;
 } *SteeringResult;
 
