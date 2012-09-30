@@ -10,6 +10,7 @@
 
 #include "config.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 
@@ -110,31 +111,130 @@ void enemyagent_free(Agent agent) {
   enemy_free(enemy);
 }
 
+// coordinate joint enemy behavior
+void coordinator_update(Agent agent) {
+  Dispatcher dispatcher = (Dispatcher)agent;
+
+  // drain and ignore our inbox
+  foreach_inboxmessage(agent, NULL, NULL);
+
+  // drain our dispatchees
+  foreach_dispatcheemessage(dispatcher, NULL, NULL);
+
+  // see if we can issue new commands yet
+  if(clock_time(main_clock) < agent->next_timer) return;
+
+  // schedule our next update
+  agent->next_timer = clock_time(main_clock) +
+    clock_seconds_to_cycles(2 * enemy_fire_rate);
+
+  // feat roll... can we do it?
+  if(rand_in_range(0, 10) > (agent->state == DISPATCHER_ATTACKING ? 7 : 3)) return;
+
+  int command_kind = 100;
+  switch(agent->state) {
+  case DISPATCHER_IDLE:
+    command_kind = AGENT_START_ATTACK;
+    agent->state = DISPATCHER_ATTACKING;
+    break;
+  case DISPATCHER_ATTACKING:
+    command_kind = AGENT_STOP_ATTACK;
+    agent->state = DISPATCHER_IDLE;
+    break;
+  }
+
+  // send a command to N agents
+  int n = 0;
+  Dispatchee entry = (Dispatchee)dispatcher->dispatchees.head;
+  while(entry) {
+    if(n > 3) break;
+    Message command = message_make(agent, command_kind, NULL);
+    message_postinbox(entry->agent, command);
+    entry = (Dispatchee)entry->node.next;
+    n++;
+  }
+}
+
+void enemyagent_process_inbox(Agent agent, Message message, void * udata) {
+  Message reply;
+  Particle p = enemyagent_particle((EnemyAgent)agent);
+
+  switch(message->kind) {
+  case MESSAGE_TERMINATE:
+    reply = message_make(agent, MESSAGE_TERMINATING, NULL);
+    agent->state = ENEMY_DYING;
+    message_postoutbox(agent, reply, agent_terminate_report_complete);
+    PrettyParticle smoke = spawn_smoke(&p->pos, &p->vel);
+    dll_add_head(&pretty_particles, (DLLNode)smoke);
+    break;
+  case AGENT_START_ATTACK:
+    agent->state = ENEMY_ATTACKING;
+    break;
+  case AGENT_STOP_ATTACK:
+    agent->state = ENEMY_IDLE;
+    break;
+  default:
+    printf("enemyagent: unrecognized message %d\n", message->kind);
+  }
+}
+
+void vector_tween(Vector dst, Vector a, Vector b, float deltamax) {
+  struct Vector_ ab;
+  if(vector_direction_scaled(&ab, b, a, deltamax)) {
+    vector_add(dst, dst, &ab);
+  }
+}
+
 void enemyagent_update(Agent agent) {
   EnemyAgent enemyagent = (EnemyAgent)agent;
 
   // drain our inbox. only terminates are handled at the moment
-  foreach_inboxmessage((Agent)enemyagent, NULL, NULL);
+  foreach_inboxmessage((Agent)enemyagent, enemyagent_process_inbox, NULL);
 
-  // see if we can roll a new behavior yet
-  if(clock_time(main_clock) < enemyagent->next_timer) return;
+  if(agent->state == ENEMY_DYING) return;
 
-  // we can do something new... what will it be?
+  Particle p = enemyagent_particle(enemyagent);
 
-  if(enemyagent->agent.state != ENEMY_DYING) {
-    // bail if we can't hit the player
-    Particle ep = enemyagent_particle(enemyagent);
-
-    if((ep->pos.x < player->pos.x) ||
-       (abs(ep->pos.y - player->pos.y)
-        > particle_height(player))) {
-      return;
+  // nudge ourselves away from our neighbors
+  Particle np = (Particle)enemies.head;
+  while(np) {
+    if(np != p) {
+      struct Vector_ away;
+      vector_sub(&away, &p->pos, &np->pos);
+      float mag = vector_mag(&away);
+      if(mag < particle_width(p)) {
+        vector_scale(&away, &away, (enemy_speed * 0.1) / mag);
+        vector_add(&p->vel, &p->vel, &away);
+      }
     }
-
-    enemy_fire(ep);
-    enemyagent->next_timer = clock_time(main_clock) +
-      clock_seconds_to_cycles(enemy_fire_rate);
+    np = (Particle)np->node.next;
   }
+
+
+  // if we're not attacking... then turn to horizontal. also prevent
+  // backtracking
+  if(agent->state == ENEMY_IDLE ||
+     p->pos.x < (player->pos.x + particle_width(player))) {
+    struct Vector_ target = {-enemy_speed, 0};
+    vector_tween(&p->vel, &p->vel, &target, 0.5);
+    p->angle = vector_angle(&p->vel);
+    return;
+  }
+
+  // we are attacking turn towards the player and try to fire
+  struct Vector_ target;
+  vector_sub(&target, &player->pos, &p->pos);
+  vector_norm(&target, &target);
+  vector_scale(&target, &target, enemy_speed);
+  vector_tween(&p->vel, &p->vel, &target, 0.5);
+  p->angle = vector_angle(&p->vel);
+
+  if(clock_time(main_clock) < agent->next_timer) return;
+
+
+  enemy_fire(p);
+  enemyagent->agent.next_timer = clock_time(main_clock) +
+    clock_seconds_to_cycles(enemy_fire_rate);
 }
 
 Enemy spawn_enemy() {
@@ -395,9 +495,9 @@ void game_init() {
   player_gun_latch.last_time = 0;
   player_gun_latch.last_state = 0;
 
-  Dispatcher dispatcher = dispatcher_make(collision_dispatcher_update);
   Dispatcher dispatchers[COLLECTIVE_SUB_DISPATCHERS] = {
-    dispatcher
+    dispatcher_make(collision_dispatcher_update),
+    dispatcher_make(coordinator_update),
   };
 
   collective = collective_make(dispatchers);
@@ -411,9 +511,12 @@ void player_fire() {
 }
 
 void enemy_fire(Particle enemy) {
-  struct Vector_ v = { -enemy_bullet_speed, 0.0f };
+  struct Vector_ v;
+  vector_norm(&v, &enemy->vel);
+  vector_scale(&v, &v, enemy_bullet_speed);
+
   Particle bullet = spawn_bullet(&enemy->pos, &v,
-                                     image_enemy_bullet);
+                                 image_enemy_bullet);
   dll_add_head(&enemy_bullets, (DLLNode)bullet);
 }
 

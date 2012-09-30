@@ -9,7 +9,11 @@ typedef struct Vector_ {
 void vector_add(Vector dst, Vector a, Vector b);
 void vector_sub(Vector dst, Vector a, Vector b);
 void vector_scale(Vector dst, Vector a, float s);
-
+float vector_dot(Vector a, Vector b);
+float vector_mag(Vector a);
+void vector_norm(Vector dst, Vector src);
+float vector_angle(Vector v);
+int vector_direction_scaled(Vector dst, Vector a, Vector b, float s);
 void vector_integrate(Vector dst, Vector r, Vector dr, float dt);
 
 #endif

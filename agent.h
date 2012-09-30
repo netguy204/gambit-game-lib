@@ -33,6 +33,7 @@ typedef struct Agent_ {
   struct DLL_ outbox;
   AgentUpdate update;
   AgentFree free;
+  long next_timer;
   int delta_subscribers; // subscriber count update is deferred
   int subscribers;
   int state;
@@ -60,7 +61,6 @@ typedef struct Collective_ {
 
 typedef struct EnemyAgent_ {
   struct Agent_ agent;
-  long next_timer;
   int hp;
 } *EnemyAgent;
 
@@ -71,12 +71,15 @@ enum MessageKind {
   MESSAGE_TERMINATING,    // agent is terminating
   MESSAGE_MAX1,
   AGENT_TAKE_DAMAGE,      // command agent to take damage
+  AGENT_START_ATTACK,
+  AGENT_STOP_ATTACK,
   MESSAGE_MAX2
 };
 
 enum State {
   COLLECTIVE_IDLE,
-  COLLISION_IDLE,
+  DISPATCHER_IDLE,
+  DISPATCHER_ATTACKING,
   ENEMY_ATACKING,
   ENEMY_IDLE,
   ENEMY_ATTACKING,

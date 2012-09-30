@@ -88,6 +88,7 @@ void agent_fill(Agent agent, AgentUpdate update, AgentFree agentfree, int state)
   agent->subscribers = 0;
   agent->delta_subscribers = 0;
   agent->state = state;
+  agent->next_timer = 0;
 }
 
 void agent_update(Agent agent) {
@@ -188,7 +189,7 @@ void dispatcher_fill(Dispatcher dispatcher, AgentUpdate update,
 
 Dispatcher dispatcher_make(AgentUpdate update) {
   Dispatcher dispatcher = fixed_allocator_alloc(agent_allocator);
-  dispatcher_fill(dispatcher, update, basicagent_free, COLLISION_IDLE);
+  dispatcher_fill(dispatcher, update, basicagent_free, DISPATCHER_IDLE);
   return dispatcher;
 }
 
@@ -256,18 +257,25 @@ void collective_handle_outboxes(Dispatcher dispatcher, Message message, void * u
   }
 }
 
+void collective_handle_inbox(Agent agent, Message message, void * udata) {
+  Collective collective = (Collective)agent;
+
+  switch(message->kind) {
+  case COLLECTIVE_ADD_AGENT:
+    collective_add_agent(collective, message->data);
+    break;
+
+  default:
+    printf("COLLECTIVE: Unhandled message kind: %d\n", message->kind);
+  }
+}
+
 void collective_update(Collective collective) {
   // drain inbox
+  foreach_inboxmessage((Agent)collective, collective_handle_inbox, NULL);
+
   Message message = (Message)dll_remove_tail(&collective->dispatcher.agent.inbox);
   while(message) {
-    switch(message->kind) {
-    case COLLECTIVE_ADD_AGENT:
-      collective_add_agent(collective, message->data);
-      break;
-
-    default:
-      printf("COLLECTIVE: Unhandled message kind: %d\n", message->kind);
-    }
     message_free(message);
     message = (Message)dll_remove_tail(&collective->dispatcher.agent.inbox);
   }
@@ -304,5 +312,4 @@ Collective collective_make(Dispatcher dispatchers[COLLECTIVE_SUB_DISPATCHERS]) {
 
 void enemyagent_fill(EnemyAgent enemy, AgentUpdate update, AgentFree agentfree) {
   agent_fill((Agent)enemy, update, agentfree, ENEMY_IDLE);
-  enemy->next_timer = 0;
 }

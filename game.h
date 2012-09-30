@@ -47,6 +47,7 @@ void particle_remove(DLL list, Particle particle);
 
 Particle enemyagent_particle(EnemyAgent enemyagent);
 Enemy spawn_enemy();
+PrettyParticle spawn_smoke(Vector pos, Vector vel);
 void enemy_free(Enemy enemy);
 Particle spawn_bullet(Vector pos, Vector vel, ImageResource image);
 void enemy_fire(Particle enemy);
