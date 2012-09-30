@@ -131,27 +131,17 @@ void coordinator_update(Agent agent) {
   // feat roll... can we do it?
   if(rand_in_range(0, 10) > (agent->state == DISPATCHER_ATTACKING ? 7 : 3)) return;
 
-  int command_kind = 100;
-  switch(agent->state) {
-  case DISPATCHER_IDLE:
-    command_kind = AGENT_START_ATTACK;
-    agent->state = DISPATCHER_ATTACKING;
-    break;
-  case DISPATCHER_ATTACKING:
-    command_kind = AGENT_STOP_ATTACK;
-    agent->state = DISPATCHER_IDLE;
-    break;
-  }
-
   // send a command to N agents
   int n = 0;
   Dispatchee entry = (Dispatchee)dispatcher->dispatchees.head;
   while(entry) {
     if(n > 3) break;
-    Message command = message_make(agent, command_kind, NULL);
-    message_postinbox(entry->agent, command);
+    if(entry->agent->state != ENEMY_ATTACKING) {
+      Message command = message_make(agent, AGENT_START_ATTACK, NULL);
+      message_postinbox(entry->agent, command);
+      n++;
+    }
     entry = (Dispatchee)entry->node.next;
-    n++;
   }
 }
 
@@ -202,7 +192,7 @@ void enemyagent_update(Agent agent) {
       struct Vector_ away;
       vector_sub(&away, &p->pos, &np->pos);
       float mag = vector_mag(&away);
-      if(mag < particle_width(p)) {
+      if(mag < particle_width(p) * 0.8) {
         vector_scale(&away, &away, (enemy_speed * 0.1) / mag);
         vector_add(&p->vel, &p->vel, &away);
       }
