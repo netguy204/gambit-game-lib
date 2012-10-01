@@ -32,6 +32,7 @@ struct DLL_ pretty_particles;
 
 ImageResource stars;
 ImageResource image_enemy;
+ImageResource image_ally;
 ImageResource image_player_bullet;
 ImageResource image_enemy_bullet;
 ImageResource image_smoke;
@@ -130,7 +131,7 @@ void coordinator_update(Agent agent, float dt) {
     clock_seconds_to_cycles(10 * enemy_fire_rate);
 
   // send attack command to n agents, also transition non-idlers
-  int n = 3;
+  int n = 2;
 
   // feat roll... can we do it?
   /*
@@ -141,7 +142,7 @@ void coordinator_update(Agent agent, float dt) {
 
   Dispatchee entry = (Dispatchee)dispatcher->dispatchees.head;
   while(entry) {
-    if(n >= 0 && entry->agent->state == ENEMY_IDLE) {
+    if(n > 0 && entry->agent->state == ENEMY_IDLE) {
       Message command = message_make(agent, AGENT_START_ATTACK, NULL);
       message_postinbox(entry->agent, command);
       n--;
@@ -171,12 +172,15 @@ void enemyagent_process_inbox(Agent agent, Message message, void * udata) {
     break;
   case AGENT_START_ATTACK:
     agent->state = ENEMY_ATTACKING;
+    p->image = image_enemy;
     break;
   case AGENT_FLEE:
     agent->state = ENEMY_FLEEING;
+    p->image = image_ally;
     break;
   case AGENT_IDLE:
     agent->state = ENEMY_IDLE;
+    p->image = image_ally;
     break;
   default:
     printf("enemyagent: unrecognized message %d\n", message->kind);
@@ -219,7 +223,7 @@ void enemyagent_update(Agent agent, float dt) {
   }
 
   steering_avoidance(&result, objs, nenemies, &p->pos, &p->vel,
-                     particle_width(p) * 0.4, 100, &params);
+                     particle_width(p) * 0.4, 70, &params);
 
   if(result.computed) {
     steeringresult_complete(&result, &params);
@@ -275,7 +279,7 @@ void enemyagent_update(Agent agent, float dt) {
 
 Enemy spawn_enemy() {
   Enemy enemy = enemy_make();
-  enemy->particle.image = image_enemy;
+  enemy->particle.image = image_ally;
   enemy->particle.scale = 1.0f;
 
   int nrows = floor(screen_height / image_enemy->h);
@@ -521,6 +525,7 @@ void game_init() {
 
   stars = image_load("spacer/night-sky-stars.jpg");
   image_enemy = image_load("spacer/ship-right.png");
+  image_ally = image_load("spacer/ship-right-good.png");
   image_player_bullet = image_load("spacer/plasma.png");
   image_enemy_bullet = image_load("spacer/enemy-bullet.png");
   image_smoke = image_load("spacer/smoke.png");
