@@ -59,3 +59,15 @@ void vector_clamp(Vector dst, Vector src, float max) {
     *dst = *src;
   }
 }
+
+float vector_scalarproject(Vector src, Vector onto) {
+  struct Vector_ normonto;
+  vector_norm(&normonto, onto);
+  return vector_dot(src, &normonto);
+}
+
+float vector_project2(Vector dst, Vector src, Vector normonto) {
+  float scalarproj = vector_dot(src, normonto);
+  vector_scale(dst, normonto, scalarproj);
+  return scalarproj;
+}

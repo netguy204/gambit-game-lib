@@ -112,3 +112,65 @@ void steering_offsetarrival(SteeringResult r, Vector tgt, Vector src,
 
   steering_arrival(r, &offset_tgt, src, src_vel, slowing_dist, params);
 }
+
+void steering_avoidance(SteeringResult r, SteeringObstacle objs, int nobjs,
+                        Vector src, Vector src_vel, float src_radius, float src_range,
+                        SteeringParams params) {
+  if(vector_mag(src_vel) < 0.01) {
+    r->computed = 0;
+    return; // don't do anything
+  }
+
+  struct Vector_ src_vel_norm;
+  vector_norm(&src_vel_norm, src_vel);
+
+  int ii;
+  SteeringObstacle closest = NULL;
+  for(ii = 0; ii < nobjs; ++ii) {
+    // put the object in our frame
+    SteeringObstacle obj = &objs[ii];
+
+    struct Vector_ objpos;
+    vector_sub(&objpos, &obj->center, src);
+
+    // project along our direction of travel. bail if behind us
+    struct Vector_ objproj;
+    if(vector_project2(&objproj, &objpos, &src_vel_norm) < 0) continue;
+
+    // is that in range?
+    float projdist = vector_mag(&objproj);
+    if(projdist > src_range) continue;
+
+    // does the cylinder intersect it?
+    struct Vector_ perp_offset;
+    vector_sub(&perp_offset, &objproj, &objpos);
+    if(vector_mag(&perp_offset) > (src_radius + obj->radius)) continue;
+
+    // this is an intersection. store the projection distance
+    obj->cylinder_dist = projdist;
+    obj->perp_offset = perp_offset;
+
+    if(closest == NULL || obj->cylinder_dist < closest->cylinder_dist) {
+      closest = obj;
+    }
+  }
+
+  if(!closest) {
+    // we're done
+    r->computed = 0;
+    return;
+  }
+
+  // steer away from closest collision
+  struct Vector_ goal_vel;
+  float pmag = vector_mag(&closest->perp_offset);
+  if(pmag < 0.01) {
+    // obstacle is dead-ahead, just turn
+    closest->perp_offset.x = src_vel->y;
+    closest->perp_offset.y = -src_vel->x;
+    pmag = vector_mag(&closest->perp_offset);
+  }
+  vector_scale(&goal_vel, &closest->perp_offset, params->speed_max / pmag);
+  vector_sub(&r->force, &goal_vel, src_vel);
+  r->computed = 1;
+}

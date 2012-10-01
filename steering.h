@@ -15,6 +15,12 @@ typedef struct SteeringParams_ {
   float old_angle;
 } *SteeringParams;
 
+typedef struct SteeringObstacle_ {
+  struct Vector_ center;
+  struct Vector_ perp_offset; // internal
+  float radius;
+  float cylinder_dist; // used internally
+} *SteeringObstacle;
 
 void steeringresult_complete(SteeringResult result, SteeringParams params);
 void particle_applysteering(Particle p, SteeringResult r, SteeringParams params, float dt);
@@ -35,5 +41,8 @@ void steering_offsetpursuit(SteeringResult r, Vector tgt, Vector tgt_vel,
 void steering_offsetarrival(SteeringResult r, Vector tgt, Vector src,
                             Vector src_vel, float offset, float slowing_dist,
                             SteeringParams params);
+void steering_avoidance(SteeringResult r, SteeringObstacle objs, int nobjs,
+                        Vector src, Vector src_vel, float src_radius, float src_range,
+                        SteeringParams params);
 
 #endif
