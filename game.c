@@ -206,29 +206,23 @@ void enemyagent_update(Agent agent, float dt) {
 
   // nudge ourselves away from our neighbors
   struct SteeringResult_ result = { {0, 0}, 0 };
-  struct SteeringParams_ params = { 100.0, enemy_speed, p->angle };
+  struct SteeringParams_ params = { 500.0, enemy_speed, p->angle };
 
-  int nenemies = dll_count(&enemies) - 1;
-  SteeringObstacle objs = frame_alloc(sizeof(struct SteeringObstacle_) * nenemies);
-  int ii = 0;
+  // idle mode agents avoid the player
+  if(agent->state == ENEMY_IDLE) {
+    struct SteeringObstacle_ pobjs;
 
-  Particle np = (Particle)enemies.head;
-  while(np) {
-    if(np != p) {
-      objs[ii].center = np->pos;
-      objs[ii].radius = particle_width(np) * 0.4;
-      ii++;
+    pobjs.center = player->pos;
+    pobjs.radius = particle_width(player) * 0.5;
+
+    steering_avoidance(&result, &pobjs, 1, &p->pos, &p->vel,
+                       particle_width(p) * 0.4, 200, &params);
+
+    if(result.computed) {
+      steeringresult_complete(&result, &params);
+      particle_applysteering(p, &result, &params, dt);
+      return;
     }
-    np = (Particle)np->node.next;
-  }
-
-  steering_avoidance(&result, objs, nenemies, &p->pos, &p->vel,
-                     particle_width(p) * 0.4, 70, &params);
-
-  if(result.computed) {
-    steeringresult_complete(&result, &params);
-    particle_applysteering(p, &result, &params, dt);
-    return;
   }
 
   // we are attacking or fleeing
