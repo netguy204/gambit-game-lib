@@ -37,11 +37,12 @@ struct DLL_ enemy_bullets;
 struct DLL_ pretty_particles;
 
 ImageResource stars;
-ImageResource image_enemy;
-ImageResource image_ally;
-ImageResource image_player_bullet;
-ImageResource image_enemy_bullet;
-ImageResource image_smoke;
+SpriteAtlas atlas;
+SpriteAtlasEntry image_enemy;
+SpriteAtlasEntry image_ally;
+SpriteAtlasEntry image_player_bullet;
+SpriteAtlasEntry image_enemy_bullet;
+SpriteAtlasEntry image_smoke;
 
 Clock main_clock;
 
@@ -298,7 +299,7 @@ Enemy spawn_enemy() {
   return enemy;
 }
 
-Particle bullet_make(Vector pos, Vector vel, ImageResource image) {
+Particle bullet_make(Vector pos, Vector vel, SpriteAtlasEntry image) {
   Particle bullet = particle_make();
   bullet->image = image;
   bullet->pos = *pos;
@@ -524,11 +525,12 @@ void game_init() {
   main_clock = clock_make();
 
   stars = image_load("spacer/night-sky-stars.jpg");
-  image_enemy = image_load("spacer/ship-right.png");
-  image_ally = image_load("spacer/ship-right-good.png");
-  image_player_bullet = image_load("spacer/plasma.png");
-  image_enemy_bullet = image_load("spacer/enemy-bullet.png");
-  image_smoke = image_load("spacer/smoke.png");
+  atlas = spriteatlas_load("spacer/images_default.dat", "spacer/images_default.png");
+  image_enemy = spriteatlas_find(atlas, "ship-right.png");
+  image_ally = spriteatlas_find(atlas, "ship-right-good.png");
+  image_player_bullet = spriteatlas_find(atlas, "plasma.png");
+  image_enemy_bullet = spriteatlas_find(atlas, "enemy-bullet.png");
+  image_smoke = spriteatlas_find(atlas, "smoke.png");
 
   dll_zero(&enemies);
   dll_zero(&player_bullets);
@@ -536,7 +538,7 @@ void game_init() {
   dll_zero(&pretty_particles);
 
   player = particle_make();
-  player->image = image_load("spacer/hero.png");
+  player->image = spriteatlas_find(atlas, "hero.png");
   player->pos.x = player->image->w;
   player->pos.y = screen_height / 2;
   player->vel.x = 0;

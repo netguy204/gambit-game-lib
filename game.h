@@ -4,6 +4,7 @@
 #include "testlib.h"
 #include "particle.h"
 #include "agent.h"
+#include "spriteatlas.h"
 
 struct InputState_;
 
@@ -34,10 +35,10 @@ extern struct DLL_ enemy_bullets;
 extern struct DLL_ pretty_particles;
 
 extern ImageResource stars;
-extern ImageResource image_enemy;
-extern ImageResource image_player_bullet;
-extern ImageResource image_enemy_bullet;
-extern ImageResource image_smoke;
+extern SpriteAtlasEntry image_enemy;
+extern SpriteAtlasEntry image_player_bullet;
+extern SpriteAtlasEntry image_enemy_bullet;
+extern SpriteAtlasEntry image_smoke;
 
 extern Clock main_clock;
 
@@ -49,7 +50,7 @@ Particle enemyagent_particle(EnemyAgent enemyagent);
 Enemy spawn_enemy();
 PrettyParticle spawn_smoke(Vector pos, Vector vel);
 void enemy_free(Enemy enemy);
-Particle spawn_bullet(Vector pos, Vector vel, ImageResource image);
+Particle spawn_bullet(Vector pos, Vector vel, SpriteAtlasEntry image);
 void spawn_enemy_fire(Particle enemy);
 
 typedef struct CollisionRecord_ {

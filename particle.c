@@ -12,7 +12,8 @@ float particle_height(Particle particle) {
 
 Sprite particle_sprite(Particle particle) {
   Sprite sprite = frame_make_sprite();
-  sprite->resource = particle->image;
+  sprite_fillfromentry(sprite, particle->image);
+
   sprite->w = particle_width(particle) * particle->scale;
   sprite->h = particle_height(particle) * particle->scale;
   sprite->displayX = particle->pos.x;

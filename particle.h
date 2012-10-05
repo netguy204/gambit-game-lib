@@ -5,12 +5,13 @@
 #include "vector.h"
 #include "testlib.h"
 #include "rect.h"
+#include "spriteatlas.h"
 
 typedef struct Particle_ {
   struct DLLNode_ node;
   struct Vector_ pos;
   struct Vector_ vel;
-  ImageResource image;
+  SpriteAtlasEntry image;
   float scale;
   float dsdt;
   float angle;
