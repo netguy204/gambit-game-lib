@@ -15,6 +15,12 @@
 #include <stdlib.h>
 #include <math.h>
 
+/*
+ * Convention: spawn methods create and add the spawned object to the
+ * appropriate internal list. remove methods remove objects from that
+ * list and free them.
+ */
+
 float player_speed = 600;
 float player_bullet_speed = 1200;
 float enemy_speed = 100;
@@ -167,8 +173,7 @@ void enemyagent_process_inbox(Agent agent, Message message, void * udata) {
     reply = message_make(agent, MESSAGE_TERMINATING, NULL);
     agent->state = ENEMY_DYING;
     message_postoutbox(agent, reply, agent_terminate_report_complete);
-    PrettyParticle smoke = spawn_smoke(&p->pos, &p->vel);
-    dll_add_head(&pretty_particles, (DLLNode)smoke);
+    spawn_smoke(&p->pos, &p->vel);
     break;
   case AGENT_START_ATTACK:
     agent->state = ENEMY_ATTACKING;
@@ -267,7 +272,7 @@ void enemyagent_update(Agent agent, float dt) {
     clock_seconds_to_cycles(enemy_fire_rate);
 
   if(agent->state == ENEMY_ATTACKING) {
-    enemy_fire(p);
+    spawn_enemy_fire(p);
   }
 }
 
@@ -288,10 +293,12 @@ Enemy spawn_enemy() {
   enemy->particle.dadt = 0.0f;
   enemy->agent.hp = 100;
   enemyagent_fill(&enemy->agent, enemyagent_update, enemyagent_free);
+  dll_add_head(&enemies, (DLLNode)&enemy->particle);
+
   return enemy;
 }
 
-Particle spawn_bullet(Vector pos, Vector vel, ImageResource image) {
+Particle bullet_make(Vector pos, Vector vel, ImageResource image) {
   Particle bullet = particle_make();
   bullet->image = image;
   bullet->pos = *pos;
@@ -314,6 +321,7 @@ PrettyParticle spawn_smoke(Vector pos, Vector vel) {
   smoke->end_time =
     clock_time(main_clock) +
     clock_seconds_to_cycles(rand_in_range(500, 3500) / 1000.0f);
+  dll_add_head(&pretty_particles, (DLLNode)smoke);
 
   return smoke;
 }
@@ -347,8 +355,6 @@ void enemies_update(float dt) {
 
   if(dll_count(&enemies) < 10) {
     Enemy enemy = spawn_enemy();
-    dll_add_head(&enemies, (DLLNode)&enemy->particle);
-
     Message spawn = message_make(NULL, COLLECTIVE_ADD_AGENT, &enemy->agent);
     message_postinbox((Agent)collective, spawn);
   }
@@ -549,20 +555,20 @@ void game_init() {
   collective = collective_make(dispatchers);
 }
 
-void player_fire() {
+void spawn_player_fire() {
   struct Vector_ v = { player_bullet_speed, 0.0f };
-  Particle bullet = spawn_bullet(&player->pos, &v,
-                                     image_player_bullet);
+  Particle bullet = bullet_make(&player->pos, &v,
+                                image_player_bullet);
   dll_add_head(&player_bullets, (DLLNode)bullet);
 }
 
-void enemy_fire(Particle enemy) {
+void spawn_enemy_fire(Particle enemy) {
   struct Vector_ v;
   vector_norm(&v, &enemy->vel);
   vector_scale(&v, &v, enemy_bullet_speed);
 
-  Particle bullet = spawn_bullet(&enemy->pos, &v,
-                                 image_enemy_bullet);
+  Particle bullet = bullet_make(&enemy->pos, &v,
+                                image_enemy_bullet);
   dll_add_head(&enemy_bullets, (DLLNode)bullet);
 }
 
@@ -570,7 +576,7 @@ void handle_input(InputState state) {
   player->vel.x = state->leftright * player_speed;
   player->vel.y = state->updown * player_speed;
   if(repeatinglatch_state(&player_gun_latch, main_clock, state->action1)) {
-    player_fire();
+    spawn_player_fire();
   }
 }
 

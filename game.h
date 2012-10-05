@@ -50,7 +50,7 @@ Enemy spawn_enemy();
 PrettyParticle spawn_smoke(Vector pos, Vector vel);
 void enemy_free(Enemy enemy);
 Particle spawn_bullet(Vector pos, Vector vel, ImageResource image);
-void enemy_fire(Particle enemy);
+void spawn_enemy_fire(Particle enemy);
 
 typedef struct CollisionRecord_ {
   struct Rect_ rect;
