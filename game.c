@@ -9,6 +9,7 @@
 #include "agent.h"
 #include "steering.h"
 #include "tiles.h"
+#include "random.h"
 
 #include "config.h"
 
@@ -36,6 +37,7 @@ struct DLL_ enemies;
 struct DLL_ player_bullets;
 struct DLL_ enemy_bullets;
 struct DLL_ pretty_particles;
+struct Random_ rgen;
 
 ImageResource stars;
 SpriteAtlas atlas;
@@ -97,11 +99,6 @@ void enemy_free(Enemy enemy) {
   fixed_allocator_free(enemy_allocator, enemy);
 }
 
-int rand_in_range(int lower, int upper) {
-  int range = upper - lower;
-  return lower + (rand() % range);
-}
-
 Sprite frame_resource_sprite(ImageResource resource) {
   Sprite sprite = frame_make_sprite();
   sprite->resource = resource;
@@ -141,13 +138,6 @@ void coordinator_update(Agent agent, float dt) {
 
   // send attack command to n agents, also transition non-idlers
   int n = 2;
-
-  // feat roll... can we do it?
-  /*
-  if(rand_in_range(0, 10) > 3) {
-    n = 0;
-  }
-  */
 
   Dispatchee entry = (Dispatchee)dispatcher->dispatchees.head;
   while(entry) {
@@ -287,7 +277,7 @@ Enemy spawn_enemy() {
   int nrows = floor(screen_height / image_enemy->h);
   enemy->particle.pos.x = screen_x_br + screen_width + (image_enemy->w / 2);
   enemy->particle.pos.y = screen_y_br +
-    image_enemy->h * rand_in_range(0, nrows)
+    image_enemy->h * rand_in_range(&rgen, 0, nrows)
     + (image_enemy->h / 2);
   enemy->particle.vel.x = -enemy_speed;
   enemy->particle.vel.y = 0;
@@ -308,7 +298,7 @@ Particle bullet_make(Vector pos, Vector vel, SpriteAtlasEntry image) {
   bullet->vel = *vel;
   bullet->scale = 0.25f;
   bullet->dsdt = 0.5;
-  bullet->angle = rand_in_range(0, 360);
+  bullet->angle = rand_in_range(&rgen, 0, 360);
   bullet->dadt = 500;
   return bullet;
 }
@@ -318,12 +308,12 @@ PrettyParticle spawn_smoke(Vector pos, Vector vel) {
   smoke->particle.image = image_smoke;
   smoke->particle.pos = *pos;
   smoke->particle.vel = *vel;
-  smoke->particle.angle = rand_in_range(0, 360);
-  smoke->particle.dsdt = 0.5f * rand_in_range(1, 4);
-  smoke->particle.dadt = rand_in_range(-20, 20);
+  smoke->particle.angle = rand_in_range(&rgen, 0, 360);
+  smoke->particle.dsdt = 0.5f * rand_in_range(&rgen, 1, 4);
+  smoke->particle.dadt = rand_in_range(&rgen, -20, 20);
   smoke->end_time =
     clock_time(main_clock) +
-    clock_seconds_to_cycles(rand_in_range(500, 3500) / 1000.0f);
+    clock_seconds_to_cycles(rand_in_range(&rgen, 500, 3500) / 1000.0f);
   dll_add_head(&pretty_particles, (DLLNode)smoke);
 
   return smoke;
@@ -536,6 +526,7 @@ void game_init() {
   SpriteAtlasEntry dirt = spriteatlas_find(atlas, "dirt.png");
   tiles = tilemap_testmake(grass, dirt);
 
+  random_init(&rgen, 1234);
   image_enemy = spriteatlas_find(atlas, "ship-right.png");
   image_ally = spriteatlas_find(atlas, "ship-right-good.png");
   image_player_bullet = spriteatlas_find(atlas, "plasma.png");

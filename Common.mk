@@ -2,10 +2,11 @@ C_SRC+= \
 	threadlib.c memory.c listlib.c testlib.c \
 	sampler.c audio.c game.c vector.c particle.c \
 	rect.c controls.c agent.c steering.c spriteatlas.c \
-	realmain.c stb_image.c tiles.c
+	realmain.c stb_image.c tiles.c sfmt/SFMT.c random.c
 
 XML_INCLUDE:=-I/usr/include/libxml2
-CFLAGS+=$(XML_INCLUDE)
+CFLAGS+=$(XML_INCLUDE) -DSFMT_MEXP=607 -Isfmt/
+
 LDFLAGS+=-lpthread
 C_OBJS=$(patsubst %.c,%.o,$(C_SRC))
 
@@ -17,7 +18,7 @@ $(BIN): $(EXE_OBJS)
 	$(CC) $(CFLAGS) -o $@ $(EXE_OBJS) $(LDFLAGS)
 
 clean:
-	rm -rf *.o $(BIN) buildatlas test
+	rm -rf $(C_OBJS) $(BIN) buildatlas test
 
 test_bin: $(C_OBJS) testlib_test.o
 	$(CC) $(CFLAGS) -o $@ $(C_OBJS) testlib_test.o $(LDFLAGS)
