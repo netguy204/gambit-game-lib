@@ -1,6 +1,7 @@
 #ifndef RANDOM_H
 #define RANDOM_H
 
+#define SFMT_MEXP 607
 #include "SFMT.h"
 
 typedef struct Random_ {
@@ -14,5 +15,6 @@ typedef struct Random_ {
 void random_init(Random random, uint32_t seed);
 int rand_in_range(Random random, int lower, int upper);
 float random_next_gaussian(Random random);
+void random_shuffle_bytes(Random random, unsigned char* bytes, int nbytes);
 
 #endif

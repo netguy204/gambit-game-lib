@@ -30,3 +30,13 @@ float random_next_gaussian(Random random) {
 
   return z;
 }
+
+void random_shuffle_bytes(Random random, unsigned char* bytes, int nbytes) {
+  int ii;
+  for(ii = 0; ii < nbytes - 1; ++ii) {
+    int swap_tgt = rand_in_range(random, ii + 1, nbytes);
+    unsigned char temp = bytes[ii];
+    bytes[ii] = bytes[swap_tgt];
+    bytes[swap_tgt] = temp;
+  }
+}

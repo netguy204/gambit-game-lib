@@ -51,5 +51,6 @@
 #define container_of(ptr, type, member) container_of_portable(ptr, type, member)
 #endif
 
+#define array_size(x) (sizeof(x) / sizeof(x[0]))
 
 #endif

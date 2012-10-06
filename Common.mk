@@ -2,10 +2,11 @@ C_SRC+= \
 	threadlib.c memory.c listlib.c testlib.c \
 	sampler.c audio.c game.c vector.c particle.c \
 	rect.c controls.c agent.c steering.c spriteatlas.c \
-	realmain.c stb_image.c tiles.c sfmt/SFMT.c random.c
+	realmain.c stb_image.c tiles.c sfmt/SFMT.c random.c \
+	perlin.c
 
 XML_INCLUDE:=-I/usr/include/libxml2
-CFLAGS+=$(XML_INCLUDE) -DSFMT_MEXP=607 -Isfmt/
+CFLAGS+=$(XML_INCLUDE) -Isfmt/
 
 LDFLAGS+=-lpthread
 C_OBJS=$(patsubst %.c,%.o,$(C_SRC))
@@ -28,6 +29,9 @@ test: test_bin
 
 buildatlas: buildatlas.o $(C_OBJS)
 	$(CC) $(CFLAGS) -o $@ $< $(C_OBJS) $(XML_INCLUDE) -lxml2 $(LDFLAGS)
+
+sfmt/SFMT.o: sfmt/SFMT.c
+	$(CC) $(CFLAGS) -c $< -o $@ -DSFMT_MEXP=607
 
 IMAGES_INPUT=spacer/images_default.xml spacer/images_default.png
 IMAGE_RESOURCE=spacer/images_default.dat

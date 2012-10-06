@@ -1,4 +1,6 @@
 #include "tiles.h"
+#include "perlin.h"
+#include "vector.h"
 
 #include <math.h>
 
@@ -20,17 +22,40 @@ void tilemap_free(TileMap map) {
 }
 
 TileMap tilemap_testmake(SpriteAtlasEntry t1, SpriteAtlasEntry t2) {
-  TileMap map = tilemap_make(t1->atlas, 101, 100, t1->w, t1->h);
+  int MAXX = 101;
+  int MAXY = 100;
+  TileMap map = tilemap_make(t1->atlas, MAXX, MAXY, t1->w, t1->h);
 
   char i1 = spriteatlas_index(t1);
   char i2 = spriteatlas_index(t2);
 
-  int ii;
-  for(ii = 0; ii < 101 * 100; ++ii) {
-    if(ii % 2 == 0) {
-      map->tiles[ii] = i1;
-    } else {
-      map->tiles[ii] = i2;
+  struct Random_ random;
+  random_init(&random, 1234);
+
+  struct Perlin_ perlin;
+  struct Vector_ offset = {0.0f, 0.0f};
+  struct Vector_ scale = {0.1f, 0.1f};
+  perlin_init(&perlin, &random, &offset, &scale);
+
+  struct Perlin_ perlin2;
+  struct Vector_ offset2 = {0.0f, 0.0f};
+  struct Vector_ scale2 = {0.05f, 0.05f};
+  perlin_init(&perlin2, &random, &offset2, &scale2);
+
+  int xx, yy;
+  for(yy = 0; yy < MAXY; ++yy) {
+    for(xx = 0; xx < MAXX; ++xx) {
+      struct Vector_ point = {xx, yy};
+      int index = MAXX * yy + xx;
+      float sample =
+        perlin_sample(&perlin, &point) +
+        perlin_sample(&perlin2, &point);
+
+      if(sample > 0.4f) {
+        map->tiles[index] = i1;
+      } else {
+        map->tiles[index] = i2;
+      }
     }
   }
 
@@ -56,14 +81,17 @@ SpriteList tilemap_spritelist(TileMap map, float x_bl, float y_bl, float wpx, fl
 
   SpriteList spritelist = NULL;
 
-  int xx, yy;
-  for(yy = ty_bl; yy < ty_tr; ++yy) {
-    int yoffset = map->width_IT * yy;
+  int ox = (int)floorf((map->x_bl + tx_bl * map->tile_width_IP) - x_bl);
+  int oy = (int)floorf((map->y_bl + ty_bl * map->tile_height_IP) - y_bl);
 
-    for(xx = tx_bl; xx < tx_tr; ++xx) {
-      int offset = yoffset + xx;
-      float x = (map->x_bl + xx * map->tile_width_IP) - x_bl;
-      float y = (map->y_bl + yy * map->tile_height_IP) - y_bl;
+  int xx, yy;
+  for(yy = 0; yy < ty_tr - ty_bl; ++yy) {
+    int yoffset = map->width_IT * (ty_bl + yy);
+    int y = oy + (map->tile_height_IP * yy);
+
+    for(xx = 0; xx < tx_tr - tx_bl; ++xx) {
+      int offset = yoffset + tx_bl + xx;
+      int x = ox + (map->tile_width_IP * xx);
 
       int tile = map->tiles[offset];
       SpriteAtlasEntry entry = &map->atlas->entries[tile];
@@ -72,8 +100,8 @@ SpriteList tilemap_spritelist(TileMap map, float x_bl, float y_bl, float wpx, fl
       sprite_fillfromentry(sprite, entry);
       sprite->originX = 0.0f;
       sprite->originY = 0.0f;
-      sprite->displayX = x;
-      sprite->displayY = y;
+      sprite->displayX = (float)x;
+      sprite->displayY = (float)y;
       spritelist = frame_spritelist_append(spritelist, sprite);
     }
   }
