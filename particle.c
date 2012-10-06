@@ -3,19 +3,19 @@
 #include "vector.h"
 
 float particle_width(Particle particle) {
-  return particle->image->w;
+  return particle->image->w * particle->scale;
 }
 
 float particle_height(Particle particle) {
-  return particle->image->h;
+  return particle->image->h * particle->scale;
 }
 
 Sprite particle_sprite(Particle particle) {
   Sprite sprite = frame_make_sprite();
   sprite_fillfromentry(sprite, particle->image);
 
-  sprite->w = particle_width(particle) * particle->scale;
-  sprite->h = particle_height(particle) * particle->scale;
+  sprite->w = particle_width(particle);
+  sprite->h = particle_height(particle);
   sprite->displayX = particle->pos.x;
   sprite->displayY = particle->pos.y;
   sprite->originX = 0.5;
@@ -41,8 +41,8 @@ SpriteList particles_spritelist(DLL list) {
 }
 
 void rect_for_particle(Rect rect, Particle particle, float scale) {
-  float hw = (particle_width(particle) * scale) / 2.0f;
-  float hh = (particle_height(particle) * scale) / 2.0f;
+  float hw = particle_width(particle) / 2.0f;
+  float hh = particle_height(particle) / 2.0f;
 
   rect->minx = particle->pos.x - hw;
   rect->maxx = particle->pos.x + hw;
