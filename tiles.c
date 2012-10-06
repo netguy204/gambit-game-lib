@@ -49,18 +49,18 @@ SpriteList tilemap_spritelist(TileMap map, float x_bl, float y_bl, float wpx, fl
   float mx_tr = mx_bl + wpx;
   float my_tr = my_bl + hpx;
 
-  int tx_bl = clamp(floor(mx_bl / map->tile_width_IP), 0, map->width_IT - 1);
-  int ty_bl = clamp(floor(my_bl / map->tile_height_IP), 0, map->height_IT - 1);
+  int tx_bl = clamp(floor(mx_bl / map->tile_width_IP), 0, map->width_IT);
+  int ty_bl = clamp(floor(my_bl / map->tile_height_IP), 0, map->height_IT);
   int tx_tr = clamp(ceil(mx_tr / map->tile_width_IP), 0, map->width_IT);
   int ty_tr = clamp(ceil(my_tr / map->tile_height_IP), 0, map->height_IT);
 
   SpriteList spritelist = NULL;
 
   int xx, yy;
-  for(yy = ty_bl; yy <= ty_tr; ++yy) {
+  for(yy = ty_bl; yy < ty_tr; ++yy) {
     int yoffset = map->width_IT * yy;
 
-    for(xx = tx_bl; xx <= tx_tr; ++xx) {
+    for(xx = tx_bl; xx < tx_tr; ++xx) {
       int offset = yoffset + xx;
       float x = (map->x_bl + xx * map->tile_width_IP) - x_bl;
       float y = (map->y_bl + yy * map->tile_height_IP) - y_bl;
