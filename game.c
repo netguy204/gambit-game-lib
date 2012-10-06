@@ -8,6 +8,7 @@
 #include "controls.h"
 #include "agent.h"
 #include "steering.h"
+#include "tiles.h"
 
 #include "config.h"
 
@@ -38,6 +39,7 @@ struct DLL_ pretty_particles;
 
 ImageResource stars;
 SpriteAtlas atlas;
+TileMap tiles;
 SpriteAtlasEntry image_enemy;
 SpriteAtlasEntry image_ally;
 SpriteAtlasEntry image_player_bullet;
@@ -526,6 +528,12 @@ void game_init() {
 
   stars = image_load("spacer/night-sky-stars.jpg");
   atlas = spriteatlas_load("spacer/images_default.dat", "spacer/images_default.png");
+
+  // test
+  SpriteAtlasEntry grass = spriteatlas_find(atlas, "grass.png");
+  SpriteAtlasEntry dirt = spriteatlas_find(atlas, "dirt.png");
+  tiles = tilemap_testmake(grass, dirt);
+
   image_enemy = spriteatlas_find(atlas, "ship-right.png");
   image_ally = spriteatlas_find(atlas, "ship-right-good.png");
   image_player_bullet = spriteatlas_find(atlas, "plasma.png");
@@ -588,12 +596,17 @@ void game_step(long delta, InputState state) {
   float dt = clock_update(main_clock, delta / 1000.0);
   ++step_number;
 
+  /*
   Sprite background = frame_resource_sprite(stars);
   background->displayX = 0;
   background->displayY = 0;
   background->w = screen_width;
   background->h = screen_height;
   sprite_submit(background);
+  */
+
+  // draw the tile background
+  spritelist_enqueue_for_screen(tilemap_spritelist(tiles, 0, 0, screen_width, screen_height));
 
   // read player input
   handle_input(state);

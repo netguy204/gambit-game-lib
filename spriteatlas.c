@@ -34,6 +34,10 @@ void spriteatlas_free(SpriteAtlas atlas) {
   free(atlas);
 }
 
+int spriteatlas_index(SpriteAtlasEntry entry) {
+  return entry - entry->atlas->entries;
+}
+
 SpriteAtlasEntry spriteatlas_find(SpriteAtlas atlas, char* name) {
   int ii;
   for(ii = 0; ii < atlas->nentries; ++ii) {

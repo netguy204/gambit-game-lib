@@ -23,6 +23,7 @@ typedef struct SpriteAtlas_ {
 
 SpriteAtlas spriteatlas_load(char* datafile, char* imgfile);
 void spriteatlas_free(SpriteAtlas atlas);
+int spriteatlas_index(SpriteAtlasEntry entry);
 SpriteAtlasEntry spriteatlas_find(SpriteAtlas atlas, char* name);
 
 void sprite_fillfromentry(Sprite sprite, SpriteAtlasEntry entry);

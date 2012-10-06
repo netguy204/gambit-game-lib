@@ -2,7 +2,7 @@ C_SRC+= \
 	threadlib.c memory.c listlib.c testlib.c \
 	sampler.c audio.c game.c vector.c particle.c \
 	rect.c controls.c agent.c steering.c spriteatlas.c \
-	gambitmain.c realmain.c stb_image.c
+	gambitmain.c realmain.c stb_image.c tiles.c
 
 XML_INCLUDE:=-I/usr/include/libxml2
 CFLAGS+=$(XML_INCLUDE)
@@ -22,7 +22,7 @@ TEST_DEPS=\
 	game.o testlib.o threadlib.o particle.o \
 	rect.o controls.o testlib_sdl.o audio.o \
 	sampler.o vector.o stb_image.o audio_sdl.o \
-	steering.o
+	steering.o tiles.o
 
 test_bin: $(TEST_DEPS) testlib_test.o
 	$(CC) $(CFLAGS) -o $@ $(TEST_DEPS) testlib_test.o $(LDFLAGS)
