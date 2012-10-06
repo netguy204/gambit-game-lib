@@ -27,14 +27,20 @@ test_bin: $(C_OBJS) testlib_test.o
 test: test_bin
 	./test_bin
 
-buildatlas: buildatlas.o $(C_OBJS)
-	$(CC) $(CFLAGS) -o $@ $< $(C_OBJS) $(XML_INCLUDE) -lxml2 $(LDFLAGS)
+C_TOOL_OBJS=$(C_OBJS) xmltools.c
+BUILD_WITH_XML=$(CC) $(CFLAGS) -o $@ $< $(C_TOOL_OBJS) $(XML_INCLUDE) -lxml2 $(LDFLAGS)
+
+buildatlas: buildatlas.o $(C_TOOL_OBJS)
+	$(BUILD_WITH_XML)
+
+items_bin: items.o $(C_TOOL_OBJS)
+	$(BUILD_WITH_XML)
 
 sfmt/SFMT.o: sfmt/SFMT.c
 	$(CC) $(CFLAGS) -c $< -o $@ -DSFMT_MEXP=607
 
-IMAGES_INPUT=spacer/images_default.xml spacer/images_default.png
-IMAGE_RESOURCE=spacer/images_default.dat
+IMAGES_INPUT=resources/images_default.xml resources/images_default.png
+IMAGE_RESOURCE=resources/images_default.dat
 
 resources: $(IMAGE_RESOURCE)
 

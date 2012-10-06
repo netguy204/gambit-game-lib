@@ -27,12 +27,16 @@ struct Agent_;
 typedef void(*AgentUpdate)(struct Agent_*, float dt);
 typedef void(*AgentFree)(struct Agent_*);
 
+typedef struct AgentClass_ {
+  AgentUpdate update;
+  AgentFree free;
+} *AgentClass;
+
 typedef struct Agent_ {
   struct DLLNode_ node; // list of ownership siblings
   struct DLL_ inbox;
   struct DLL_ outbox;
-  AgentUpdate update;
-  AgentFree free;
+  AgentClass klass;
   long next_timer;
   int delta_subscribers; // subscriber count update is deferred
   int subscribers;
@@ -95,11 +99,12 @@ void message_postinbox(Agent dst, Message message);
 void message_postoutbox(Agent src, Message message, ReportCompleted report_completed);
 void messages_dropall(Agent agent);
 
-void enemyagent_fill(EnemyAgent agent, AgentUpdate update, AgentFree agentfree);
+void basicagent_free(Agent agent);
+void agent_fill(Agent agent, AgentClass klass, int state);
 
 // eventually orchestrates the scenario
 Collective collective_make(Dispatcher sub_dispatchers[COLLECTIVE_SUB_DISPATCHERS]);
-Dispatcher dispatcher_make(AgentUpdate update);
+Dispatcher dispatcher_make(AgentClass klass);
 
 void dispatcher_add_agent(Dispatcher dispatcher, Agent agent);
 void dispatcher_remove_agent(Dispatcher dispatcher, Agent agent);

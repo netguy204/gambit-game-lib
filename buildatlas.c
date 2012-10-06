@@ -1,7 +1,6 @@
 #include "spriteatlas.h"
+#include "xmltools.h"
 
-#include <libxml/tree.h>
-#include <libxml/parser.h>
 #include <string.h>
 
 char* node_attr(xmlNode* node, char* name) {
@@ -37,9 +36,8 @@ int main(int argc, char ** argv) {
   char * input_img = argv[2];
   char * output_name = argv[3];
 
-  xmlDoc* doc = xmlParseFile(input_xml);
-  xmlNode* root = xmlDocGetRootElement(doc);
-  xmlNode* subtex = root->children;
+  xmlNode* children = xml_rootchildren(input_xml);
+  xmlNode* subtex = children;
 
   ImageResource img = image_load(input_img);
   FILE* output = fopen(output_name, "wb");
@@ -57,7 +55,7 @@ int main(int argc, char ** argv) {
   }
 
   fclose(output);
-  xmlFreeDoc(doc);
+  xml_free(children);
 
   fprintf(stderr, "built %s\n", output_name);
   fprintf(stderr, "%d entries, %ld bytes per entry. %ld bytes total\n",

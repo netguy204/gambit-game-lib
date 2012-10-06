@@ -39,7 +39,6 @@ struct DLL_ enemy_bullets;
 struct DLL_ pretty_particles;
 struct Random_ rgen;
 
-ImageResource stars;
 SpriteAtlas atlas;
 TileMap tiles;
 SpriteAtlasEntry image_enemy;
@@ -269,6 +268,8 @@ void enemyagent_update(Agent agent, float dt) {
   }
 }
 
+struct AgentClass_ enemy_klass = {enemyagent_update, enemyagent_free};
+
 Enemy spawn_enemy() {
   Enemy enemy = enemy_make();
   enemy->particle.image = image_ally;
@@ -285,7 +286,7 @@ Enemy spawn_enemy() {
   enemy->particle.dsdt = 0.0f;
   enemy->particle.dadt = 0.0f;
   enemy->agent.hp = 100;
-  enemyagent_fill(&enemy->agent, enemyagent_update, enemyagent_free);
+  agent_fill((Agent)&enemy->agent, &enemy_klass, ENEMY_IDLE);
   dll_add_head(&enemies, (DLLNode)&enemy->particle);
 
   return enemy;
@@ -498,6 +499,9 @@ void sprite_submit(Sprite sprite) {
   spritelist_enqueue_for_screen(sl);
 }
 
+struct AgentClass_ collision_klass = {collision_dispatcher_update, basicagent_free};
+struct AgentClass_ coordinator_klass = {coordinator_update, basicagent_free};
+
 void game_init() {
   agent_init();
 
@@ -518,8 +522,7 @@ void game_init() {
 
   main_clock = clock_make();
 
-  stars = image_load("spacer/night-sky-stars.jpg");
-  atlas = spriteatlas_load("spacer/images_default.dat", "spacer/images_default.png");
+  atlas = spriteatlas_load("resources/images_default.dat", "resources/images_default.png");
 
   // test
   SpriteAtlasEntry grass = spriteatlas_find(atlas, "grass.png");
@@ -551,8 +554,8 @@ void game_init() {
   player_gun_latch.last_state = 0;
 
   Dispatcher dispatchers[COLLECTIVE_SUB_DISPATCHERS] = {
-    dispatcher_make(collision_dispatcher_update),
-    dispatcher_make(coordinator_update),
+    dispatcher_make(&collision_klass),
+    dispatcher_make(&coordinator_klass),
   };
 
   collective = collective_make(dispatchers);
@@ -590,15 +593,6 @@ extern StackAllocator frame_allocator;
 void game_step(long delta, InputState state) {
   float dt = clock_update(main_clock, delta / 1000.0);
   ++step_number;
-
-  /*
-  Sprite background = frame_resource_sprite(stars);
-  background->displayX = 0;
-  background->displayY = 0;
-  background->w = screen_width;
-  background->h = screen_height;
-  sprite_submit(background);
-  */
 
   // center the screen on the player
   screen_x_br = player->pos.x - screen_width / 2;

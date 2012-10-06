@@ -1,0 +1,23 @@
+<items>
+  <item name="alpha-reactor">
+    <produces name="heat" rate="10" />
+    <produces name="power" rate="100" />
+    <consumes name="fuel" rate="10" />
+  </item>
+
+  <item name="alpha-battery">
+    <produces name="power" />
+    <consumes name="power" />
+  </item>
+
+  <item name="fuel-storage">
+    <produces name="fuel" />
+    <consumes name="fuel" />
+  </item>
+
+  <system name="alpha-power">
+    <itemref inputs="r1" name="b1" item="alpha-battery" />
+    <itemref inputs="f1" name="r1" item="alpha-reactor" />
+  </system>
+
+</items>

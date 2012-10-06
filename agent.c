@@ -80,11 +80,10 @@ void messages_dropall(Agent agent) {
   messages_drop(&agent->outbox);
 }
 
-void agent_fill(Agent agent, AgentUpdate update, AgentFree agentfree, int state) {
+void agent_fill(Agent agent, AgentClass klass, int state) {
   dll_zero(&agent->inbox);
   dll_zero(&agent->outbox);
-  agent->update = update;
-  agent->free = agentfree;
+  agent->klass = klass;
   agent->subscribers = 0;
   agent->delta_subscribers = 0;
   agent->state = state;
@@ -95,14 +94,14 @@ void agent_update(Agent agent, float dt) {
   // update the subscriber count
   agent->subscribers += agent->delta_subscribers;
   agent->delta_subscribers = 0;
-  agent->update(agent, dt);
+  agent->klass->update(agent, dt);
 }
 
 void agent_free(Agent agent) {
   // should we do something with the agent's mailboxes?
   SAFETY(if(agent->inbox.head != NULL) fail_exit("agent inbox not empty"));
   SAFETY(if(agent->outbox.head != NULL) fail_exit("agent outbox not empty"));
-  agent->free(agent);
+  agent->klass->free(agent);
 }
 
 void agent_send_terminate(Agent agent, Agent source) {
@@ -181,15 +180,14 @@ void foreach_inboxmessage(Agent agent, InboxMessageCallback callback, void * uda
   }
 }
 
-void dispatcher_fill(Dispatcher dispatcher, AgentUpdate update,
-                     AgentFree agentfree, int state) {
-  agent_fill((Agent)dispatcher, update, agentfree, state);
+void dispatcher_fill(Dispatcher dispatcher, AgentClass klass, int state) {
+  agent_fill((Agent)dispatcher, klass, state);
   dll_zero(&dispatcher->dispatchees);
 }
 
-Dispatcher dispatcher_make(AgentUpdate update) {
+Dispatcher dispatcher_make(AgentClass klass) {
   Dispatcher dispatcher = fixed_allocator_alloc(agent_allocator);
-  dispatcher_fill(dispatcher, update, basicagent_free, DISPATCHER_IDLE);
+  dispatcher_fill(dispatcher, klass, DISPATCHER_IDLE);
   return dispatcher;
 }
 
@@ -293,10 +291,11 @@ void collective_update(Agent agent, float dt) {
   foreach_dispatcheemessage((Dispatcher)collective, collective_handle_outboxes, NULL);
 }
 
+struct AgentClass_ collective_klass = {collective_update, basicagent_free};
+
 Collective collective_make(Dispatcher dispatchers[COLLECTIVE_SUB_DISPATCHERS]) {
   Collective collective = fixed_allocator_alloc(agent_allocator);
-  dispatcher_fill((Dispatcher)collective, collective_update,
-                  basicagent_free, COLLECTIVE_IDLE);
+  dispatcher_fill((Dispatcher)collective, &collective_klass, COLLECTIVE_IDLE);
   dll_zero(&collective->children);
 
   int ii = 0;
@@ -312,6 +311,6 @@ Collective collective_make(Dispatcher dispatchers[COLLECTIVE_SUB_DISPATCHERS]) {
   return collective;
 }
 
-void enemyagent_fill(EnemyAgent enemy, AgentUpdate update, AgentFree agentfree) {
-  agent_fill((Agent)enemy, update, agentfree, ENEMY_IDLE);
+void enemyagent_fill(EnemyAgent enemy, AgentClass klass) {
+  agent_fill((Agent)enemy, klass, ENEMY_IDLE);
 }
