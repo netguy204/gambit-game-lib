@@ -285,8 +285,8 @@ Enemy spawn_enemy() {
   enemy->particle.scale = 1.0f;
 
   int nrows = floor(screen_height / image_enemy->h);
-  enemy->particle.pos.x = screen_width + (image_enemy->w / 2);
-  enemy->particle.pos.y =
+  enemy->particle.pos.x = screen_x_br + screen_width + (image_enemy->w / 2);
+  enemy->particle.pos.y = screen_y_br +
     image_enemy->h * rand_in_range(0, nrows)
     + (image_enemy->h / 2);
   enemy->particle.vel.x = -enemy_speed;
@@ -495,7 +495,7 @@ void collision_dispatcher_update(Agent agent, float dt) {
     CollisionRecord rec = &es[ii];
     EnemyAgent enemyagent = (EnemyAgent)rec->data;
     Particle p = enemyagent_particle(enemyagent);
-    if(p->pos.x < -(particle_width(p) / 2.0f)) {
+    if(!staying_onscreen_test(p)) {
       agent_send_terminate((Agent)enemyagent, (Agent)dispatcher);
     }
   }

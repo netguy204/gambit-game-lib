@@ -110,14 +110,6 @@ void inputstate_latest(InputState state) {
 
   joystick_update_state(joystick_state);
 
-  /*
-  if(joystick_state->values[4].value != state->leftright
-     || joystick_state->values[5].value != state->updown) {
-    joystick_print_state(joystick_state);
-  }
-  joystick_print_state(joystick_state);
-  */
-
   state->leftright = ((float)joystick_state->values[1].value) / 32767.0;
   state->updown = -((float)joystick_state->values[3].value) / 32767.0;
   state->action1 = joystick_state->values[0].value;
