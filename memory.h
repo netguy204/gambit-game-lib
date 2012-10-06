@@ -22,6 +22,7 @@ typedef struct FixedAllocator_ {
 typedef struct StackAllocator_ {
 #ifdef DEBUG_MEMORY
   const char* name;
+  long max_alloced;
 #endif
   pthread_mutex_t mutex;
   void* stack_top;

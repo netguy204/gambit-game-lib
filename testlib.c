@@ -5,7 +5,6 @@
 #include "testlib_internal.h"
 #include "stb_image.h"
 
-
 ThreadBarrier render_barrier;
 FixedAllocator clock_allocator;
 FixedAllocator image_resource_allocator;
@@ -15,6 +14,16 @@ Queue render_queue;
 
 uint32_t screen_width;
 uint32_t screen_height;
+
+float screen_x_br = 0.0f;
+float screen_y_br = 0.0f;
+
+void screen_rect(Rect rect) {
+  rect->minx = screen_x_br;
+  rect->miny = screen_y_br;
+  rect->maxx = screen_x_br + screen_width;
+  rect->maxy = screen_y_br + screen_height;
+}
 
 static pthread_t renderer_thread;
 

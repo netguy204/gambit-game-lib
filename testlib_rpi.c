@@ -105,8 +105,7 @@ int sign(int val) {
   return 0;
 }
 
-InputState frame_inputstate() {
-  InputState state = stack_allocator_alloc(frame_allocator, sizeof(struct InputState_));
+void inputstate_latest(InputState state) {
   memset(state, 0, sizeof(struct InputState_));
 
   joystick_update_state(joystick_state);
@@ -122,8 +121,6 @@ InputState frame_inputstate() {
   state->leftright = ((float)joystick_state->values[1].value) / 32767.0;
   state->updown = -((float)joystick_state->values[3].value) / 32767.0;
   state->action1 = joystick_state->values[0].value;
-
-  return state;
 }
 
 void renderer_init(void* empty) {
@@ -132,13 +129,13 @@ void renderer_init(void* empty) {
   EGLint num_config;
 
   static EGL_DISPMANX_WINDOW_T nativewindow;
-  
+
   DISPMANX_ELEMENT_HANDLE_T dispman_element;
   DISPMANX_DISPLAY_HANDLE_T dispman_display;
   DISPMANX_UPDATE_HANDLE_T dispman_update;
   VC_RECT_T dst_rect;
   VC_RECT_T src_rect;
-  
+
   static const EGLint attribute_list[] =
     {
       EGL_RED_SIZE, 8,
@@ -148,57 +145,57 @@ void renderer_init(void* empty) {
       EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
       EGL_NONE
     };
-   
+
   EGLConfig config;
-  
+
   bcm_host_init();
 
   // get an EGL display connection
   display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
   egl_assert(display!=EGL_NO_DISPLAY);
-  
+
   // initialize the EGL display connection
   int major, minor;
   result = eglInitialize(display, &major, &minor);
   egl_assert(EGL_FALSE != result);
   fprintf(stderr, "EGL initialzed version %d %d\n", major, minor);
- 
+
    // get an appropriate EGL frame buffer configuration
   result = eglChooseConfig(display, attribute_list, &config, 1, &num_config);
   egl_assert(EGL_FALSE != result);
-  
+
   // create an EGL rendering context
   context = eglCreateContext(display, config, EGL_NO_CONTEXT, NULL);
   egl_assert(context!=EGL_NO_CONTEXT);
-  
+
   // create an EGL window surface
   success = graphics_get_display_size(0 /* LCD */, &screen_width, &screen_height);
   fprintf(stderr, "success = %d, screen_width = %d, screen_height = %d\n", success, screen_width, screen_height);
   egl_assert( success >= 0 );
-  
+
   dst_rect.x = 0;
   dst_rect.y = 0;
   dst_rect.width = screen_width;
   dst_rect.height = screen_height;
-  
+
   src_rect.x = 0;
   src_rect.y = 0;
   src_rect.width = screen_width << 16;
-  src_rect.height = screen_height << 16;        
-  
+  src_rect.height = screen_height << 16;
+
   dispman_display = vc_dispmanx_display_open( 0 /* LCD */);
   dispman_update = vc_dispmanx_update_start( 0 );
-  
+
   dispman_element =
     vc_dispmanx_element_add ( dispman_update, dispman_display,
                               0/*layer*/, &dst_rect, 0/*src*/,
                               &src_rect, DISPMANX_PROTECTION_NONE, 0 /*alpha*/, 0/*clamp*/, 0/*transform*/);
-  
+
   nativewindow.element = dispman_element;
   nativewindow.width = screen_width;
   nativewindow.height = screen_height;
   vc_dispmanx_update_submit_sync( dispman_update );
-  
+
   surface = eglCreateWindowSurface( display, config, &nativewindow, NULL );
   egl_assert(surface != EGL_NO_SURFACE);
 
@@ -206,7 +203,7 @@ void renderer_init(void* empty) {
   result = eglMakeCurrent(display, surface, surface, context);
   egl_assert(EGL_FALSE != result);
 
-  renderer_gl_init();  
+  renderer_gl_init();
 }
 
 void renderer_shutdown(void* empty) {
@@ -226,4 +223,3 @@ void signal_render_complete(void* empty) {
   eglSwapBuffers(display, surface);
   gl_check_("endframe");
 }
-

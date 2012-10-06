@@ -10,8 +10,9 @@ int last_time;
 int loop_once() {
   int new_time;
 
-  InputState state = frame_inputstate();
-  if(state->quit_requested) {
+  struct InputState_ state;
+  inputstate_latest(&state);
+  if(state.quit_requested) {
     lib_shutdown();
     return 0;
   }
@@ -30,7 +31,7 @@ int loop_once() {
   }
 
   begin_frame();
-  game_step(delta, state);
+  game_step(delta, &state);
   end_frame();
 
   last_time = new_time;

@@ -113,6 +113,9 @@ void* stack_allocator_alloc(StackAllocator allocator, size_t size) {
 }
 
 void stack_allocator_freeall(StackAllocator allocator) {
+#ifdef DEBUG_MEMORY
+  allocator->max_alloced = (char*)allocator->stack_top - (char*)allocator->stack_bottom;
+#endif
   allocator->stack_top = allocator->stack_bottom;
 }
 

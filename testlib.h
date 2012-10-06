@@ -18,11 +18,17 @@
 #include "threadlib.h"
 #include "memory.h"
 #include "listlib.h"
+#include "rect.h"
 #include "audio.h"
 #include "config.h"
 
 extern uint32_t screen_width;
 extern uint32_t screen_height;
+
+extern float screen_x_br;
+extern float screen_y_br;
+
+void screen_rect(Rect rect);
 
 /* initialize the internal allocators for the library. Must be called
    before other functions */
@@ -46,7 +52,7 @@ typedef struct InputState_ {
 
 /* provided by system specific lib */
 void native_init();
-InputState frame_inputstate();
+void inputstate_latest(InputState state);
 long time_millis();
 void sleep_millis(long millis);
 

@@ -16,8 +16,8 @@ Sprite particle_sprite(Particle particle) {
 
   sprite->w = particle_width(particle);
   sprite->h = particle_height(particle);
-  sprite->displayX = particle->pos.x;
-  sprite->displayY = particle->pos.y;
+  sprite->displayX = particle->pos.x - screen_x_br;
+  sprite->displayY = particle->pos.y - screen_y_br;
   sprite->originX = 0.5;
   sprite->originY = 0.5;
   sprite->angle = particle->angle;

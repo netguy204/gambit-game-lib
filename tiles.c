@@ -37,16 +37,22 @@ TileMap tilemap_testmake(SpriteAtlasEntry t1, SpriteAtlasEntry t2) {
   return map;
 }
 
+int clamp(int val, int min, int max) {
+  if(val < min) return min;
+  if(val > max) return max;
+  return val;
+}
+
 SpriteList tilemap_spritelist(TileMap map, float x_bl, float y_bl, float wpx, float hpx) {
   float mx_bl = x_bl - map->x_bl;
   float my_bl = y_bl - map->y_bl;
   float mx_tr = mx_bl + wpx;
   float my_tr = my_bl + hpx;
 
-  int tx_bl = MAX(0, floor(mx_bl / map->tile_width_IP));
-  int ty_bl = MAX(0, floor(my_bl / map->tile_height_IP));
-  int tx_tr = MIN(map->width_IT - 1, ceil(mx_tr / map->tile_width_IP));
-  int ty_tr = MIN(map->height_IT - 1, ceil(my_tr / map->tile_height_IP));
+  int tx_bl = clamp(floor(mx_bl / map->tile_width_IP), 0, map->width_IT - 1);
+  int ty_bl = clamp(floor(my_bl / map->tile_height_IP), 0, map->height_IT - 1);
+  int tx_tr = clamp(ceil(mx_tr / map->tile_width_IP), 0, map->width_IT);
+  int ty_tr = clamp(ceil(my_tr / map->tile_height_IP), 0, map->height_IT);
 
   SpriteList spritelist = NULL;
 

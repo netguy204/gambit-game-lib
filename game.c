@@ -366,17 +366,19 @@ void enemies_update(float dt) {
 int staying_onscreen_test(Particle p) {
   float hw = particle_width(p) / 2.0f;
   float hh = particle_height(p) / 2.0f;
+  struct Rect_ scr;
+  screen_rect(&scr);
 
   if(p->vel.x > 0) {
-    if(p->pos.x > screen_width + hw) return 0;
+    if(p->pos.x > scr.maxx + hw) return 0;
   } else {
-    if(p->pos.x < -hw) return 0;
+    if(p->pos.x < scr.minx - hw) return 0;
   }
 
   if(p->vel.y > 0) {
-    if(p->pos.y > screen_height + hh) return 0;
+    if(p->pos.y > scr.maxy + hh) return 0;
   } else {
-    if(p->pos.y < -hh) return 0;
+    if(p->pos.y < scr.miny - hh) return 0;
   }
 
   return 1;
@@ -592,6 +594,8 @@ void handle_input(InputState state) {
 
 long step_number = 0;
 
+extern StackAllocator frame_allocator;
+
 void game_step(long delta, InputState state) {
   float dt = clock_update(main_clock, delta / 1000.0);
   ++step_number;
@@ -605,8 +609,13 @@ void game_step(long delta, InputState state) {
   sprite_submit(background);
   */
 
+  // center the screen on the player
+  screen_x_br = player->pos.x - screen_width / 2;
+  screen_y_br = player->pos.y - screen_height / 2;
+
   // draw the tile background
-  spritelist_enqueue_for_screen(tilemap_spritelist(tiles, 0, 0, screen_width, screen_height));
+  spritelist_enqueue_for_screen(tilemap_spritelist(tiles, screen_x_br, screen_y_br,
+                                                   screen_width, screen_height));
 
   // read player input
   handle_input(state);
@@ -641,9 +650,11 @@ void game_step(long delta, InputState state) {
   sprite_submit(particle_sprite((Particle)player));
 
   if(step_number % 100 == 0) {
-    printf("particle_allocator: %ld (%ld)\n",
+    printf("particle_allocator: %ld (%ld) ; stack_allocator: (%ld of %ld)\n",
            particle_allocator->inflight,
-           particle_allocator->max_inflight);
+           particle_allocator->max_inflight,
+           frame_allocator->max_alloced,
+           (char*)frame_allocator->stack_max - (char*)frame_allocator->stack_bottom);
   }
 }
 

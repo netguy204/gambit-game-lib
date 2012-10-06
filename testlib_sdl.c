@@ -11,8 +11,6 @@
 #define glOrthof glOrtho
 #include "testlib_gl.c"
 
-extern StackAllocator frame_allocator;
-
 static struct InputState_ pstate;
 
 void native_init() {
@@ -22,7 +20,7 @@ void native_init() {
 }
 
 
-InputState frame_inputstate() {
+void inputstate_latest(InputState state) {
   SDL_Event event;
 
   /* pump the events */
@@ -60,13 +58,7 @@ InputState frame_inputstate() {
     }
   }
 
-  InputState state = stack_allocator_alloc(frame_allocator, sizeof(struct InputState_));
-  memcpy(state, &pstate, sizeof(struct InputState_));
-
-  state->leftright = pstate.leftright;
-  state->updown = pstate.updown;
-
-  return state;
+  *state = pstate;
 }
 
 long time_millis() {
@@ -106,4 +98,3 @@ void at_exit() {
 void signal_render_complete(void* empty) {
   SDL_GL_SwapBuffers();
 }
-
