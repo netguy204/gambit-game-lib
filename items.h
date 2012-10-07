@@ -14,15 +14,22 @@ typedef enum {
   MAX_RESOURCE
 } Resource;
 
+char* resource_names[MAX_RESOURCE] = {
+  "heat",
+  "power",
+  "fuel"
+};
+
 typedef enum {
   FIRE,
-  IMPACT
+  IMPACT,
+  MAX_ACTIVATION
 } Activation;
 
 typedef float Resources_[MAX_RESOURCE];
 typedef float* Resources;
 
-void attributes_zero(Resources attr);
+void resources_zero(Resources attr);
 
 /* update cycle:
  * - consumers request from producers and producers reply until depleted
@@ -36,17 +43,19 @@ typedef void(*UpdateComponent)(struct ComponentInstance_*);
 typedef void(*ActivateComponent)(struct ComponentInstance_*, Activation activation);
 typedef int(*ComponentPullResource)(struct ComponentInstance_*, Resources resources);
 typedef int(*ComponentPushResource)(struct ComponentInstance_*, Resources resources);
+typedef char ComponentName[ITEM_MAX_NAME];
 
 typedef struct ComponentClass_ {
   struct DLLNode_ node; // keeps us in the class registry
+  LLNode subcomponents; // non-intrusive list of subcomponents
   Resources_ max_capacity;
   Resources_ production_rates;
-  Resources_ consumption_rates;
   UpdateComponent update;
   ActivateComponent activate;
   ComponentPushResource push;
   ComponentPullResource pull;
-  char name[ITEM_MAX_NAME];
+  float quality;
+  ComponentName name;
 } *ComponentClass;
 
 void items_init();
@@ -65,9 +74,16 @@ typedef struct ComponentInstance_ {
   struct DLL_ children;
   Resources_ storage;
   Resources_ max_capacity;
+  Resources_ production_rates;
+  float quality;
 } *ComponentInstance;
 
 ComponentInstance componentinstance_make(ComponentClass klass);
+void componentinstance_free(ComponentInstance instance);
+
+void componentinstance_addchild(ComponentInstance parent, ComponentInstance child);
+void componentinstance_removechild(ComponentInstance child);
+
 int component_push(ComponentInstance comp, Resources resources);
 int component_pull(ComponentInstance comp, Resources resources);
 void component_update(ComponentInstance comp);

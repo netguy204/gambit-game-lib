@@ -6,20 +6,29 @@
   </item>
 
   <item name="alpha-battery">
-    <produces name="power" rate="1000" />
-    <consumes name="power" rate="100" />
     <maxcapacity name="power" value="5000" />
   </item>
 
   <item name="fuel-storage">
-    <produces name="fuel" rate="100" />
-    <consumes name="fuel" rate="10" />
     <maxcapacity name="fuel" value="200" />
   </item>
 
+  <item name="heat-sink">
+    <updatefn name="heatsink_update" />
+    <quality value="0.30" />
+  </item>
+
+  <!--
+  <item name="alpha-laser">
+    <activatefn name="laser_fire" kind="fire" />
+
+  </item>
+  -->
+
   <system name="alpha-power">
-    <itemref inputs="r1" name="b1" item="alpha-battery" />
-    <itemref inputs="f1" name="r1" item="alpha-reactor" />
+    <component name="alpha-battery" />
+    <component name="alpha-reactor" />
+    <component name="heat-sink" />
     <maxcapacity name="heat" value="20" />
   </system>
 

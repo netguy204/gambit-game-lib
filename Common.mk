@@ -8,7 +8,7 @@ C_SRC+= \
 XML_INCLUDE:=-I/usr/include/libxml2
 CFLAGS+=$(XML_INCLUDE) -Isfmt/
 
-LDFLAGS+=-lpthread
+LDFLAGS+=-lpthread -ldl
 C_OBJS=$(patsubst %.c,%.o,$(C_SRC))
 
 EXE_OBJS=$(C_OBJS) gambitmain.o
