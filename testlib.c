@@ -46,6 +46,7 @@ void renderer_await_startup(void* empty) {
 }
 
 void testlib_init() {
+  listlib_init();
   clock_allocator = fixed_allocator_make(sizeof(struct Clock_), MAX_NUM_CLOCKS, "clock_allocator");
   image_resource_allocator = fixed_allocator_make(sizeof(struct ImageResource_), MAX_NUM_IMAGES, "image_resource_allocator");
   frame_allocator = stack_allocator_make(1024 * 1024, "frame_allocator");

@@ -9,6 +9,8 @@ struct LLNode_ {
   LLNode next;
 };
 
+int ll_count(LLNode node);
+
 typedef struct LLEntry_ {
   struct LLNode_ node;
   void* data;

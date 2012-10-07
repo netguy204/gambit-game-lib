@@ -8,7 +8,6 @@
 
 FixedAllocator message_allocator;
 FixedAllocator agent_allocator;
-FixedAllocator dispatchee_allocator;
 
 void agent_init() {
   message_allocator =
@@ -21,11 +20,6 @@ void agent_init() {
                              sizeof(struct Collective_)),
                          MAX_NUM_AGENTS,
                          "agent_allocator");
-
-  dispatchee_allocator =
-    fixed_allocator_make(sizeof(struct Dispatchee_),
-                         MAX_NUM_DISPATCHEES,
-                         "dispatchee_allocator");
 }
 
 Message message_make(Agent source, int kind, void* data) {
@@ -140,12 +134,10 @@ void foreach_outboxmessage(Dispatcher dispatcher, Agent agent,
 
 void foreach_dispatcheemessage(Dispatcher dispatcher, OutboxMessageCallback callback,
                                void * udata) {
-
-  Dispatchee entry = (Dispatchee)dispatcher->dispatchees.head;
-  while(entry) {
-    Dispatchee nentry = (Dispatchee)entry->node.next;
-    foreach_outboxmessage(dispatcher, entry->agent, callback, udata);
-    entry = nentry;
+  LLNode node = dispatcher->dispatchees;
+  Agent agent;
+  while((agent = llentry_nextvalue(&node))) {
+    foreach_outboxmessage(dispatcher, agent, callback, udata);
   }
 }
 
@@ -182,7 +174,7 @@ void foreach_inboxmessage(Agent agent, InboxMessageCallback callback, void * uda
 
 void dispatcher_fill(Dispatcher dispatcher, AgentClass klass, int state) {
   agent_fill((Agent)dispatcher, klass, state);
-  dll_zero(&dispatcher->dispatchees);
+  dispatcher->dispatchees = NULL;
 }
 
 Dispatcher dispatcher_make(AgentClass klass) {
@@ -191,28 +183,14 @@ Dispatcher dispatcher_make(AgentClass klass) {
   return dispatcher;
 }
 
-Dispatchee dispatcher_find_agent(Dispatcher dispatcher, Agent agent) {
-  Dispatchee entry = (Dispatchee)dispatcher->dispatchees.head;
-  while(entry) {
-    if(entry->agent == agent) return entry;
-    entry = (Dispatchee)entry->node.next;
-  }
-  return NULL;
-}
-
 void dispatcher_add_agent(Dispatcher dispatcher, Agent agent) {
-  Dispatchee entry = fixed_allocator_alloc(dispatchee_allocator);
-  entry->agent = agent;
-  dll_add_head(&dispatcher->dispatchees, (DLLNode)entry);
+  llentry_add(&dispatcher->dispatchees, agent);
   agent->delta_subscribers += 1;
 }
 
 void dispatcher_remove_agent(Dispatcher dispatcher, Agent agent) {
-  Dispatchee entry = dispatcher_find_agent(dispatcher, agent);
-  SAFETY(if(!entry) fail_exit("dispatcher_remove_agent: not found"));
+  llentry_remove(&dispatcher->dispatchees, agent);
   agent->delta_subscribers -= 1;
-  dll_remove(&dispatcher->dispatchees, (DLLNode)entry);
-  fixed_allocator_free(dispatchee_allocator, entry);
 }
 
 // tie an agent's lifetime to this collective

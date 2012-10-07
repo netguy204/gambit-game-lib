@@ -138,21 +138,21 @@ void coordinator_update(Agent agent, float dt) {
   // send attack command to n agents, also transition non-idlers
   int n = 2;
 
-  Dispatchee entry = (Dispatchee)dispatcher->dispatchees.head;
-  while(entry) {
-    if(n > 0 && entry->agent->state == ENEMY_IDLE) {
-      Message command = message_make(agent, AGENT_START_ATTACK, NULL);
-      message_postinbox(entry->agent, command);
+  LLNode node = dispatcher->dispatchees;
+  Agent subagent;
+  while((subagent = llentry_nextvalue(&node))) {
+    if(n > 0 && subagent->state == ENEMY_IDLE) {
+      Message command = message_make(subagent, AGENT_START_ATTACK, NULL);
+      message_postinbox(subagent, command);
       n--;
     }
-    else if(entry->agent->state == ENEMY_ATTACKING) {
-      Message command = message_make(agent, AGENT_FLEE, NULL);
-      message_postinbox(entry->agent, command);
-    } else if(entry->agent->state == ENEMY_FLEEING) {
-      Message command = message_make(agent, AGENT_IDLE, NULL);
-      message_postinbox(entry->agent, command);
+    else if(subagent->state == ENEMY_ATTACKING) {
+      Message command = message_make(subagent, AGENT_FLEE, NULL);
+      message_postinbox(subagent, command);
+    } else if(subagent->state == ENEMY_FLEEING) {
+      Message command = message_make(subagent, AGENT_IDLE, NULL);
+      message_postinbox(subagent, command);
     }
-    entry = (Dispatchee)entry->node.next;
   }
 }
 
@@ -432,20 +432,19 @@ CollisionRecord particles_collisionrecords(DLL list, int* count, float scale) {
   return crs;
 }
 
-CollisionRecord enemies_collisionrecords(DLL list, int* count, float scale) {
-  *count = dll_count(list);
+CollisionRecord enemies_collisionrecords(Dispatcher dispatcher, int* count, float scale) {
+  *count = ll_count(dispatcher->dispatchees);
   CollisionRecord crs = frame_alloc(sizeof(struct CollisionRecord_) *
                                     *count);
-  DLLNode node = list->head;
+  LLNode node = dispatcher->dispatchees;
+  EnemyAgent enemyagent;
   int ii = 0;
-  while(node) {
-    EnemyAgent enemyagent = (EnemyAgent)(((Dispatchee)node)->agent);
+  while((enemyagent = llentry_nextvalue(&node))) {
     Particle ep = enemyagent_particle(enemyagent);
 
     rect_for_particle(&(crs[ii].rect), ep, scale);
     crs[ii].data = enemyagent;
     crs[ii].skip = 0;
-    node = node->next;
     ++ii;
   }
 
@@ -478,7 +477,7 @@ void collision_dispatcher_update(Agent agent, float dt) {
   CollisionRecord pbs =
     particles_collisionrecords(&player_bullets, &num_bullets, 0.7f);
   CollisionRecord es =
-    enemies_collisionrecords(&dispatcher->dispatchees, &num_enemies, 0.8f);
+    enemies_collisionrecords(dispatcher, &num_enemies, 0.8f);
 
   // disregard any enemies that have crossed the screen
   int ii;

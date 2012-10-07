@@ -9,6 +9,15 @@ void listlib_init() {
                                            "llentry_allocator");
 }
 
+int ll_count(LLNode node) {
+  int ii = 0;
+  while(node) {
+    ii++;
+    node = node->next;
+  }
+  return ii;
+}
+
 LLEntry llentry_make() {
   return fixed_allocator_alloc(llentry_allocator);
 }

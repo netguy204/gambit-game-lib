@@ -43,16 +43,9 @@ typedef struct Agent_ {
   int state;
 } *Agent;
 
-// because many dispatchers can share the same agent we have to keep
-// our list structure outside the agent
-typedef struct Dispatchee_ {
-  struct DLLNode_ node;
-  Agent agent;
-} *Dispatchee;
-
 typedef struct Dispatcher_ {
   struct Agent_ agent;
-  struct DLL_ dispatchees;
+  LLNode dispatchees;
 } *Dispatcher;
 
 #define COLLECTIVE_SUB_DISPATCHERS 2
