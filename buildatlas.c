@@ -1,18 +1,12 @@
 #include "spriteatlas.h"
 #include "xmltools.h"
 
-#include <string.h>
-
-char* node_attr(xmlNode* node, char* name) {
-  return (char*)xmlGetProp(node, (const xmlChar*)name);
-}
-
 void node_to_struct(xmlNode* node, ImageResource img, SpriteAtlasEntry entry) {
-  char* entry_name = node_attr(node, "name");
-  float x = atof(node_attr(node, "x"));
-  float y = atof(node_attr(node, "y"));
-  float width = atof(node_attr(node, "width"));
-  float height = atof(node_attr(node, "height"));
+  char* entry_name = node_attr(node, "name", "error");
+  float x = atof(node_attr(node, "x", "error"));
+  float y = atof(node_attr(node, "y", "error"));
+  float width = atof(node_attr(node, "width", "error"));
+  float height = atof(node_attr(node, "height", "error"));
 
   memset(entry, 0, sizeof(struct SpriteAtlasEntry_));
   strncpy(entry->name, entry_name, MAX_ENTRY_NAME);

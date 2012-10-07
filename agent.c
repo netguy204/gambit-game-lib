@@ -310,7 +310,3 @@ Collective collective_make(Dispatcher dispatchers[COLLECTIVE_SUB_DISPATCHERS]) {
 
   return collective;
 }
-
-void enemyagent_fill(EnemyAgent enemy, AgentClass klass) {
-  agent_fill((Agent)enemy, klass, ENEMY_IDLE);
-}

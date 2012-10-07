@@ -1,4 +1,66 @@
 #include "listlib.h"
+#include "memory.h"
+#include "config.h"
+
+FixedAllocator llentry_allocator;
+
+void listlib_init() {
+  llentry_allocator = fixed_allocator_make(sizeof(struct LLEntry_), MAX_NUM_LLENTRY,
+                                           "llentry_allocator");
+}
+
+LLEntry llentry_make() {
+  return fixed_allocator_alloc(llentry_allocator);
+}
+
+void llentry_free(LLEntry entry) {
+  fixed_allocator_free(llentry_allocator, entry);
+}
+
+void llentry_add(LLNode* head, void* value) {
+  LLEntry entry = llentry_make();
+  entry->data = value;
+  entry->node.next = *head;
+  *head = (LLNode)entry;
+}
+
+#define ENTRY(v) ((LLEntry)v)
+#define ENTRY4P(p) ENTRY(*p)
+
+void* llentry_nextvalue(LLNode* current) {
+  if(*current == NULL) return NULL;
+  void* data = ENTRY4P(current)->data;
+  *current = (*current)->next;
+  return data;
+}
+
+void llentry_remove(LLNode* head, void* value) {
+  SAFETY(if(*head == NULL) fail_exit("llentry_remove: tried to remove from empty list"));
+
+  // is it the head?
+  if(ENTRY4P(head)->data == value) {
+    LLEntry oldentry = ENTRY4P(head);
+    *head = (*head)->next;
+    llentry_free(oldentry);
+    return;
+  }
+
+  // find it
+  LLNode last = *head;
+  LLNode next = last->next;
+
+  while(next) {
+    if(ENTRY(next)->data == value) {
+      // unlink
+      last->next = next->next;
+      llentry_free((LLEntry)next);
+      return;
+    }
+
+    last = next;
+    next = next->next;
+  }
+}
 
 void llnode_insert_after(DLLNode target, DLLNode addition) {
   DLLNode after = target->next;
@@ -32,8 +94,6 @@ void llnode_remove(DLLNode node) {
     before->next = after;
   }
 }
-
-#define NULL 0
 
 void dll_add_head(DLL list, DLLNode addition) {
   if(list->head == NULL) {

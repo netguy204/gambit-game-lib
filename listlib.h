@@ -1,11 +1,22 @@
 #ifndef LISTLIB_H
 #define LISTLIB_H
 
+void listlib_init();
+
 typedef struct LLNode_* LLNode;
 
 struct LLNode_ {
   LLNode next;
 };
+
+typedef struct LLEntry_ {
+  struct LLNode_ node;
+  void* data;
+} *LLEntry;
+
+void llentry_add(LLNode* head, void* value);
+void* llentry_nextvalue(LLNode* current);
+void llentry_remove(LLNode* head, void* value);
 
 typedef struct DLLNode_ *DLLNode;
 
