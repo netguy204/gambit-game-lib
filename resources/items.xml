@@ -7,7 +7,7 @@
   </item>
 
   <item name="alpha-battery">
-    <maxcapacity name="power" value="5000" />
+    <maxcapacity name="power" value="500" />
     <requires name="space" value="5" />
   </item>
 
@@ -22,23 +22,23 @@
     <requires name="space" value="10" />
   </item>
 
-  <!--
   <item name="alpha-laser">
-    <activatefn name="laser_fire" kind="fire" />
-
+    <activatefn name="laser_fire" />
+    <requires name="space" value="10" />
+    <quality value="0.5" />
   </item>
-  -->
 
   <system name="alpha-power">
     <component name="alpha-battery" />
     <component name="alpha-reactor" />
     <component name="heat-sink" />
-    <maxcapacity name="heat" value="20" />
+    <maxcapacity name="heat" value="40" />
   </system>
 
   <system name="alpha-hull">
     <component name="alpha-power" />
     <component name="fuel-storage" />
+    <component name="alpha-laser" />
     <provides name="space" value="50" />
   </system>
 

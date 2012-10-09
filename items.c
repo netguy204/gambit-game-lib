@@ -253,6 +253,28 @@ int component_pushimpl(ComponentInstance component, Resources resources) {
   return 0;
 }
 
+int component_storagesatisfies(ComponentInstance component, Resources request) {
+  int ii;
+  for(ii = 0; ii < MAX_RESOURCE; ++ii) {
+    float predicted_storage = component->stats.storage[ii] + request[ii];
+    if(predicted_storage < 0 || predicted_storage > component->stats.max_capacity[ii]) {
+      // does not satisfy
+      return 0;
+    }
+  }
+  return 1;
+}
+
+int component_storageput(ComponentInstance component, Resources req) {
+  if(!component_storagesatisfies(component, req)) return 0;
+
+  int ii;
+  for(ii = 0; ii < MAX_RESOURCE; ++ii) {
+    component->stats.storage[ii] += req[ii];
+  }
+  return 1;
+}
+
 void system_updateimpl(ComponentInstance component) {
   // update our children
   DLLNode node = component->children.head;
@@ -262,21 +284,8 @@ void system_updateimpl(ComponentInstance component) {
     node = node->next;
   }
 
-  // find our deficit materials / do we have capacity for what we'll
-  // produce?
-  int ii;
-  for(ii = 0; ii < MAX_RESOURCE; ++ii) {
-    float predicted_storage = component->stats.storage[ii] + component->stats.production_rates[ii];
-    if(predicted_storage < 0 || predicted_storage > component->stats.max_capacity[ii]) {
-      // no production possible
-      return;
-    }
-  }
-
-  // score the production
-  for(ii = 0; ii < MAX_RESOURCE; ++ii) {
-    component->stats.storage[ii] += component->stats.production_rates[ii];
-  }
+  // take the storage and do the production if we can
+  component_storageput(component, component->stats.production_rates);
 }
 
 void heatsink_update(ComponentInstance component) {
@@ -286,6 +295,22 @@ void heatsink_update(ComponentInstance component) {
   // take away quality percent of the heat stored by our parent
   component->parent->stats.storage[HEAT] -=
     component->quality * component->parent->stats.storage[HEAT];
+}
+
+void laser_fire(ComponentInstance component, Activation activation) {
+  // we should spawn a particle and ... maybe an agent ... and a
+  // system to manage the characteristics of the bolt...
+
+  float base_power = 150;
+  float base_heat = 5;
+
+  float power = base_power / component->quality;
+  float heat = base_heat / component->quality;
+
+  Resources_ req = { heat, -power, 0.0f, 0.0f };
+  if(component_storageput(component->parent, req)) {
+    printf("fire!\n");
+  }
 }
 
 float* resource_get_name_ptr(Resources attr, const char* name) {
@@ -337,6 +362,8 @@ void component_fill_from_xml(ComponentClass klass, xmlNode* child) {
     klass->quality = atof(node_attr(child, "value", "error"));
   } else if(streq(child->name, "updatefn")) {
     klass->update = find_function(node_attr(child, "name", "error"));
+  } else if(streq(child->name, "activatefn")) {
+    klass->activate = find_function(node_attr(child, "name", "error"));
   } else {
     fprintf(stderr, "unrecognized item subnode: %s\n", child->name);
     exit(1);
@@ -471,17 +498,17 @@ int main(int argc, char *argv[])
 
   ComponentClass alpha_class = componentclass_find("alpha-hull");
   ComponentInstance alpha = componentinstance_make(alpha_class);
+  ComponentInstance laser = componentinstance_findchild(alpha, "alpha-laser");
+
   Resources_ fuel = {0, 0, 100, 0};
   component_push(alpha, fuel);
 
-  component_update(alpha);
-  print_component(alpha, 0);
-  component_update(alpha);
-  print_component(alpha, 0);
-  component_update(alpha);
-  print_component(alpha, 0);
-  component_update(alpha);
-  print_component(alpha, 0);
+  int ii;
+  for(ii = 0; ii < 10; ++ii) {
+    component_update(alpha);
+    print_component(alpha, 0);
+    component_activate(laser, FIRE);
+  }
 
   componentinstance_free(alpha);
 
