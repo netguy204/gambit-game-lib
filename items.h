@@ -11,13 +11,15 @@ typedef enum {
   HEAT,
   POWER,
   FUEL,
+  SPACE,
   MAX_RESOURCE
 } Resource;
 
 char* resource_names[MAX_RESOURCE] = {
   "heat",
   "power",
-  "fuel"
+  "fuel",
+  "space"
 };
 
 typedef enum {
@@ -45,15 +47,21 @@ typedef int(*ComponentPullResource)(struct ComponentInstance_*, Resources resour
 typedef int(*ComponentPushResource)(struct ComponentInstance_*, Resources resources);
 typedef char ComponentName[ITEM_MAX_NAME];
 
+typedef struct Stats_ {
+  Resources_ storage;
+  Resources_ max_capacity;
+  Resources_ production_rates;
+} *Stats;
+
 typedef struct ComponentClass_ {
   struct DLLNode_ node; // keeps us in the class registry
   LLNode subcomponents; // non-intrusive list of subcomponents
-  Resources_ max_capacity;
-  Resources_ production_rates;
+  Resources_ requirements;
   UpdateComponent update;
   ActivateComponent activate;
   ComponentPushResource push;
   ComponentPullResource pull;
+  struct Stats_ stats;
   float quality;
   ComponentName name;
 } *ComponentClass;
@@ -72,9 +80,7 @@ typedef struct ComponentInstance_ {
   struct DLLNode_ node; // siblings
   struct ComponentInstance_* parent;
   struct DLL_ children;
-  Resources_ storage;
-  Resources_ max_capacity;
-  Resources_ production_rates;
+  struct Stats_ stats;
   float quality;
 } *ComponentInstance;
 

@@ -3,19 +3,23 @@
     <produces name="heat" rate="10" />
     <produces name="power" rate="100" />
     <consumes name="fuel" rate="10" />
+    <requires name="space" value="10" />
   </item>
 
   <item name="alpha-battery">
     <maxcapacity name="power" value="5000" />
+    <requires name="space" value="5" />
   </item>
 
   <item name="fuel-storage">
     <maxcapacity name="fuel" value="200" />
+    <requires name="space" value="10" />
   </item>
 
   <item name="heat-sink">
     <updatefn name="heatsink_update" />
     <quality value="0.30" />
+    <requires name="space" value="10" />
   </item>
 
   <!--
@@ -30,6 +34,12 @@
     <component name="alpha-reactor" />
     <component name="heat-sink" />
     <maxcapacity name="heat" value="20" />
+  </system>
+
+  <system name="alpha-hull">
+    <component name="alpha-power" />
+    <component name="fuel-storage" />
+    <provides name="space" value="50" />
   </system>
 
 </items>

@@ -33,8 +33,38 @@ void resources_sub(Resources target, Resources a, Resources b) {
   }
 }
 
+void resources_transfer(Resources target, Resources source, Resources limit) {
+  int ii;
+  for(ii = 0; ii < MAX_RESOURCE; ++ii) {
+    float to_transfer;
+    if(limit[ii] < 0) {
+      to_transfer = MAX(limit[ii], source[ii]);
+    } else {
+      to_transfer = MIN(limit[ii], source[ii]);
+    }
+    target[ii] += to_transfer;
+    source[ii] -= to_transfer;
+  }
+}
+
 void resources_assign(Resources target, Resources source) {
   memcpy(target, source, sizeof(Resources_));
+}
+
+void stats_assign(Stats target, Stats source) {
+  memcpy(target, source, sizeof(struct Stats_));
+}
+
+void stats_transfer(Stats target, Stats source, Stats limit) {
+  resources_transfer(target->storage, source->storage, limit->storage);
+  resources_transfer(target->max_capacity, source->max_capacity, limit->max_capacity);
+  resources_transfer(target->production_rates, source->production_rates, limit->production_rates);
+}
+
+void stats_add(Stats target, Stats a, Stats b) {
+  resources_add(target->storage, a->storage, b->storage);
+  resources_add(target->max_capacity, a->max_capacity, b->max_capacity);
+  resources_add(target->production_rates, a->production_rates, b->production_rates);
 }
 
 void componentclass_init(ComponentClass klass, char *name) {
@@ -53,26 +83,64 @@ ComponentClass componentclass_make_(char *name, size_t size) {
   return klass;
 }
 
+int componentclass_named(ComponentClass klass, char* name) {
+  return strncmp(klass->name, name, ITEM_MAX_NAME - 1) == 0;
+}
+
 ComponentClass componentclass_find(char *name) {
   ComponentClass node = (ComponentClass)classes.head;
   while(node) {
-    if(strncmp(node->name, name, ITEM_MAX_NAME - 1) == 0) {
+    if(componentclass_named(node, name)) {
       return node;
     }
     node = (ComponentClass)node->node.next;
   }
+
+  fprintf(stderr, "couldn't find component name: %s\n", name);
+  exit(1);
   return NULL;
+}
+
+ComponentInstance componentinstance_superparent(ComponentInstance comp) {
+  while(comp->parent) {
+    comp = comp->parent;
+  }
+  return comp;
 }
 
 void componentinstance_addchild(ComponentInstance parent, ComponentInstance child) {
   SAFETY(if(child->parent) fail_exit("child already has a parent"));
   dll_add_head(&parent->children, &child->node);
+
+  // add resources of child to parent
+  stats_transfer(&parent->stats, &child->stats, &child->klass->stats);
+
   child->parent = parent;
 }
 
 void componentinstance_removechild(ComponentInstance child) {
+  SAFETY(if(!child->parent) fail_exit("child does not have a parent"));
+
   dll_remove(&child->parent->children, &child->node);
+
+  // remove resources of child from superparent
+  ComponentInstance parent = child->parent;
+  stats_transfer(&child->stats, &parent->stats, &child->klass->stats);
+
   child->parent = NULL;
+}
+
+ComponentInstance componentinstance_findchild(ComponentInstance root, char* klass_name) {
+  if(componentclass_named(root->klass, klass_name)) return root;
+
+  DLLNode childnode = root->children.head;
+  while(childnode) {
+    ComponentInstance found = componentinstance_findchild(componentinstance_from_node(childnode), klass_name);
+    if(found) return found;
+    childnode = childnode->next;
+  }
+
+  return NULL;
 }
 
 ComponentInstance componentinstance_make(ComponentClass klass) {
@@ -80,8 +148,7 @@ ComponentInstance componentinstance_make(ComponentClass klass) {
   memset(inst, 0, sizeof(struct ComponentInstance_));
 
   inst->klass = klass;
-  resources_assign(inst->max_capacity, klass->max_capacity);
-  resources_assign(inst->production_rates, klass->production_rates);
+  stats_assign(&inst->stats, &klass->stats);
   inst->quality = klass->quality;
 
   LLNode child = klass->subcomponents;
@@ -135,22 +202,23 @@ void component_activate(ComponentInstance comp, Activation activation) {
 }
 
 float component_storage_available(ComponentInstance component, Resource resource) {
-  return component->max_capacity[resource] - component->storage[resource];
+  return component->stats.max_capacity[resource] - component->stats.storage[resource];
 }
 
 int component_pullimpl(ComponentInstance component, Resources resources) {
-  // if we can, pull all the resources requested from ourselves
+  // all component hierarchies are flat and resource requests always
+  // go to the parent so we're the final destination for this request
   int ii;
   for(ii = 0; ii < MAX_RESOURCE; ++ii) {
-    if(component->storage[ii] < resources[ii]) break;
+    if(component->stats.storage[ii] < resources[ii]) break;
   }
 
-  // if we didn't find it all, ask our parent
-  if(ii != MAX_RESOURCE) return component_pull(component->parent, resources);
+  // if we didn't find it all, return failure
+  if(ii != MAX_RESOURCE) return 0;
 
   // pull it all and return success
   for(ii = 0; ii < MAX_RESOURCE; ++ii) {
-    component->storage[ii] -= resources[ii];
+    component->stats.storage[ii] -= resources[ii];
   }
   return 1;
 }
@@ -164,7 +232,7 @@ int component_pushimpl(ComponentInstance component, Resources resources) {
     if(cantake < resources[ii]) all_taken = 0;
 
     float willtake = MIN(cantake, resources[ii]);
-    component->storage[ii] += willtake;
+    component->stats.storage[ii] += willtake;
     resources[ii] -= willtake;
   }
 
@@ -196,35 +264,18 @@ void system_updateimpl(ComponentInstance component) {
 
   // find our deficit materials / do we have capacity for what we'll
   // produce?
-  Resources_ deficit;
-  int have_deficit = 0;
-  int have_capacity = 1;
   int ii;
-
-  resources_zero(deficit);
-
   for(ii = 0; ii < MAX_RESOURCE; ++ii) {
-    if(component->production_rates[ii] < 0) {
-      deficit[ii] = -component->production_rates[ii];
-      have_deficit = 1;
-    } else if(component_storage_available(component, ii) < component->production_rates[ii]) {
-      have_capacity = 0;
+    float predicted_storage = component->stats.storage[ii] + component->stats.production_rates[ii];
+    if(predicted_storage < 0 || predicted_storage > component->stats.max_capacity[ii]) {
+      // no production possible
+      return;
     }
   }
 
-  // don't produce if we can't store
-  if(!have_capacity) return;
-
-  // if we have a deficit then we'll need to request from our parent
-  Resources_ request;
-  resources_assign(request, deficit);
-
-  if(!have_deficit || component_pull(component->parent, request)) {
-    // add in whatever we requested
-    resources_add(component->storage, component->storage, deficit);
-
-    // add in the result of doing our thing
-    resources_add(component->storage, component->storage, component->production_rates);
+  // score the production
+  for(ii = 0; ii < MAX_RESOURCE; ++ii) {
+    component->stats.storage[ii] += component->stats.production_rates[ii];
   }
 }
 
@@ -233,21 +284,20 @@ void heatsink_update(ComponentInstance component) {
   if(!component->parent) return;
 
   // take away quality percent of the heat stored by our parent
-  component->parent->storage[HEAT] -=
-    component->quality * component->parent->storage[HEAT];
+  component->parent->stats.storage[HEAT] -=
+    component->quality * component->parent->stats.storage[HEAT];
 }
 
 float* resource_get_name_ptr(Resources attr, const char* name) {
-  if(streq(name, "heat")) {
-    return &attr[HEAT];
-  } else if(streq(name, "power")) {
-    return &attr[POWER];
-  } else if(streq(name, "fuel")) {
-    return &attr[FUEL];
-  } else {
-    fprintf(stderr, "unrecognized Attribute: %s\n", name);
-    exit(1);
+  int ii;
+  for(ii = 0; ii < MAX_RESOURCE; ++ii) {
+    if(streq(name, resource_names[ii])) {
+      return &attr[ii];
+    }
   }
+
+  fprintf(stderr, "unrecognized Attribute: %s\n", name);
+  exit(1);
 }
 
 void resource_add_name(Resources attr, const char* name, float value) {
@@ -269,13 +319,19 @@ void* find_function(char* fnname) {
 
 void component_fill_from_xml(ComponentClass klass, xmlNode* child) {
   if(streq(child->name, "produces")) {
-    resource_add_name(klass->production_rates, node_attr(child, "name", "error"),
+    resource_add_name(klass->stats.production_rates, node_attr(child, "name", "error"),
                       atof(node_attr(child, "rate", "error")));
   } else if(streq(child->name, "consumes")) {
-    resource_sub_name(klass->production_rates, node_attr(child, "name", "error"),
+    resource_sub_name(klass->stats.production_rates, node_attr(child, "name", "error"),
                       atof(node_attr(child, "rate", "error")));
+  } else if(streq(child->name, "provides")) {
+    resource_add_name(klass->stats.storage, node_attr(child, "name", "error"),
+                      atof(node_attr(child, "value", "error")));
+  } else if(streq(child->name, "requires")) {
+    resource_sub_name(klass->stats.storage, node_attr(child, "name", "error"),
+                      atof(node_attr(child, "value", "error")));
   } else if(streq(child->name, "maxcapacity")) {
-    resource_add_name(klass->max_capacity, node_attr(child, "name", "error"),
+    resource_add_name(klass->stats.max_capacity, node_attr(child, "name", "error"),
                       atof(node_attr(child, "value", "error")));
   } else if(streq(child->name, "quality")) {
     klass->quality = atof(node_attr(child, "value", "error"));
@@ -306,16 +362,20 @@ void system_fill_from_xml(ComponentClass klass, xmlNode* child) {
   if(streq(child->name, "component")) {
     char* comp_name = node_attr(child, "name", "error");
     ComponentClass comp_klass = componentclass_find(comp_name);
-    if(comp_klass == NULL) {
-      fprintf(stderr, "couldn't find component name: %s\n", comp_name);
-      exit(1);
+
+    // flatten the hierarchy if there is one
+    if(comp_klass->subcomponents) {
+      LLNode subnode = comp_klass->subcomponents;
+      ComponentClass subklass;
+      while((subklass = llentry_nextvalue(&subnode))) {
+        llentry_add(&klass->subcomponents, subklass);
+      }
+
+      // add the subsystem stats to our own
+      stats_add(&klass->stats, &klass->stats, &comp_klass->stats);
+    } else {
+      llentry_add(&klass->subcomponents, comp_klass);
     }
-
-    // we are the sum of our parts
-    resources_add(klass->max_capacity, klass->max_capacity, comp_klass->max_capacity);
-    resources_add(klass->production_rates, klass->production_rates, comp_klass->production_rates);
-
-    llentry_add(&klass->subcomponents, comp_klass);
   } else {
     // but we can explicitly override capacities
     component_fill_from_xml(klass, child);
@@ -336,6 +396,14 @@ void system_create_from_xml(xmlNode* child) {
 
     child = child->next;
   }
+
+  // make sure our max_capacity accounts for our currently allocated
+  // storage
+  int ii;
+  for(ii = 0; ii < MAX_RESOURCE; ++ii) {
+    klass->stats.max_capacity[ii] =
+      MAX(klass->stats.max_capacity[ii], klass->stats.storage[ii]);
+  }
 }
 
 char* resources_str(Resources res) {
@@ -343,7 +411,7 @@ char* resources_str(Resources res) {
   int offset = 0;
   int ii;
   for(ii = 0; ii < MAX_RESOURCE; ++ii) {
-    offset += sprintf(&buffer[offset], "%s=%.0f ", resource_names[ii], res[ii]);
+    offset += sprintf(&buffer[offset], "%c=%.0f ", resource_names[ii][0], res[ii]);
   }
   return buffer;
 }
@@ -361,9 +429,9 @@ char* indentation(int num) {
 void print_component(ComponentInstance inst, int indent) {
   printf("%s%s: s:%s ",
          indentation(indent), inst->klass->name,
-         resources_str(inst->storage));
-  printf("c:%s ", resources_str(inst->max_capacity));
-  printf("pr:%s\n", resources_str(inst->production_rates));
+         resources_str(inst->stats.storage));
+  printf("c:%s ", resources_str(inst->stats.max_capacity));
+  printf("pr:%s\n", resources_str(inst->stats.production_rates));
 
   DLLNode node = inst->children.head;
   while(node) {
@@ -401,25 +469,21 @@ int main(int argc, char *argv[])
 
   xml_free(children);
 
-  ComponentClass alpha_class = componentclass_find("alpha-power");
+  ComponentClass alpha_class = componentclass_find("alpha-hull");
   ComponentInstance alpha = componentinstance_make(alpha_class);
-
-  ComponentClass tank_class = componentclass_find("fuel-storage");
-  ComponentInstance tank = componentinstance_make(tank_class);
-  tank->storage[FUEL] = 100;
-
-  componentinstance_addchild(tank, alpha);
+  Resources_ fuel = {0, 0, 100, 0};
+  component_push(alpha, fuel);
 
   component_update(alpha);
-  print_component(tank, 0);
+  print_component(alpha, 0);
   component_update(alpha);
-  print_component(tank, 0);
+  print_component(alpha, 0);
   component_update(alpha);
-  print_component(tank, 0);
+  print_component(alpha, 0);
   component_update(alpha);
-  print_component(tank, 0);
+  print_component(alpha, 0);
 
-  componentinstance_free(tank);
+  componentinstance_free(alpha);
 
   return 0;
 }
