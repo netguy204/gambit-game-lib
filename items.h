@@ -2,6 +2,7 @@
 #define ITEMS_H
 
 #include "agent.h"
+#include "config.h"
 
 #include <stddef.h>
 
@@ -15,12 +16,7 @@ typedef enum {
   MAX_RESOURCE
 } Resource;
 
-char* resource_names[MAX_RESOURCE] = {
-  "heat",
-  "power",
-  "fuel",
-  "space"
-};
+extern char* resource_names[MAX_RESOURCE];
 
 typedef enum {
   FIRE,
@@ -89,6 +85,7 @@ void componentinstance_free(ComponentInstance instance);
 
 void componentinstance_addchild(ComponentInstance parent, ComponentInstance child);
 void componentinstance_removechild(ComponentInstance child);
+ComponentInstance componentinstance_findchild(ComponentInstance root, char* klass_name);
 
 int component_push(ComponentInstance comp, Resources resources);
 int component_pull(ComponentInstance comp, Resources resources);
@@ -96,5 +93,9 @@ void component_update(ComponentInstance comp);
 void component_activate(ComponentInstance comp, Activation activation);
 
 #define componentinstance_from_node(n) container_of(n, struct ComponentInstance_, node)
+
+// temporary XML based file loading. I'll come up with something
+// better once I've decided this system is a good idea at all.
+void items_load_xml(char* filename);
 
 #endif
