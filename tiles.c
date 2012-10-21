@@ -4,10 +4,9 @@
 
 #include <math.h>
 
-TileMap tilemap_make(SpriteAtlas atlas, int width, int height, int tw, int th) {
+TileMap tilemap_make(int width, int height, int tw, int th) {
   int num_tiles = width * height;
   TileMap map = malloc(sizeof(struct TileMap_) + (sizeof(char) * num_tiles));
-  map->atlas = atlas;
   map->width_IT = width;
   map->height_IT = height;
   map->tile_width_IP = tw;
@@ -21,13 +20,39 @@ void tilemap_free(TileMap map) {
   free(map);
 }
 
-TileMap tilemap_testmake(SpriteAtlasEntry t1, SpriteAtlasEntry t2) {
-  int MAXX = 101;
-  int MAXY = 100;
-  TileMap map = tilemap_make(t1->atlas, MAXX, MAXY, t1->w, t1->h);
+enum TestTiles {
+  TILE_BLANK,
+  TILE_GRASS,
+  TILE_DIRT,
+  TILE_STONE,
+  TILE_MAX
+};
 
-  char i1 = spriteatlas_index(t1);
-  char i2 = spriteatlas_index(t2);
+int tilemap_index(TileMap map, int x, int y) {
+  return map->width_IT * y + x;
+}
+
+int tilemap_validindex(TileMap map, int x, int y) {
+  return x >= 0 && x < map->width_IT && y >= 0 && y < map->height_IT;
+}
+
+TileMap tilemap_testmake(SpriteAtlas atlas) {
+  int MAXX = 1000;
+  int MAXY = 100;
+
+  TileSpec specs = malloc(sizeof(struct TileSpec_) * TILE_MAX);
+  specs[TILE_BLANK].bitmask = 0;
+  specs[TILE_BLANK].image = NULL;
+  specs[TILE_GRASS].image = spriteatlas_find(atlas, "grass.png");
+  specs[TILE_GRASS].bitmask = TILESPEC_COLLIDABLE | TILESPEC_VISIBLE;
+  specs[TILE_DIRT].image = spriteatlas_find(atlas, "dirt.png");
+  specs[TILE_DIRT].bitmask = TILESPEC_COLLIDABLE | TILESPEC_VISIBLE;
+  specs[TILE_STONE].image = spriteatlas_find(atlas, "stone.png");
+  specs[TILE_STONE].bitmask = TILESPEC_COLLIDABLE | TILESPEC_VISIBLE;
+
+  SpriteAtlasEntry example = specs[TILE_GRASS].image;
+  TileMap map = tilemap_make(MAXX, MAXY, example->w, example->h);
+  map->tile_specs = specs;
 
   struct Random_ random;
   random_init(&random, 1234);
@@ -44,19 +69,69 @@ TileMap tilemap_testmake(SpriteAtlasEntry t1, SpriteAtlasEntry t2) {
 
   int xx, yy;
   for(yy = 0; yy < MAXY; ++yy) {
+    float vgrad = (float)((MAXY - yy)) / MAXY;
+
     for(xx = 0; xx < MAXX; ++xx) {
       struct Vector_ point = {xx, yy};
       int index = MAXX * yy + xx;
       float sample =
-        perlin_sample(&perlin, &point) +
-        perlin_sample(&perlin2, &point);
+        vgrad +
+        (perlin_sample(&perlin, &point) + perlin_sample(&perlin2, &point));
 
-      if(sample > 0.4f) {
-        map->tiles[index] = i1;
+      if(sample > 0.98f) {
+        map->tiles[index] = TILE_STONE;
+      } else if(sample > 0.5f) {
+        map->tiles[index] = TILE_DIRT;
       } else {
-        map->tiles[index] = i2;
+        map->tiles[index] = TILE_BLANK;
       }
     }
+  }
+
+  int above[][2] = {
+    {0, 1},
+    {-1, 2},
+    {0, 2},
+    {1, 2},
+    {-2, 3},
+    {-1, 3},
+    {0, 3},
+    {1, 3},
+    {2, 3}};
+
+  int nabove = sizeof(above) / (sizeof(int) * 2);
+  int zz;
+
+  // look for dirt with nothing immediately above it, turh that into
+  // grass
+  for(yy = 0; yy < MAXY; ++yy) {
+    for(xx = 0; xx < MAXX; ++xx) {
+      int index = tilemap_index(map, xx, yy);
+
+      if(map->tiles[index] != TILE_DIRT) continue;
+
+      int found = 0;
+      for(zz = 0; zz < nabove; ++zz) {
+        int x = above[zz][0] + xx;
+        int y = above[zz][1] + yy;
+        if(!tilemap_validindex(map, x, y)) continue;
+        int index2 = tilemap_index(map, x, y);
+        if(map->tiles[index2] != TILE_BLANK) {
+          found = 1;
+          break;
+        }
+      }
+
+      // clear sky? plant grass!
+      if(!found) {
+        map->tiles[index] = TILE_GRASS;
+      }
+    }
+  }
+
+  // replace the bottom row with stone
+  for(xx = 0; xx < MAXX; ++xx) {
+    map->tiles[xx] = TILE_STONE;
   }
 
   return map;
@@ -94,10 +169,11 @@ SpriteList tilemap_spritelist(TileMap map, float x_bl, float y_bl, float wpx, fl
       int x = ox + (map->tile_width_IP * xx);
 
       int tile = map->tiles[offset];
-      SpriteAtlasEntry entry = &map->atlas->entries[tile];
+      TileSpec spec = &map->tile_specs[tile];
+      if((spec->bitmask & TILESPEC_VISIBLE) == 0) continue;
 
       Sprite sprite = frame_make_sprite();
-      sprite_fillfromentry(sprite, entry);
+      sprite_fillfromentry(sprite, spec->image);
       sprite->originX = 0.0f;
       sprite->originY = 0.0f;
       sprite->displayX = (float)x;
@@ -107,4 +183,8 @@ SpriteList tilemap_spritelist(TileMap map, float x_bl, float y_bl, float wpx, fl
   }
 
   return spritelist;
+}
+
+int tilemap_floodfill(TileMap map, Vector start, char* memory, int limit) {
+  return 0;
 }

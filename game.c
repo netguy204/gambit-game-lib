@@ -46,6 +46,7 @@ SpriteAtlasEntry image_ally;
 SpriteAtlasEntry image_player_bullet;
 SpriteAtlasEntry image_enemy_bullet;
 SpriteAtlasEntry image_smoke;
+ImageResource image_stars;
 
 Clock main_clock;
 
@@ -522,11 +523,10 @@ void game_init() {
   main_clock = clock_make();
 
   atlas = spriteatlas_load("resources/images_default.dat", "resources/images_default.png");
+  image_stars = image_load("resources/night-sky-stars.jpg");
 
   // test
-  SpriteAtlasEntry grass = spriteatlas_find(atlas, "grass.png");
-  SpriteAtlasEntry dirt = spriteatlas_find(atlas, "dirt.png");
-  tiles = tilemap_testmake(grass, dirt);
+  tiles = tilemap_testmake(atlas);
 
   random_init(&rgen, 1234);
   image_enemy = spriteatlas_find(atlas, "ship-right.png");
@@ -542,8 +542,8 @@ void game_init() {
 
   player = particle_make();
   player->image = spriteatlas_find(atlas, "hero.png");
-  player->pos.x = player->image->w;
-  player->pos.y = screen_height / 2;
+  player->pos.x = 500 * 64;
+  player->pos.y = 100 * 64;
   player->vel.x = 0;
   player->vel.y = 0;
 
@@ -596,6 +596,14 @@ void game_step(long delta, InputState state) {
   // center the screen on the player
   screen_x_br = player->pos.x - screen_width / 2;
   screen_y_br = player->pos.y - screen_height / 2;
+
+  // draw stars
+  Sprite background = frame_resource_sprite(image_stars);
+  background->displayX = 0;
+  background->displayY = 0;
+  background->w = screen_width;
+  background->h = screen_height;
+  sprite_submit(background);
 
   // draw the tile background
   spritelist_enqueue_for_screen(tilemap_spritelist(tiles, screen_x_br, screen_y_br,

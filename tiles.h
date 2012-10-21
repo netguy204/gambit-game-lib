@@ -9,18 +9,28 @@
  * IP = "In Pixels"
  */
 
+enum TileSpecMaskEntries {
+  TILESPEC_COLLIDABLE = 1,
+  TILESPEC_VISIBLE = 2
+};
+
+typedef struct TileSpec_ {
+  SpriteAtlasEntry image;
+  int bitmask;
+} *TileSpec;
+
 typedef struct TileMap_ {
-  SpriteAtlas atlas;
+  TileSpec tile_specs;
   int width_IT, height_IT;
   int tile_width_IP, tile_height_IP;
   float x_bl, y_bl;
   unsigned char tiles[0];
 } *TileMap;
 
-TileMap tilemap_make(SpriteAtlas atlas, int width, int height, int tw, int th);
+TileMap tilemap_make(int width, int height, int tw, int th);
 void tilemap_free(TileMap map);
 
-TileMap tilemap_testmake(SpriteAtlasEntry t1, SpriteAtlasEntry t2);
+TileMap tilemap_testmake(SpriteAtlas atlas);
 SpriteList tilemap_spritelist(TileMap map, float x_bl, float y_bl, float wpx, float hpx);
 
 #endif
