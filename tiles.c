@@ -78,12 +78,29 @@ TileMap tilemap_testmake(SpriteAtlas atlas) {
         vgrad +
         (perlin_sample(&perlin, &point) + perlin_sample(&perlin2, &point));
 
-      if(sample > 0.98f) {
-        map->tiles[index] = TILE_STONE;
-      } else if(sample > 0.5f) {
+      if(sample > 0.5f) {
         map->tiles[index] = TILE_DIRT;
       } else {
         map->tiles[index] = TILE_BLANK;
+      }
+    }
+  }
+
+  // add stone by intersecting skewed noise with the dirt
+  struct Perlin_ perlin3;
+  struct Vector_ offset3 = {0.0f, 0.0f};
+  struct Vector_ scale3 = {0.03f, 0.1f};
+  perlin_init(&perlin3, &random, &offset3, &scale3);
+
+  for(yy = 0; yy < MAXY; ++yy) {
+    for(xx = 0; xx < MAXX; ++xx) {
+      int index = MAXX * yy + xx;
+      if(map->tiles[index] != TILE_DIRT) continue;
+
+      struct Vector_ point = {xx, yy};
+      float sample = perlin_sample(&perlin3, &point);
+      if(sample > 0.3f) {
+        map->tiles[index] = TILE_STONE;
       }
     }
   }
