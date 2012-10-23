@@ -27,10 +27,19 @@ typedef struct TileMap_ {
   unsigned char tiles[0];
 } *TileMap;
 
+typedef struct TilePosition_ {
+  int x, y;
+} *TilePosition;
+
 TileMap tilemap_make(int width, int height, int tw, int th);
 void tilemap_free(TileMap map);
 
+int tilemap_index(TileMap map, TilePosition pos);
+int tilemap_size(TileMap map);
+
 TileMap tilemap_testmake(SpriteAtlas atlas);
 SpriteList tilemap_spritelist(TileMap map, float x_bl, float y_bl, float wpx, float hpx);
+
+int tilemap_floodfill(TileMap map, TilePosition startpos, char* memory);
 
 #endif

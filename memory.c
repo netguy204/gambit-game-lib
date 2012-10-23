@@ -1,10 +1,10 @@
 #include "memory.h"
+#include "config.h"
 
 #include <stdarg.h>
 #include <stdio.h>
 #include <memory.h>
 
-#define NEXT_ALIGNED_SIZE(x) ((x + 8 - 1) & ~(8 - 1))
 
 void* fail_exit(const char * message, ...) {
   fprintf(stderr, "FAIL_EXIT: ");

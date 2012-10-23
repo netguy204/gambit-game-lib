@@ -1,6 +1,7 @@
 #include "tiles.h"
 #include "perlin.h"
 #include "vector.h"
+#include "heapvector.h"
 
 #include <math.h>
 
@@ -25,15 +26,21 @@ enum TestTiles {
   TILE_GRASS,
   TILE_DIRT,
   TILE_STONE,
+  TILE_STONE2,
   TILE_MAX
 };
 
-int tilemap_index(TileMap map, int x, int y) {
-  return map->width_IT * y + x;
+int tilemap_index(TileMap map, TilePosition pos) {
+  return map->width_IT * pos->y + pos->x;
 }
 
-int tilemap_validindex(TileMap map, int x, int y) {
-  return x >= 0 && x < map->width_IT && y >= 0 && y < map->height_IT;
+int tilemap_size(TileMap map) {
+  return map->width_IT * map->height_IT;
+}
+
+int tilemap_validindex(TileMap map, TilePosition pos) {
+  return pos->x >= 0 && pos->x < map->width_IT
+    && pos->y >= 0 && pos->y < map->height_IT;
 }
 
 TileMap tilemap_testmake(SpriteAtlas atlas) {
@@ -49,6 +56,8 @@ TileMap tilemap_testmake(SpriteAtlas atlas) {
   specs[TILE_DIRT].bitmask = TILESPEC_COLLIDABLE | TILESPEC_VISIBLE;
   specs[TILE_STONE].image = spriteatlas_find(atlas, "stone.png");
   specs[TILE_STONE].bitmask = TILESPEC_COLLIDABLE | TILESPEC_VISIBLE;
+  specs[TILE_STONE2].image = spriteatlas_find(atlas, "stone2.png");
+  specs[TILE_STONE2].bitmask = TILESPEC_COLLIDABLE | TILESPEC_VISIBLE;
 
   SpriteAtlasEntry example = specs[TILE_GRASS].image;
   TileMap map = tilemap_make(MAXX, MAXY, example->w, example->h);
@@ -123,7 +132,8 @@ TileMap tilemap_testmake(SpriteAtlas atlas) {
   // grass
   for(yy = 0; yy < MAXY; ++yy) {
     for(xx = 0; xx < MAXX; ++xx) {
-      int index = tilemap_index(map, xx, yy);
+      struct TilePosition_ pos = {xx, yy};
+      int index = tilemap_index(map, &pos);
 
       if(map->tiles[index] != TILE_DIRT) continue;
 
@@ -131,8 +141,9 @@ TileMap tilemap_testmake(SpriteAtlas atlas) {
       for(zz = 0; zz < nabove; ++zz) {
         int x = above[zz][0] + xx;
         int y = above[zz][1] + yy;
-        if(!tilemap_validindex(map, x, y)) continue;
-        int index2 = tilemap_index(map, x, y);
+        struct TilePosition_ p2 = {x, y};
+        if(!tilemap_validindex(map, &p2)) continue;
+        int index2 = tilemap_index(map, &p2);
         if(map->tiles[index2] != TILE_BLANK) {
           found = 1;
           break;
@@ -146,10 +157,34 @@ TileMap tilemap_testmake(SpriteAtlas atlas) {
     }
   }
 
-  // replace the bottom row with stone
+  // replace the bottom row with stone and the top row with sky
+  int top_row = (MAXY - 1) * (MAXX - 1);
   for(xx = 0; xx < MAXX; ++xx) {
     map->tiles[xx] = TILE_STONE;
+    map->tiles[top_row + xx] = TILE_BLANK;
   }
+
+  /*
+  // floodfill from the top and see what we get
+  struct TilePosition_ start = {0, MAXY - 1};
+  char * reachable = malloc(tilemap_size(map));
+  printf("floodfilling\n");
+  int count = tilemap_floodfill(map, &start, reachable);
+  printf("got to %d of %d tiles\n", count, tilemap_size(map));
+
+  // make sure that looks reasonable
+  for(yy = 0; yy < MAXY; ++yy) {
+    for(xx = 0; xx < MAXX; ++xx) {
+      struct TilePosition_ pos = {xx, yy};
+      int index = tilemap_index(map, &pos);
+      if(reachable[index]) {
+        map->tiles[index] = TILE_STONE2;
+      }
+    }
+  }
+
+  free(reachable);
+  */
 
   return map;
 }
@@ -202,6 +237,50 @@ SpriteList tilemap_spritelist(TileMap map, float x_bl, float y_bl, float wpx, fl
   return spritelist;
 }
 
-int tilemap_floodfill(TileMap map, Vector start, char* memory, int limit) {
-  return 0;
+int tilemap_floodfill(TileMap map, TilePosition startpos, char* memory) {
+  memset(memory, 0, tilemap_size(map));
+
+  int max_index = tilemap_size(map);
+  int start = tilemap_index(map, startpos);
+  int kind = map->tiles[start];
+  int row = map->width_IT;
+  HeapVector stack = heapvector_make(5);
+
+  memory[start] = 1;
+  HV_PUSH_VALUE(stack, int, start);
+  int count = 0;
+
+#define CAN_VISIT(pos) (map->tiles[pos] == kind && memory[pos] == 0)
+
+  while(stack->data_bytes > 0) {
+    count += 1;
+
+    int start = HV_POP_VALUE(stack, int);
+    int above = start + row;
+    if(above < max_index && CAN_VISIT(above)) {
+      memory[above] = 1;
+      HV_PUSH_VALUE(stack, int, above);
+    }
+
+    int below = start - row;
+    if(below >= 0 && CAN_VISIT(below)) {
+      memory[below] = 1;
+      HV_PUSH_VALUE(stack, int, below);
+    }
+
+    int left = start - 1;
+    if(left >= 0 && CAN_VISIT(left)) {
+      memory[left] = 1;
+      HV_PUSH_VALUE(stack, int, left);
+    }
+
+    int right = start + 1;
+    if(right < max_index && CAN_VISIT(right)) {
+      memory[right] = 1;
+      HV_PUSH_VALUE(stack, int, right);
+    }
+  }
+
+  heapvector_free(stack);
+  return count;
 }

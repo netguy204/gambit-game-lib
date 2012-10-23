@@ -54,4 +54,7 @@
 
 #define array_size(x) (sizeof(x) / sizeof(x[0]))
 
+#define NEXT_ALIGNED_SIZE(x) ((x + 8 - 1) & ~(8 - 1))
+
+
 #endif
