@@ -52,7 +52,9 @@ int tilemap_validindex(TileMap map, TilePosition pos) {
 }
 
 void mark_candidate(LabelEntry entries, int nentries, void* udata) {
-  TileMap map = (TileMap)udata;
+  HeapVector* hvp = (HeapVector*)udata;
+  HeapVector hv = *hvp;
+
   float x = 0;
   float y = 0;
   int ii, jj;
@@ -70,6 +72,13 @@ void mark_candidate(LabelEntry entries, int nentries, void* udata) {
   y /= values;
 
   struct TilePosition_ pos = { roundf(x) + 4, roundf(y) + 4 };
+  HV_PUSH_VALUE(hv, struct TilePosition_, pos);
+  *hvp = hv;
+}
+
+void scatter_buildings(TileMap map, TilePosition pos) {
+  int ii, jj;
+
   int directions[][2] = {
     {0,  -1},
     {-1, -1},
@@ -84,8 +93,8 @@ void mark_candidate(LabelEntry entries, int nentries, void* udata) {
   for(ii = 0; ii < 7; ++ii) {
     // search out a max of 5 spaces
     for(jj = 0; jj < 5; ++jj) {
-      struct TilePosition_ pos2 = { pos.x + directions[ii][0] * jj,
-                                    pos.y + directions[ii][1] * jj };
+      struct TilePosition_ pos2 = { pos->x + directions[ii][0] * jj,
+                                    pos->y + directions[ii][1] * jj };
       struct TilePosition_ above = { pos2.x, pos2.y + 1};
 
       int idx = tilemap_index(map, &pos2);
@@ -252,9 +261,18 @@ TileMap tilemap_testmake(SpriteAtlas atlas) {
   charimage_crosscorrelate(&correlation_img, &reachable_img, &template_img);
   charimage_spit(&correlation_img, "correlation.csv");
 
-  // make sure that looks reasonable
   charimage_threshold(&correlation_img, 55);
-  charimage_label(&correlation_img, reachable, mark_candidate, map);
+
+  HeapVector hv = heapvector_make(10);
+  charimage_label(&correlation_img, reachable, mark_candidate, &hv);
+
+  int ii;
+  int ncivs = HV_SIZE(hv, struct TilePosition_);
+  for(ii = 0; ii < ncivs; ++ii) {
+    scatter_buildings(map, HV_GET(hv, struct TilePosition_, ii));
+  }
+
+  heapvector_free(hv);
 
   free(reachable);
   free(correlation_img.data);
