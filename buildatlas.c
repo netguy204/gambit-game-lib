@@ -11,9 +11,9 @@ void node_to_struct(xmlNode* node, ImageResource img, SpriteAtlasEntry entry) {
   memset(entry, 0, sizeof(struct SpriteAtlasEntry_));
   strncpy(entry->name, entry_name, MAX_ENTRY_NAME);
   entry->u0 = x / image_width(img);
-  entry->v0 = y / image_height(img);
+  entry->v1 = y / image_height(img);
   entry->u1 = (x + width) / image_width(img);
-  entry->v1 = (y + height) / image_height(img);
+  entry->v0 = (y + height) / image_height(img);
   entry->w = width;
   entry->h = height;
 }

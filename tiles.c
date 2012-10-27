@@ -29,6 +29,7 @@ enum TestTiles {
   TILE_DIRT,
   TILE_STONE,
   TILE_STONE2,
+  TILE_BUILDING,
   TILE_MAX
 };
 
@@ -54,7 +55,7 @@ void mark_candidate(LabelEntry entries, int nentries, void* udata) {
   TileMap map = (TileMap)udata;
   float x = 0;
   float y = 0;
-  int ii;
+  int ii, jj;
 
   // centroid the entries
   float values = 0;
@@ -69,8 +70,33 @@ void mark_candidate(LabelEntry entries, int nentries, void* udata) {
   y /= values;
 
   struct TilePosition_ pos = { roundf(x) + 4, roundf(y) + 4 };
-  int index = tilemap_index(map, &pos);
-  map->tiles[index] = TILE_STONE2;
+  int directions[][2] = {
+    {0,  -1},
+    {-1, -1},
+    {-1, -2},
+    {1,  -1},
+    {1,  -2},
+    {-2, -1},
+    {2,  -1},
+  };
+
+  // place a building on ground in each direction
+  for(ii = 0; ii < 7; ++ii) {
+    // search out a max of 5 spaces
+    for(jj = 0; jj < 5; ++jj) {
+      struct TilePosition_ pos2 = { pos.x + directions[ii][0] * jj,
+                                    pos.y + directions[ii][1] * jj };
+      struct TilePosition_ above = { pos2.x, pos2.y + 1};
+
+      int idx = tilemap_index(map, &pos2);
+      int idx_above = tilemap_index(map, &above);
+
+      if(map->tiles[idx] != TILE_BLANK &&
+         map->tiles[idx_above] == TILE_BLANK) {
+        map->tiles[idx_above] = TILE_BUILDING;
+      }
+    }
+  }
 }
 
 TileMap tilemap_testmake(SpriteAtlas atlas) {
@@ -88,6 +114,8 @@ TileMap tilemap_testmake(SpriteAtlas atlas) {
   specs[TILE_STONE].bitmask = TILESPEC_COLLIDABLE | TILESPEC_VISIBLE;
   specs[TILE_STONE2].image = spriteatlas_find(atlas, "stone2.png");
   specs[TILE_STONE2].bitmask = TILESPEC_COLLIDABLE | TILESPEC_VISIBLE;
+  specs[TILE_BUILDING].image = spriteatlas_find(atlas, "building.png");
+  specs[TILE_BUILDING].bitmask = TILESPEC_COLLIDABLE | TILESPEC_VISIBLE;
 
   SpriteAtlasEntry example = specs[TILE_GRASS].image;
   TileMap map = tilemap_make(MAXX, MAXY, example->w, example->h);
