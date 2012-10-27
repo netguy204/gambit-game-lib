@@ -2,8 +2,10 @@
 #include "perlin.h"
 #include "vector.h"
 #include "heapvector.h"
+#include "memory.h"
 
 #include <math.h>
+#include <stdio.h>
 
 TileMap tilemap_make(int width, int height, int tw, int th) {
   int num_tiles = width * height;
@@ -34,6 +36,11 @@ int tilemap_index(TileMap map, TilePosition pos) {
   return map->width_IT * pos->y + pos->x;
 }
 
+void tileposition_tilemap(TilePosition pos, TileMap map, int index) {
+  pos->x = index % map->width_IT;
+  pos->y = index / map->width_IT;
+}
+
 int tilemap_size(TileMap map) {
   return map->width_IT * map->height_IT;
 }
@@ -41,6 +48,29 @@ int tilemap_size(TileMap map) {
 int tilemap_validindex(TileMap map, TilePosition pos) {
   return pos->x >= 0 && pos->x < map->width_IT
     && pos->y >= 0 && pos->y < map->height_IT;
+}
+
+void mark_candidate(LabelEntry entries, int nentries, void* udata) {
+  TileMap map = (TileMap)udata;
+  float x = 0;
+  float y = 0;
+  int ii;
+
+  // centroid the entries
+  float values = 0;
+  for(ii = 0; ii < nentries; ++ii) {
+    LabelEntry entry = &entries[ii];
+    x += entry->pos.x * entry->value;
+    y += entry->pos.y * entry->value;
+    values += entry->value;
+  }
+
+  x /= values;
+  y /= values;
+
+  struct TilePosition_ pos = { roundf(x) + 4, roundf(y) + 4 };
+  int index = tilemap_index(map, &pos);
+  map->tiles[index] = TILE_STONE2;
 }
 
 TileMap tilemap_testmake(SpriteAtlas atlas) {
@@ -164,27 +194,42 @@ TileMap tilemap_testmake(SpriteAtlas atlas) {
     map->tiles[top_row + xx] = TILE_BLANK;
   }
 
-  /*
   // floodfill from the top and see what we get
   struct TilePosition_ start = {0, MAXY - 1};
   char * reachable = malloc(tilemap_size(map));
-  printf("floodfilling\n");
-  int count = tilemap_floodfill(map, &start, reachable);
-  printf("got to %d of %d tiles\n", count, tilemap_size(map));
+  memset(reachable, -1, tilemap_size(map));
+  struct CharImage_ reachable_img = { MAXX, MAXY, reachable };
+  struct CharImage_ map_img = { MAXX, MAXY, map->tiles };
+  int count = charimage_floodfill(&reachable_img, &map_img, &start, 1, NULL, NULL);
+
+  charimage_spit(&reachable_img, "reachable.csv");
+
+  char template[] =
+    { 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 1, 1, 1, 1, 0, 0,
+      0, 1, 1, 1, 1, 1, 1, 0,
+      0, 1, 1, 1, 1, 1, 1, 0,
+      1, 1, 1, 1, 1, 1, 1, 1,
+      1, 1, 1, 1, 1, 1, 1, 1,
+      1, 1, 1, 1, 1, 1, 1, 1 };
+
+  struct CharImage_ template_img = { 8, 8, template };
+  charimage_replace_value(&template_img, 0, -1);
+
+  struct CharImage_ correlation_img;
+  correlation_img.w = reachable_img.w - template_img.w;
+  correlation_img.h = reachable_img.h - template_img.h;
+  correlation_img.data = malloc(correlation_img.w * correlation_img.h);
+  charimage_crosscorrelate(&correlation_img, &reachable_img, &template_img);
+  charimage_spit(&correlation_img, "correlation.csv");
 
   // make sure that looks reasonable
-  for(yy = 0; yy < MAXY; ++yy) {
-    for(xx = 0; xx < MAXX; ++xx) {
-      struct TilePosition_ pos = {xx, yy};
-      int index = tilemap_index(map, &pos);
-      if(reachable[index]) {
-        map->tiles[index] = TILE_STONE2;
-      }
-    }
-  }
+  charimage_threshold(&correlation_img, 55);
+  charimage_label(&correlation_img, reachable, mark_candidate, map);
 
   free(reachable);
-  */
+  free(correlation_img.data);
 
   return map;
 }
@@ -237,50 +282,174 @@ SpriteList tilemap_spritelist(TileMap map, float x_bl, float y_bl, float wpx, fl
   return spritelist;
 }
 
-int tilemap_floodfill(TileMap map, TilePosition startpos, char* memory) {
-  memset(memory, 0, tilemap_size(map));
+void tileposition_charimage(TilePosition pos, CharImage img, int index) {
+  pos->x = index % img->w;
+  pos->y = index / img->w;
+}
 
-  int max_index = tilemap_size(map);
-  int start = tilemap_index(map, startpos);
-  int kind = map->tiles[start];
-  int row = map->width_IT;
+int charimage_floodfill(CharImage out, CharImage input, TilePosition startpos,
+                        char value, FloodfillCallback callback, void* udata) {
+  char* memory = out->data;
+  assert(charimage_size(input) == charimage_size(out));
+
+  int max_index = charimage_size(input);
+  int start = charimage_index(input, startpos->x, startpos->y);
+  int kind = input->data[start];
+  int row = input->w;
   HeapVector stack = heapvector_make(5);
 
-  memory[start] = 1;
+  if(callback) callback(input, start, udata);
+  memory[start] = value;
   HV_PUSH_VALUE(stack, int, start);
   int count = 0;
 
-#define CAN_VISIT(pos) (map->tiles[pos] == kind && memory[pos] == 0)
+#define CAN_VISIT(pos) (((callback && callback(input, pos, udata)) || input->data[pos] == kind) \
+                        && memory[pos] != value)
 
   while(stack->data_bytes > 0) {
     count += 1;
 
     int start = HV_POP_VALUE(stack, int);
+
     int above = start + row;
     if(above < max_index && CAN_VISIT(above)) {
-      memory[above] = 1;
+      memory[above] = value;
       HV_PUSH_VALUE(stack, int, above);
     }
 
     int below = start - row;
     if(below >= 0 && CAN_VISIT(below)) {
-      memory[below] = 1;
+      memory[below] = value;
       HV_PUSH_VALUE(stack, int, below);
     }
 
     int left = start - 1;
     if(left >= 0 && CAN_VISIT(left)) {
-      memory[left] = 1;
+      memory[left] = value;
       HV_PUSH_VALUE(stack, int, left);
     }
 
     int right = start + 1;
     if(right < max_index && CAN_VISIT(right)) {
-      memory[right] = 1;
+      memory[right] = value;
       HV_PUSH_VALUE(stack, int, right);
     }
   }
 
   heapvector_free(stack);
   return count;
+}
+
+void charimage_from_tilemap(CharImage img, TileMap map) {
+  img->w = map->width_IT;
+  img->h = map->height_IT;
+  img->data = map->tiles;
+}
+
+void charimage_crosscorrelate(CharImage out, CharImage big, CharImage small) {
+  int out_width = big->w - small->w;
+  int out_height = big->h - small->h;
+
+  assert(out->w >= out_width);
+  assert(out->h >= out_height);
+
+  int ox, oy, sx, sy;
+  for(oy = 0; oy < big->h; ++oy) {
+    for(ox = 0; ox < big->w; ++ox) {
+      charimage_set(out, ox, oy, 0);
+
+      for(sy = 0; sy < small->h; ++sy) {
+        for(sx = 0; sx < small->w; ++sx) {
+          char prod = charimage_get(big, ox + sx, oy + sy)
+            * charimage_get(small, sx, sy);
+          out->data[charimage_index(out, ox, oy)] += prod;
+        }
+      }
+    }
+  }
+}
+
+int charimage_size(CharImage img) {
+  return img->w * img->h;
+}
+
+void charimage_replace_value(CharImage img, char from, char to) {
+  int xx;
+  for(xx = 0; xx < charimage_size(img); ++xx) {
+    if(img->data[xx] == from) {
+      img->data[xx] = to;
+    }
+  }
+}
+
+void charimage_threshold(CharImage img, char min) {
+  int size = charimage_size(img);
+  int ii;
+  for(ii = 0; ii < size; ++ii) {
+    if(img->data[ii] < min) {
+      img->data[ii] = 0;
+    }
+  }
+}
+
+int label_floodfill_callback(CharImage img, int index, void* udata) {
+  char value = img->data[index];
+  if(value == 0) return 0;
+
+  HeapVector* hvp = (HeapVector*)udata;
+  HeapVector hv = *hvp;
+
+  struct LabelEntry_ entry;
+  tileposition_charimage(&entry.pos, img, index);
+  entry.value = value;
+  HV_PUSH_VALUE(hv, struct LabelEntry_, entry);
+  *hvp = hv;
+  return 1;
+}
+
+void charimage_label(CharImage img, char* working, LabelCallback callback, void* udata) {
+  int size = charimage_size(img);
+  memset(working, 0, size);
+
+  HeapVector hv = heapvector_make(5);
+  struct CharImage_ out = { img->w, img->h, working };
+
+  int ii;
+  for(ii = 0; ii < size; ++ii) {
+    // if this is a new region
+    if(img->data[ii] != 0 && working[ii] == 0) {
+      heapvector_clear(hv);
+
+      struct TilePosition_ pos;
+      tileposition_charimage(&pos, img, ii);
+
+      charimage_floodfill(&out, img, &pos, 1, label_floodfill_callback, &hv);
+
+      callback((LabelEntry)hv->data, hv->data_bytes / sizeof(struct LabelEntry_), udata);
+    }
+  }
+
+  heapvector_free(hv);
+}
+
+void charimage_write(CharImage img, FILE* target) {
+  int ii, jj;
+  for(jj = 0; jj < img->h; ++jj) {
+    for(ii = 0; ii < img->w; ++ii) {
+      if(ii > 0) {
+        fprintf(target, ", ");
+      }
+      fprintf(target, "%d", (int)charimage_get(img, ii, jj));
+    }
+    fprintf(target, "\n");
+  }
+}
+
+void charimage_spit(CharImage img, const char* filename) {
+  FILE* target = fopen(filename, "w");
+  if(target == NULL) {
+    fail_exit("charimage_spit: couldn't open %s", filename);
+  }
+  charimage_write(img, target);
+  fclose(target);
 }

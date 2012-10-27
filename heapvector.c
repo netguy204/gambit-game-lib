@@ -13,6 +13,10 @@ HeapVector heapvector_make(size_t init_alloc) {
   return result;
 }
 
+void heapvector_clear(HeapVector hv) {
+  hv->data_bytes = 0;
+}
+
 void heapvector_free(HeapVector hv) {
   free(hv);
 }

@@ -12,6 +12,7 @@ typedef struct HeapVector_ {
 
 HeapVector heapvector_make(size_t init_alloc);
 void heapvector_free(HeapVector hv);
+void heapvector_clear(HeapVector hv);
 HeapVector heapvector_push(HeapVector hv, void * data, size_t size);
 void * heapvector_pop(HeapVector hv, size_t size);
 
