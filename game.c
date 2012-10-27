@@ -9,6 +9,7 @@
 #include "agent.h"
 #include "steering.h"
 #include "tiles.h"
+#include "worldgen.h"
 #include "random.h"
 
 #include "config.h"

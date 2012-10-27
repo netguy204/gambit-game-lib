@@ -37,11 +37,11 @@ TileMap tilemap_make(int width, int height, int tw, int th);
 void tilemap_free(TileMap map);
 
 int tilemap_index(TileMap map, TilePosition pos);
-void tileposition_tilemap(TilePosition pos, TileMap map, int index);
+int tilemap_validindex(TileMap map, TilePosition pos);
 int tilemap_size(TileMap map);
-
-TileMap tilemap_testmake(SpriteAtlas atlas);
 SpriteList tilemap_spritelist(TileMap map, float x_bl, float y_bl, float wpx, float hpx);
+
+void tileposition_tilemap(TilePosition pos, TileMap map, int index);
 
 typedef struct CharImage_ {
   int w, h;
