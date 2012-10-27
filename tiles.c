@@ -31,6 +31,18 @@ void tileposition_tilemap(TilePosition pos, TileMap map, int index) {
   pos->y = index / map->width_IT;
 }
 
+int tilemap_index_vector(TileMap map, Vector vector) {
+  float x = vector->x / map->tile_width_IP;
+  float y = vector->y / map->tile_height_IP;
+
+  return (int)floorf(x) + (int)floorf(y) * map->width_IT;
+}
+
+void vector_tileposition(Vector v, TileMap map, TilePosition pos) {
+  v->x = map->tile_width_IP * pos->x;
+  v->y = map->tile_height_IP * pos->y;
+}
+
 int tilemap_size(TileMap map) {
   return map->width_IT * map->height_IT;
 }

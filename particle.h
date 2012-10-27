@@ -20,6 +20,7 @@ typedef struct Particle_ {
 
 float particle_width(Particle particle);
 float particle_height(Particle particle);
+void particle_center(Particle particle, Vector v);
 Sprite particle_sprite(Particle particle);
 void particle_integrate(Particle particle, float dt);
 SpriteList particles_spritelist(DLL list);

@@ -464,6 +464,37 @@ void bullet_vs_agent(CollisionRecord bullet, CollisionRecord enemy, void* dispat
   enemy->skip = 1;
 }
 
+void bullet_vs_map(CollisionRecord bullet, DLL list) {
+  Particle pbullet = bullet->data;
+
+  float hw = particle_width(pbullet) / 2.0f;
+  float hh = particle_height(pbullet) / 2.0f;
+
+  struct Vector_ corners[] = {
+    { pbullet->pos.x - hw,
+      pbullet->pos.y - hh },
+    { pbullet->pos.x + hw,
+      pbullet->pos.y - hh },
+    { pbullet->pos.x + hw,
+      pbullet->pos.y + hh },
+    { pbullet->pos.x - hw,
+      pbullet->pos.y + hh }
+  };
+
+  int ii;
+  for(ii = 0; ii < array_size(corners); ++ii) {
+    int index = tilemap_index_vector(tiles, &corners[ii]);
+    int kind = tiles->tiles[index];
+
+    if(tiles->tile_specs[kind].bitmask & TILESPEC_COLLIDABLE) {
+      particle_remove(list, bullet->data);
+      bullet->skip = 1;
+      tiles->tiles[index] = 0;
+      break;
+    }
+  }
+}
+
 void collision_dispatcher_update(Agent agent, float dt) {
   Dispatcher dispatcher = (Dispatcher)agent;
 
@@ -473,11 +504,14 @@ void collision_dispatcher_update(Agent agent, float dt) {
   // drain the outboxes of our dispatchees
   foreach_dispatcheemessage(dispatcher, NULL, NULL);
 
-  int num_bullets;
+  int num_pbullets;
+  int num_ebullets;
   int num_enemies;
 
   CollisionRecord pbs =
-    particles_collisionrecords(&player_bullets, &num_bullets, 0.7f);
+    particles_collisionrecords(&player_bullets, &num_pbullets, 0.7f);
+  CollisionRecord ebs =
+    particles_collisionrecords(&enemy_bullets, &num_ebullets, 0.5f);
   CollisionRecord es =
     enemies_collisionrecords(dispatcher, &num_enemies, 0.8f);
 
@@ -489,10 +523,25 @@ void collision_dispatcher_update(Agent agent, float dt) {
     Particle p = enemyagent_particle(enemyagent);
     if(!staying_onscreen_test(p)) {
       agent_send_terminate((Agent)enemyagent, (Agent)dispatcher);
+      rec->skip = 1;
     }
   }
 
-  collide_arrays(pbs, num_bullets, es, num_enemies, &bullet_vs_agent, dispatcher);
+  collide_arrays(pbs, num_pbullets, es, num_enemies, &bullet_vs_agent, dispatcher);
+
+  for(ii = 0; ii < num_pbullets; ++ii) {
+    CollisionRecord rec = &pbs[ii];
+    if(rec->skip) continue;
+
+    bullet_vs_map(rec, &player_bullets);
+  }
+
+  for(ii = 0; ii < num_ebullets; ++ii) {
+    CollisionRecord rec = &ebs[ii];
+    if(rec->skip) continue;
+
+    bullet_vs_map(rec, &enemy_bullets);
+  }
 }
 
 void sprite_submit(Sprite sprite) {

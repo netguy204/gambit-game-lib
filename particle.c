@@ -10,6 +10,11 @@ float particle_height(Particle particle) {
   return particle->image->h * particle->scale;
 }
 
+void particle_center(Particle particle, Vector v) {
+  v->x = particle->pos.x + particle_width(particle) / 2;
+  v->y = particle->pos.y + particle_height(particle) / 2;
+}
+
 Sprite particle_sprite(Particle particle) {
   Sprite sprite = frame_make_sprite();
   sprite_fillfromentry(sprite, particle->image);
