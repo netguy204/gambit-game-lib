@@ -114,7 +114,7 @@ int charimage_floodfill(CharImage out, CharImage input, TilePosition startpos,
   int start = charimage_index(input, startpos->x, startpos->y);
   int kind = input->data[start];
   int row = input->w;
-  HeapVector stack = heapvector_make(5);
+  HeapVector stack = heapvector_make();
 
   if(callback) callback(input, start, udata);
   memory[start] = value;
@@ -214,14 +214,12 @@ int label_floodfill_callback(CharImage img, int index, void* udata) {
   char value = img->data[index];
   if(value == 0) return 0;
 
-  HeapVector* hvp = (HeapVector*)udata;
-  HeapVector hv = *hvp;
+  HeapVector hv = (HeapVector)udata;
 
   struct LabelEntry_ entry;
   tileposition_charimage(&entry.pos, img, index);
   entry.value = value;
   HV_PUSH_VALUE(hv, struct LabelEntry_, entry);
-  *hvp = hv;
   return 1;
 }
 
@@ -229,7 +227,7 @@ void charimage_label(CharImage img, char* working, LabelCallback callback, void*
   int size = charimage_size(img);
   memset(working, 0, size);
 
-  HeapVector hv = heapvector_make(5);
+  HeapVector hv = heapvector_make();
   struct CharImage_ out = { img->w, img->h, working };
 
   int ii;
@@ -241,7 +239,7 @@ void charimage_label(CharImage img, char* working, LabelCallback callback, void*
       struct TilePosition_ pos;
       tileposition_charimage(&pos, img, ii);
 
-      charimage_floodfill(&out, img, &pos, 1, label_floodfill_callback, &hv);
+      charimage_floodfill(&out, img, &pos, 1, label_floodfill_callback, hv);
 
       callback((LabelEntry)hv->data, hv->data_bytes / sizeof(struct LabelEntry_), udata);
     }

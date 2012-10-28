@@ -20,8 +20,7 @@ enum TestTiles {
 };
 
 void mark_candidate(LabelEntry entries, int nentries, void* udata) {
-  HeapVector* hvp = (HeapVector*)udata;
-  HeapVector hv = *hvp;
+  HeapVector hv = (HeapVector)udata;
 
   float x = 0;
   float y = 0;
@@ -41,7 +40,6 @@ void mark_candidate(LabelEntry entries, int nentries, void* udata) {
 
   struct TilePosition_ pos = { roundf(x) + 4, roundf(y) + 4 };
   HV_PUSH_VALUE(hv, struct TilePosition_, pos);
-  *hvp = hv;
 }
 
 void scatter_buildings(TileMap map, TilePosition pos) {
@@ -242,11 +240,11 @@ TileMap tilemap_testmake(SpriteAtlas atlas) {
 
   charimage_spit(&correlation_img, "correlation.csv");
 
-  HeapVector hv = heapvector_make(10);
+  HeapVector hv = heapvector_make();
 
   PROFILE_START(&timer, "labeling candidate locations");
   charimage_threshold(&correlation_img, 55);
-  charimage_label(&correlation_img, reachable, mark_candidate, &hv);
+  charimage_label(&correlation_img, reachable, mark_candidate, hv);
   int ii;
   int ncivs = HV_SIZE(hv, struct TilePosition_);
   for(ii = 0; ii < ncivs; ++ii) {
