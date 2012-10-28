@@ -208,7 +208,7 @@ TileMap tilemap_testmake(SpriteAtlas atlas) {
   // floodfill from the top and see what we get
   PROFILE_START(&timer, "finding reachable regions");
   struct TilePosition_ start = {0, MAXY - 1};
-  char * reachable = malloc(tilemap_size(map));
+  int8_t * reachable = malloc(tilemap_size(map));
   memset(reachable, -1, tilemap_size(map));
   struct CharImage_ reachable_img = { MAXX, MAXY, reachable };
   struct CharImage_ map_img = { MAXX, MAXY, map->tiles };
@@ -217,7 +217,7 @@ TileMap tilemap_testmake(SpriteAtlas atlas) {
 
   charimage_spit(&reachable_img, "reachable.csv");
 
-  char template[] =
+  int8_t template[] =
     { 0, 0, 0, 0, 0, 0, 0, 0,
       0, 0, 0, 0, 0, 0, 0, 0,
       0, 0, 1, 1, 1, 1, 0, 0,

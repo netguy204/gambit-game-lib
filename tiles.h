@@ -6,6 +6,7 @@
 #include "vector.h"
 
 #include <stdio.h>
+#include <stdint.h>
 
 /*
  * IT = "In Tiles"
@@ -27,7 +28,7 @@ typedef struct TileMap_ {
   int width_IT, height_IT;
   int tile_width_IP, tile_height_IP;
   float x_bl, y_bl;
-  char tiles[0];
+  int8_t tiles[0];
 } *TileMap;
 
 typedef struct TilePosition_ {
@@ -48,7 +49,7 @@ void vector_tileposition(Vector v, TileMap map, TilePosition pos);
 
 typedef struct CharImage_ {
   int w, h;
-  char* data;
+  int8_t* data;
 } *CharImage;
 
 #define charimage_index(img, x, y) (((img)->w * (y)) + x)
@@ -61,23 +62,23 @@ void tileposition_charimage(TilePosition pos, CharImage img, int index);
 typedef int(*FloodfillCallback)(CharImage img, int index, void* udata);
 
 int charimage_floodfill(CharImage out, CharImage input, TilePosition startpos,
-                        char value, FloodfillCallback callback, void* udata);
+                        int8_t value, FloodfillCallback callback, void* udata);
 
 void charimage_from_tilemap(CharImage img, TileMap map);
 void charimage_crosscorrelate(CharImage out, CharImage big, CharImage small);
 int charimage_size(CharImage img);
-void charimage_replace_value(CharImage img, char from, char to);
+void charimage_replace_value(CharImage img, int8_t from, int8_t to);
 
-void charimage_threshold(CharImage img, char min);
+void charimage_threshold(CharImage img, int8_t min);
 
 typedef struct LabelEntry_ {
   struct TilePosition_ pos;
-  char value;
+  int8_t value;
 } *LabelEntry;
 
 typedef void(*LabelCallback)(LabelEntry entries, int nentries, void* udata);
 
-void charimage_label(CharImage img, char* working, LabelCallback callback, void* udata);
+void charimage_label(CharImage img, int8_t* working, LabelCallback callback, void* udata);
 
 void charimage_write(CharImage img, FILE* target);
 void charimage_spit(CharImage img, const char* filename);

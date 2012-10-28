@@ -8,7 +8,7 @@
 
 TileMap tilemap_make(int width, int height, int tw, int th) {
   int num_tiles = width * height;
-  TileMap map = malloc(sizeof(struct TileMap_) + (sizeof(char) * num_tiles));
+  TileMap map = malloc(sizeof(struct TileMap_) + num_tiles);
   map->width_IT = width;
   map->height_IT = height;
   map->tile_width_IP = tw;
@@ -106,8 +106,8 @@ void tileposition_charimage(TilePosition pos, CharImage img, int index) {
 }
 
 int charimage_floodfill(CharImage out, CharImage input, TilePosition startpos,
-                        char value, FloodfillCallback callback, void* udata) {
-  char* memory = out->data;
+                        int8_t value, FloodfillCallback callback, void* udata) {
+  int8_t* memory = out->data;
   assert(charimage_size(input) == charimage_size(out));
 
   int max_index = charimage_size(input);
@@ -178,7 +178,7 @@ void charimage_crosscorrelate(CharImage out, CharImage big, CharImage small) {
 
       for(sy = 0; sy < small->h; ++sy) {
         for(sx = 0; sx < small->w; ++sx) {
-          char prod = charimage_get(big, ox + sx, oy + sy)
+          int8_t prod = charimage_get(big, ox + sx, oy + sy)
             * charimage_get(small, sx, sy);
           out->data[charimage_index(out, ox, oy)] += prod;
         }
@@ -191,7 +191,7 @@ int charimage_size(CharImage img) {
   return img->w * img->h;
 }
 
-void charimage_replace_value(CharImage img, char from, char to) {
+void charimage_replace_value(CharImage img, int8_t from, int8_t to) {
   int xx;
   for(xx = 0; xx < charimage_size(img); ++xx) {
     if(img->data[xx] == from) {
@@ -200,7 +200,7 @@ void charimage_replace_value(CharImage img, char from, char to) {
   }
 }
 
-void charimage_threshold(CharImage img, char min) {
+void charimage_threshold(CharImage img, int8_t min) {
   int size = charimage_size(img);
   int ii;
   for(ii = 0; ii < size; ++ii) {
@@ -211,7 +211,7 @@ void charimage_threshold(CharImage img, char min) {
 }
 
 int label_floodfill_callback(CharImage img, int index, void* udata) {
-  char value = img->data[index];
+  int8_t value = img->data[index];
   if(value == 0) return 0;
 
   HeapVector hv = (HeapVector)udata;
@@ -223,7 +223,7 @@ int label_floodfill_callback(CharImage img, int index, void* udata) {
   return 1;
 }
 
-void charimage_label(CharImage img, char* working, LabelCallback callback, void* udata) {
+void charimage_label(CharImage img, int8_t* working, LabelCallback callback, void* udata) {
   int size = charimage_size(img);
   memset(working, 0, size);
 
