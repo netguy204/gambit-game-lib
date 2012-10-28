@@ -5,6 +5,7 @@
 #include "tiles.h"
 #include "spriteatlas.h"
 #include "heapvector.h"
+#include "utils.h"
 
 #include <math.h>
 
@@ -97,6 +98,8 @@ TileMap tilemap_testmake(SpriteAtlas atlas) {
   TileMap map = tilemap_make(MAXX, MAXY, example->w, example->h);
   map->tile_specs = specs;
 
+  struct Timer_ timer;
+
   struct Random_ random;
   random_init(&random, 1234);
 
@@ -110,6 +113,7 @@ TileMap tilemap_testmake(SpriteAtlas atlas) {
   struct Vector_ scale2 = {0.05f, 0.05f};
   perlin_init(&perlin2, &random, &offset2, &scale2);
 
+  PROFILE_START(&timer, "sampling world structure");
   int xx, yy;
   for(yy = 0; yy < MAXY; ++yy) {
     float vgrad = (float)((MAXY - yy)) / MAXY;
@@ -128,6 +132,7 @@ TileMap tilemap_testmake(SpriteAtlas atlas) {
       }
     }
   }
+  PROFILE_END(&timer);
 
   // add stone by intersecting skewed noise with the dirt
   struct Perlin_ perlin3;
@@ -135,6 +140,7 @@ TileMap tilemap_testmake(SpriteAtlas atlas) {
   struct Vector_ scale3 = {0.03f, 0.1f};
   perlin_init(&perlin3, &random, &offset3, &scale3);
 
+  PROFILE_START(&timer, "adding stone");
   for(yy = 0; yy < MAXY; ++yy) {
     for(xx = 0; xx < MAXX; ++xx) {
       int index = MAXX * yy + xx;
@@ -147,6 +153,7 @@ TileMap tilemap_testmake(SpriteAtlas atlas) {
       }
     }
   }
+  PROFILE_END(&timer);
 
   int above[][2] = {
     {0, 1},
@@ -164,6 +171,7 @@ TileMap tilemap_testmake(SpriteAtlas atlas) {
 
   // look for dirt with nothing immediately above it, turh that into
   // grass
+  PROFILE_START(&timer, "planting grass");
   for(yy = 0; yy < MAXY; ++yy) {
     for(xx = 0; xx < MAXX; ++xx) {
       struct TilePosition_ pos = {xx, yy};
@@ -190,6 +198,7 @@ TileMap tilemap_testmake(SpriteAtlas atlas) {
       }
     }
   }
+  PROFILE_END(&timer);
 
   // replace the bottom row with stone and the top row with sky
   int top_row = (MAXY - 1) * (MAXX - 1);
@@ -199,12 +208,14 @@ TileMap tilemap_testmake(SpriteAtlas atlas) {
   }
 
   // floodfill from the top and see what we get
+  PROFILE_START(&timer, "finding reachable regions");
   struct TilePosition_ start = {0, MAXY - 1};
   char * reachable = malloc(tilemap_size(map));
   memset(reachable, -1, tilemap_size(map));
   struct CharImage_ reachable_img = { MAXX, MAXY, reachable };
   struct CharImage_ map_img = { MAXX, MAXY, map->tiles };
   int count = charimage_floodfill(&reachable_img, &map_img, &start, 1, NULL, NULL);
+  PROFILE_END(&timer);
 
   charimage_spit(&reachable_img, "reachable.csv");
 
@@ -222,22 +233,27 @@ TileMap tilemap_testmake(SpriteAtlas atlas) {
   charimage_replace_value(&template_img, 0, -1);
 
   struct CharImage_ correlation_img;
+  PROFILE_START(&timer, "finding civ plant candidate locations");
   correlation_img.w = reachable_img.w - template_img.w;
   correlation_img.h = reachable_img.h - template_img.h;
   correlation_img.data = malloc(correlation_img.w * correlation_img.h);
   charimage_crosscorrelate(&correlation_img, &reachable_img, &template_img);
+  PROFILE_END(&timer);
+
   charimage_spit(&correlation_img, "correlation.csv");
 
-  charimage_threshold(&correlation_img, 55);
-
   HeapVector hv = heapvector_make(10);
+
+  PROFILE_START(&timer, "labeling candidate locations");
+  charimage_threshold(&correlation_img, 55);
   charimage_label(&correlation_img, reachable, mark_candidate, &hv);
   int ii;
   int ncivs = HV_SIZE(hv, struct TilePosition_);
-  printf("%d civilizations\n", ncivs);
   for(ii = 0; ii < ncivs; ++ii) {
     scatter_buildings(map, HV_GET(hv, struct TilePosition_, ii));
   }
+  PROFILE_END(&timer);
+  printf("%d civilizations\n", ncivs);
 
   heapvector_free(hv);
 

@@ -3,7 +3,8 @@ C_SRC+= \
 	sampler.c audio.c game.c vector.c particle.c \
 	rect.c controls.c agent.c steering.c spriteatlas.c \
 	realmain.c stb_image.c tiles.c sfmt/SFMT.c random.c \
-	perlin.c items.c heapvector.c worldgen.c xmltools.c
+	perlin.c items.c heapvector.c worldgen.c xmltools.c \
+	utils.c
 
 XML_INCLUDE:=-I/usr/include/libxml2
 CFLAGS+=$(XML_INCLUDE) -Isfmt/
