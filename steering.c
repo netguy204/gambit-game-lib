@@ -36,6 +36,8 @@ void steering_arrival(SteeringResult r, Vector tgt, Vector src, Vector src_vel,
   vector_sub(&to_target, tgt, src);
 
   float mag = vector_mag(&to_target);
+  if(fabsf(mag) < 0.0001) return;
+
   float speed = MIN(params->speed_max, (mag / slowing_dist) * params->speed_max);
 
   struct Vector_ desired_vel;
@@ -105,7 +107,14 @@ void steering_offsetarrival(SteeringResult r, Vector tgt, Vector src,
 
   vector_sub(&to_src, src, tgt);
   float mag = vector_mag(&to_src);
-  vector_scale(&to_src, &to_src, offset / mag);
+  if(fabsf(mag) > 0.0001f) {
+    vector_scale(&to_src, &to_src, offset / mag);
+  } else {
+    // pick an arbitrary departure direction
+    mag = 1.0f;
+    to_src.x = 0.0f;
+    to_src.y = 1.0f;
+  }
 
   struct Vector_ offset_tgt;
   vector_add(&offset_tgt, tgt, &to_src);

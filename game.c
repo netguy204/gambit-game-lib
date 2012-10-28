@@ -464,21 +464,20 @@ void bullet_vs_agent(CollisionRecord bullet, CollisionRecord enemy, void* dispat
   enemy->skip = 1;
 }
 
-void bullet_vs_map(CollisionRecord bullet, DLL list) {
-  Particle pbullet = bullet->data;
-
-  float hw = particle_width(pbullet) / 2.0f;
-  float hh = particle_height(pbullet) / 2.0f;
+// -1 is false
+int particle_vs_map(Particle particle) {
+  float hw = particle_width(particle) / 2.0f;
+  float hh = particle_height(particle) / 2.0f;
 
   struct Vector_ corners[] = {
-    { pbullet->pos.x - hw,
-      pbullet->pos.y - hh },
-    { pbullet->pos.x + hw,
-      pbullet->pos.y - hh },
-    { pbullet->pos.x + hw,
-      pbullet->pos.y + hh },
-    { pbullet->pos.x - hw,
-      pbullet->pos.y + hh }
+    { particle->pos.x - hw,
+      particle->pos.y - hh },
+    { particle->pos.x + hw,
+      particle->pos.y - hh },
+    { particle->pos.x + hw,
+      particle->pos.y + hh },
+    { particle->pos.x - hw,
+      particle->pos.y + hh }
   };
 
   int ii;
@@ -487,12 +486,21 @@ void bullet_vs_map(CollisionRecord bullet, DLL list) {
     int kind = tiles->tiles[index];
 
     if(tiles->tile_specs[kind].bitmask & TILESPEC_COLLIDABLE) {
-      particle_remove(list, bullet->data);
-      bullet->skip = 1;
-      tiles->tiles[index] = 0;
-      break;
+      return index;
     }
   }
+  return -1;
+}
+
+void bullet_vs_map(CollisionRecord bullet, DLL list) {
+  Particle pbullet = bullet->data;
+
+  int index = particle_vs_map(pbullet);
+  if(index == -1) return;
+
+  particle_remove(list, bullet->data);
+  bullet->skip = 1;
+  tiles->tiles[index] = 0;
 }
 
 void collision_dispatcher_update(Agent agent, float dt) {

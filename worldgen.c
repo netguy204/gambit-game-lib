@@ -57,7 +57,7 @@ void scatter_buildings(TileMap map, TilePosition pos) {
   };
 
   // place a building on ground in each direction
-  for(ii = 0; ii < 7; ++ii) {
+  for(ii = 0; ii < array_size(directions); ++ii) {
     // search out a max of 5 spaces
     for(jj = 0; jj < 5; ++jj) {
       struct TilePosition_ pos2 = { pos->x + directions[ii][0] * jj,
@@ -232,9 +232,9 @@ TileMap tilemap_testmake(SpriteAtlas atlas) {
 
   HeapVector hv = heapvector_make(10);
   charimage_label(&correlation_img, reachable, mark_candidate, &hv);
-
   int ii;
   int ncivs = HV_SIZE(hv, struct TilePosition_);
+  printf("%d civilizations\n", ncivs);
   for(ii = 0; ii < ncivs; ++ii) {
     scatter_buildings(map, HV_GET(hv, struct TilePosition_, ii));
   }
