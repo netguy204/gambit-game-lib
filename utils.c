@@ -1,5 +1,7 @@
 #include "utils.h"
 
+#include <stdlib.h>
+
 void timer_start(Timer timer) {
   gettimeofday((struct timeval*)timer, NULL);
 }
