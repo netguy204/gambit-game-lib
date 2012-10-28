@@ -212,7 +212,7 @@ TileMap tilemap_testmake(SpriteAtlas atlas) {
   memset(reachable, -1, tilemap_size(map));
   struct CharImage_ reachable_img = { MAXX, MAXY, reachable };
   struct CharImage_ map_img = { MAXX, MAXY, map->tiles };
-  int count = charimage_floodfill(&reachable_img, &map_img, &start, 1, NULL, NULL);
+  charimage_floodfill(&reachable_img, &map_img, &start, 1, NULL, NULL);
   PROFILE_END(&timer);
 
   charimage_spit(&reachable_img, "reachable.csv");

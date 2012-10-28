@@ -4,7 +4,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <memory.h>
-
+#include <assert.h>
 
 void* fail_exit(const char * message, ...) {
   fprintf(stderr, "FAIL_EXIT: ");
@@ -231,28 +231,30 @@ void circularbuffer_write_buffers(CircularBuffer buffer,
 }
 
 int circularbuffer_insert(CircularBuffer buffer, char * bytes, int length) {
+  assert(bytes);
+
   int s1, s2;
   char *b1, *b2;
   circularbuffer_write_buffers(buffer, &b1, &s1, &b2, &s2, length);
 
   int to_write = MIN(length, s1);
-  int written = 0;
 
+  assert(b1);
   memcpy(b1, bytes, to_write);
   length -= to_write;
-  written += to_write;
 
   if(length > 0) {
     to_write = MIN(length, s2);
     memcpy(b2, &bytes[s1], to_write);
     length -= to_write;
-    written += to_write;
   }
 
   return length == 0;
 }
 
 int circularbuffer_read(CircularBuffer buffer, char * target, int length) {
+  assert(target);
+
   int s1, s2;
   char *b1, *b2;
   circularbuffer_read_buffers(buffer, &b1, &s1, &b2, &s2, length);
@@ -260,15 +262,14 @@ int circularbuffer_read(CircularBuffer buffer, char * target, int length) {
   int to_read = MIN(length, s1);
   int read = 0;
 
+  assert(b1);
   memcpy(target, b1, to_read);
   length -= to_read;
-  read += to_read;
 
   if(length > 0) {
     to_read = MIN(length, s2);
     memcpy(&target[s1], b2, to_read);
     length -= to_read;
-    read += to_read;
   }
 
   return length == 0;

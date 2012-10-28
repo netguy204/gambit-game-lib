@@ -40,7 +40,6 @@ int loop_once() {
 }
 
 int real_main(int argc, char ** argv) {
-  int last_time = time_millis();
   lib_init();
   game_init();
 

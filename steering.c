@@ -111,7 +111,6 @@ void steering_offsetarrival(SteeringResult r, Vector tgt, Vector src,
     vector_scale(&to_src, &to_src, offset / mag);
   } else {
     // pick an arbitrary departure direction
-    mag = 1.0f;
     to_src.x = 0.0f;
     to_src.y = 1.0f;
   }

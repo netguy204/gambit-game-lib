@@ -6,6 +6,7 @@
 
 #include <string.h>
 #include <dlfcn.h>
+#include <assert.h>
 
 struct DLL_ classes;
 void* self_handle;
@@ -127,6 +128,7 @@ void componentinstance_addchild(ComponentInstance parent, ComponentInstance chil
 
 void componentinstance_removechild(ComponentInstance child) {
   SAFETY(if(!child->parent) fail_exit("child does not have a parent"));
+  assert(child->parent);
 
   dll_remove(&child->parent->children, &child->node);
 

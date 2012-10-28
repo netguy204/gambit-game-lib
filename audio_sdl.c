@@ -59,7 +59,6 @@ void* audio_exec(void* udata) {
 }
 
 void fill_audio(void *udata, Uint8 *stream, int len) {
-  int nwords = len / 2;
   int s1, s2;
   char *b1, *b2;
 
@@ -74,7 +73,6 @@ void fill_audio(void *udata, Uint8 *stream, int len) {
   if(len > 0) {
     tocopy = MIN(len, s2);
     memcpy(stream, b2, tocopy);
-    len -= tocopy;
   }
 
   pthread_mutex_unlock(&audio_mutex);
@@ -97,17 +95,17 @@ void native_audio_init() {
   pthread_create(&audio_thread, NULL, audio_exec, NULL);
 
   SDL_AudioSpec wanted;
-  
-  // Set the audio format 
+
+  // Set the audio format
   wanted.freq = SAMPLE_FREQ;
   wanted.format = AUDIO_S16SYS;
-  wanted.channels = 2;    // 1 = mono, 2 = stereo 
-  wanted.samples = NUM_SAMPLES;  // Good low-latency value for callback 
+  wanted.channels = 2;    // 1 = mono, 2 = stereo
+  wanted.samples = NUM_SAMPLES;  // Good low-latency value for callback
   wanted.padding = 0;
   wanted.callback = fill_audio;
   wanted.userdata = NULL;
 
-  // Open the audio device, forcing the desired format 
+  // Open the audio device, forcing the desired format
   if ( SDL_OpenAudio(&wanted, NULL) < 0 ) {
     fprintf(stderr, "Couldn't open audio: %s\n", SDL_GetError());
     exit(-1);

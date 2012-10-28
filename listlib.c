@@ -2,6 +2,8 @@
 #include "memory.h"
 #include "config.h"
 
+#include <assert.h>
+
 FixedAllocator llentry_allocator;
 
 void listlib_init() {
@@ -44,7 +46,9 @@ void* llentry_nextvalue(LLNode* current) {
 }
 
 void llentry_remove(LLNode* head, void* value) {
+  assert(head);
   SAFETY(if(*head == NULL) fail_exit("llentry_remove: tried to remove from empty list"));
+  assert(*head);
 
   // is it the head?
   if(ENTRY4P(head)->data == value) {
