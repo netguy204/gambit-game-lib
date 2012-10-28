@@ -172,8 +172,8 @@ void charimage_crosscorrelate(CharImage out, CharImage big, CharImage small) {
   assert(out->h >= out_height);
 
   int ox, oy, sx, sy;
-  for(oy = 0; oy < big->h; ++oy) {
-    for(ox = 0; ox < big->w; ++ox) {
+  for(oy = 0; oy < out_width; ++oy) {
+    for(ox = 0; ox < out_height; ++ox) {
       charimage_set(out, ox, oy, 0);
 
       for(sy = 0; sy < small->h; ++sy) {
