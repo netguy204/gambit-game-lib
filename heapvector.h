@@ -21,4 +21,20 @@ void * heapvector_pop(HeapVector hv, size_t size);
 #define HV_SIZE(hv, type) (hv->data_bytes / sizeof(type))
 #define HV_GET(hv, type, index) ((type*)&(hv->data[index * sizeof(type)]))
 
+typedef int(*BinaryHeapComparison)(void* a, void* b);
+
+typedef struct BinaryHeap_ {
+  struct HeapVector_ vector;
+  BinaryHeapComparison comparison;
+  size_t element_size;
+  char* tmp_swap;
+} *BinaryHeap;
+
+BinaryHeap binaryheap_make(size_t elem_size, BinaryHeapComparison comparison);
+void binaryheap_free(BinaryHeap bh);
+int binaryheap_size(BinaryHeap bh);
+void binaryheap_insert(BinaryHeap bh, void* value);
+void* binaryheap_top(BinaryHeap bh);
+void binaryheap_remove_top(BinaryHeap bh);
+
 #endif
