@@ -119,6 +119,10 @@ void stack_allocator_freeall(StackAllocator allocator) {
   allocator->stack_top = allocator->stack_bottom;
 }
 
+void stack_allocator_release(StackAllocator allocator) {
+  free(allocator);
+}
+
 CircularBuffer circularbuffer_make(size_t bytes) {
   CircularBuffer buffer = malloc(sizeof(struct CircularBuffer_));
   buffer->read_index = 0;

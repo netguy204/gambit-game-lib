@@ -6,6 +6,7 @@
 #include "spriteatlas.h"
 #include "heapvector.h"
 #include "utils.h"
+#include "pathfinder.h"
 
 #include <math.h>
 
@@ -79,18 +80,20 @@ TileMap tilemap_testmake(SpriteAtlas atlas) {
   int MAXY = 100;
 
   TileSpec specs = malloc(sizeof(struct TileSpec_) * TILE_MAX);
-  specs[TILE_BLANK].bitmask = 0;
+  int standard = TILESPEC_COLLIDABLE | TILESPEC_VISIBLE;
+
+  specs[TILE_BLANK].bitmask = TILESPEC_PASSABLE;
   specs[TILE_BLANK].image = NULL;
   specs[TILE_GRASS].image = spriteatlas_find(atlas, "grass.png");
-  specs[TILE_GRASS].bitmask = TILESPEC_COLLIDABLE | TILESPEC_VISIBLE;
+  specs[TILE_GRASS].bitmask = standard;
   specs[TILE_DIRT].image = spriteatlas_find(atlas, "dirt.png");
-  specs[TILE_DIRT].bitmask = TILESPEC_COLLIDABLE | TILESPEC_VISIBLE;
+  specs[TILE_DIRT].bitmask = standard;
   specs[TILE_STONE].image = spriteatlas_find(atlas, "stone.png");
-  specs[TILE_STONE].bitmask = TILESPEC_COLLIDABLE | TILESPEC_VISIBLE;
+  specs[TILE_STONE].bitmask = standard;
   specs[TILE_STONE2].image = spriteatlas_find(atlas, "stone2.png");
-  specs[TILE_STONE2].bitmask = TILESPEC_COLLIDABLE | TILESPEC_VISIBLE;
+  specs[TILE_STONE2].bitmask = standard;
   specs[TILE_BUILDING].image = spriteatlas_find(atlas, "building.png");
-  specs[TILE_BUILDING].bitmask = TILESPEC_COLLIDABLE | TILESPEC_VISIBLE;
+  specs[TILE_BUILDING].bitmask = standard;
 
   SpriteAtlasEntry example = specs[TILE_GRASS].image;
   TileMap map = tilemap_make(MAXX, MAXY, example->w, example->h);
@@ -253,6 +256,27 @@ TileMap tilemap_testmake(SpriteAtlas atlas) {
   PROFILE_END(&timer);
   printf("%d civilizations\n", ncivs);
 
+  // try some pathfinding
+  TilePosition civ1 = HV_GET(hv, struct TilePosition_, 0);
+  TilePosition civ2 = HV_GET(hv, struct TilePosition_, 1);
+
+  int idx1 = tilemap_index(map, civ1);
+  int idx2 = tilemap_index(map, civ2);
+
+  printf("from %d, %d to %d, %d\n", civ1->x, civ1->y, civ2->x, civ2->y);
+
+  PROFILE_START(&timer, "pathfinding");
+  int count;
+  int* path = pathfinder_findpath(map, idx1, idx2, &count);
+  PROFILE_END(&timer);
+
+  printf("path is %d steps long\n", count);
+
+  for(ii = 0; ii < count; ++ii) {
+    map->tiles[path[ii]] = TILE_STONE2;
+  }
+
+  free(path);
   heapvector_free(hv);
 
   free(reachable);

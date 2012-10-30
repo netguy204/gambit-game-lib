@@ -39,6 +39,7 @@ StackAllocator stack_allocator_make(size_t stack_size,
                                     const char* name);
 void* stack_allocator_alloc(StackAllocator allocator, size_t size);
 void stack_allocator_freeall(StackAllocator allocator);
+void stack_allocator_release(StackAllocator allocator);
 
 typedef struct CircularBuffer_ {
   int read_index;

@@ -349,11 +349,13 @@ void enemies_update(float dt) {
     p = (Particle)p->node.next;
   }
 
+  /*
   if(dll_count(&enemies) < 10) {
     Enemy enemy = spawn_enemy();
     Message spawn = message_make(NULL, COLLECTIVE_ADD_AGENT, &enemy->agent);
     message_postinbox((Agent)collective, spawn);
   }
+  */
 }
 
 int staying_onscreen_test(Particle p) {
@@ -700,6 +702,7 @@ void game_step(long delta, InputState state) {
   sprite_submit(particle_sprite((Particle)player));
 
   if(step_number % 100 == 0) {
+    printf("player: %f, %f ", player->pos.x, player->pos.y);
     printf("particle_allocator: %ld (%ld) ; stack_allocator: (%ld of %ld)\n",
            particle_allocator->inflight,
            particle_allocator->max_inflight,

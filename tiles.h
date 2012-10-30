@@ -15,7 +15,8 @@
 
 enum TileSpecMaskEntries {
   TILESPEC_COLLIDABLE = 1,
-  TILESPEC_VISIBLE = 2
+  TILESPEC_VISIBLE = 2,
+  TILESPEC_PASSABLE = 4,
 };
 
 typedef struct TileSpec_ {
