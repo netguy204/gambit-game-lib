@@ -3,6 +3,7 @@
 
 #include "vector.h"
 #include "particle.h"
+#include "pathfinder.h"
 
 typedef struct SteeringResult_ {
   struct Vector_ force;
@@ -44,5 +45,7 @@ void steering_offsetarrival(SteeringResult r, Vector tgt, Vector src,
 void steering_avoidance(SteeringResult r, SteeringObstacle objs, int nobjs,
                         Vector src, Vector src_vel, float src_radius, float src_range,
                         SteeringParams params);
+void steering_followpath(SteeringResult r, TileMap map, Path path, Vector src, Vector src_vel,
+                         float max_offset, SteeringParams params);
 
 #endif

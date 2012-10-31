@@ -46,7 +46,7 @@ SpriteList tilemap_spritelist(TileMap map, float x_bl, float y_bl, float wpx, fl
 
 void tileposition_tilemap(TilePosition pos, TileMap map, int index);
 int tilemap_index_vector(TileMap map, Vector vector);
-void vector_tileposition(Vector v, TileMap map, TilePosition pos);
+void vector_tilecenter(Vector v, TileMap map, int idx);
 
 typedef struct CharImage_ {
   int w, h;

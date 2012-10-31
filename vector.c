@@ -23,7 +23,7 @@ float vector_dot(Vector a, Vector b) {
 }
 
 float vector_mag(Vector a) {
-  return sqrt(vector_dot(a, a));
+  return sqrtf(vector_dot(a, a));
 }
 
 void vector_norm(Vector dst, Vector src) {
@@ -70,4 +70,10 @@ float vector_project2(Vector dst, Vector src, Vector normonto) {
   float scalarproj = vector_dot(src, normonto);
   vector_scale(dst, normonto, scalarproj);
   return scalarproj;
+}
+
+float vector_dist2(Vector a, Vector b) {
+  float dx = a->x - b->x;
+  float dy = a->y - b->y;
+  return dx * dx + dy * dy;
 }

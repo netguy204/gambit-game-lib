@@ -121,6 +121,40 @@ void steering_offsetarrival(SteeringResult r, Vector tgt, Vector src,
   steering_arrival(r, &offset_tgt, src, src_vel, slowing_dist, params);
 }
 
+void steering_followpath(SteeringResult r, TileMap map, Path path, Vector src, Vector src_vel,
+                         float max_offset, SteeringParams params) {
+  float speed = vector_mag(src_vel);
+  if(speed < 0.01f) {
+    // too slow, can't pathfollow
+    r->computed = 0;
+    return;
+  }
+
+  // project our position forward (at least one tile)
+  struct Vector_ src_vel_norm = *src_vel;
+  if(speed < map->tile_width_IP) {
+    vector_scale(&src_vel_norm, src_vel, map->tile_width_IP / speed);
+  }
+
+  struct Vector_ projobj;
+  vector_add(&projobj, src, &src_vel_norm);
+
+  // find the closest point on the path
+  float dist;
+  int closest_idx = path_closest_point(map, path, &projobj, &dist);
+
+  // close enough?
+  if(dist <= max_offset) {
+    r->computed = 0;
+    return;
+  }
+
+  // steer towards the point
+  struct Vector_ tgt;
+  vector_tilecenter(&tgt, map, closest_idx);
+  steering_seek(r, &tgt, src, src_vel, params);
+}
+
 void steering_avoidance(SteeringResult r, SteeringObstacle objs, int nobjs,
                         Vector src, Vector src_vel, float src_radius, float src_range,
                         SteeringParams params) {

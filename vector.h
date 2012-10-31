@@ -18,5 +18,6 @@ void vector_integrate(Vector dst, Vector r, Vector dr, float dt);
 void vector_clamp(Vector dst, Vector src, float max);
 float vector_scalarproject(Vector src, Vector onto);
 float vector_project2(Vector dst, Vector src, Vector normonto);
+float vector_dist2(Vector a, Vector b);
 
 #endif

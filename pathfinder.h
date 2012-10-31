@@ -14,12 +14,16 @@ typedef struct PathElement_ {
   int index;
 } *PathElement;
 
+PathElement pathelement_make(StackAllocator allocator);
+
 typedef struct Path_ {
   struct TilePosition_ start;
   struct TilePosition_ end;
   int* steps;
   int nsteps;
 } *Path;
+
+int path_closest_point(TileMap map, Path path, Vector pos, float* dist);
 
 /*
  * Distances:
@@ -39,8 +43,6 @@ typedef struct PairwisePaths_ {
   int* lengths;
   struct Path_ paths[0];
 } *PairwisePaths;
-
-PathElement pathelement_make(StackAllocator allocator);
 
 int* pathfinder_findpath(TileMap map, int p1, int p2, int* count);
 PairwisePaths pathfinder_findpairwise(TileMap map, TilePosition positions, int npositions);

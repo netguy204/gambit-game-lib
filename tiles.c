@@ -38,9 +38,12 @@ int tilemap_index_vector(TileMap map, Vector vector) {
   return (int)floorf(x) + (int)floorf(y) * map->width_IT;
 }
 
-void vector_tileposition(Vector v, TileMap map, TilePosition pos) {
-  v->x = map->tile_width_IP * pos->x;
-  v->y = map->tile_height_IP * pos->y;
+void vector_tilecenter(Vector v, TileMap map, int idx) {
+  struct TilePosition_ pos;
+  tileposition_tilemap(&pos, map, idx);
+
+  v->x = map->tile_width_IP * pos.x + map->tile_width_IP / 2;
+  v->y = map->tile_height_IP * pos.y + map->tile_height_IP / 2;
 }
 
 int tilemap_size(TileMap map) {
