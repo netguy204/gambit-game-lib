@@ -81,6 +81,73 @@ int* pathfinder_findpath(TileMap map, int p1, int p2, int* count) {
   return path;
 }
 
+PairwisePaths pathfinder_findpairwise(TileMap map, TilePosition positions, int npositions) {
+  int npairwise = (npositions * (npositions - 1)) / 2;
+  PairwisePaths result = malloc(sizeof(struct PairwisePaths_) + npairwise * sizeof(struct Path_));
+  result->npaths = npairwise;
+  result->lengths = malloc(sizeof(int) * npairwise);
+
+  int sz = tilemap_size(map);
+  int8_t* visited = malloc(sz);
+  memset(visited, 0, sz);
+
+  StackAllocator allocator = stack_allocator_make(sizeof(struct PathElement_) * sz,
+                                                  "pathfinder_pairwise_allocator");
+
+  BinaryHeap candidates = binaryheap_make(sizeof(PathElement), pathelement_compare);
+
+  int ii, jj;
+  int idx = 0;
+  int8_t key = 0;
+
+  for(ii = 0; ii < npositions; ++ii) {
+    for(jj = ii + 1; jj < npositions; ++jj) {
+      // get our working memory ready to go again
+      key++;
+
+      // if our visited key wrapped, clear memory again
+      if(key == 0) {
+        memset(visited, 0, sz);
+        key = 1;
+      }
+
+      heapvector_clear((HeapVector)candidates);
+      stack_allocator_freeall(allocator);
+
+      TilePosition p1 = &positions[ii];
+      TilePosition p2 = &positions[jj];
+
+      int idx1 = tilemap_index(map, p1);
+      int idx2 = tilemap_index(map, p2);
+
+      PathElement element = pathfinder_findpath2(map, idx1, idx2, visited, key, candidates, allocator);
+
+      int length = element->distance + 1;
+      result->lengths[idx] = length;
+
+      int* path = malloc(sizeof(int) * length);
+
+      int kk = 0;
+      while(element) {
+        path[kk++] = element->index;
+        element = element->predecessor;
+      }
+
+      result->paths[idx].start = *p2;
+      result->paths[idx].end = *p1;
+      result->paths[idx].steps = path;
+      result->paths[idx].nsteps = length;
+      idx++;
+    }
+  }
+
+  binaryheap_free(candidates);
+  stack_allocator_release(allocator);
+  free(visited);
+
+  return result;
+}
+
 PathElement pathfinder_findpath2(TileMap map, int p1, int p2, int8_t* visited,
                                  int8_t key, BinaryHeap candidates, StackAllocator allocator) {
   int sz = tilemap_size(map);
@@ -102,20 +169,16 @@ PathElement pathfinder_findpath2(TileMap map, int p1, int p2, int8_t* visited,
     int start = elem->index;
     if(visited[start] == key) {
       // we already found a better way to this point
-      goto end_check;
+      continue;
     }
 
     // have we found the goal?
     if(start == p2) {
-      printf("found after %d steps\n", count);
       return elem;
     }
 
     visited[start] = key;
     count++;
-
-    // TEMP: mark up the map
-    //map->tiles[start] = 4;
 
     int above = start + row;
     if(IS_CANDIDATE(above)) {
@@ -140,11 +203,6 @@ PathElement pathfinder_findpath2(TileMap map, int p1, int p2, int8_t* visited,
       PathElement pelem = pathfinder_make_element(allocator, map, elem, right, p2);
       binaryheap_insert(candidates, &pelem);
     }
-
-
-  end_check:
-    assert(1);
-    // leak! pathelement_free(elem);
   }
 
   // no possible path

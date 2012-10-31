@@ -10,6 +10,9 @@
 
 #include <math.h>
 
+Civilization civilizations;
+PairwisePaths civpaths;
+
 enum TestTiles {
   TILE_BLANK,
   TILE_GRASS,
@@ -20,30 +23,37 @@ enum TestTiles {
   TILE_MAX
 };
 
-void mark_candidate(LabelEntry entries, int nentries, void* udata) {
-  HeapVector hv = (HeapVector)udata;
+typedef struct CandidateUdata_ {
+  HeapVector hv;
+  TileMap map;
+  CharImage reachable_img;
+} *CandidateUdata;
 
-  float x = 0;
-  float y = 0;
+void mark_candidate(LabelEntry entries, int nentries, void* udata) {
+  CandidateUdata cdata = (CandidateUdata)udata;
+
   int ii, jj;
 
   // centroid the entries
-  float values = 0;
+  int8_t max_value = 0;
+  struct TilePosition_ max_pos;
+
   for(ii = 0; ii < nentries; ++ii) {
     LabelEntry entry = &entries[ii];
-    x += entry->pos.x * entry->value;
-    y += entry->pos.y * entry->value;
-    values += entry->value;
+    struct TilePosition_ pos = { entry->pos.x + 4, entry->pos.y + 4 };
+    int8_t reachable = charimage_get(cdata->reachable_img, pos.x, pos.y);
+    if(entry->value > max_value && reachable == 1) {
+      max_value = entry->value;
+      max_pos = pos;
+    }
   }
 
-  x /= values;
-  y /= values;
-
-  struct TilePosition_ pos = { roundf(x) + 4, roundf(y) + 4 };
-  HV_PUSH_VALUE(hv, struct TilePosition_, pos);
+  if(max_value) {
+    HV_PUSH_VALUE(cdata->hv, struct TilePosition_, max_pos);
+  }
 }
 
-void scatter_buildings(TileMap map, TilePosition pos) {
+void scatter_buildings(TileMap map, TilePosition pos, Civilization civilization) {
   int ii, jj;
 
   int directions[][2] = {
@@ -55,6 +65,8 @@ void scatter_buildings(TileMap map, TilePosition pos) {
     {-2, -1},
     {2,  -1},
   };
+
+  int building = 0;
 
   // place a building on ground in each direction
   for(ii = 0; ii < array_size(directions); ++ii) {
@@ -70,9 +82,12 @@ void scatter_buildings(TileMap map, TilePosition pos) {
       if(map->tiles[idx] != TILE_BLANK &&
          map->tiles[idx_above] == TILE_BLANK) {
         map->tiles[idx_above] = TILE_BUILDING;
+        civilization->buildings[building++] = idx_above;
+        break;
       }
     }
   }
+  civilization->nbuildings = building;
 }
 
 TileMap tilemap_testmake(SpriteAtlas atlas) {
@@ -93,7 +108,7 @@ TileMap tilemap_testmake(SpriteAtlas atlas) {
   specs[TILE_STONE2].image = spriteatlas_find(atlas, "stone2.png");
   specs[TILE_STONE2].bitmask = standard;
   specs[TILE_BUILDING].image = spriteatlas_find(atlas, "building.png");
-  specs[TILE_BUILDING].bitmask = standard;
+  specs[TILE_BUILDING].bitmask = standard | TILESPEC_PASSABLE;
 
   SpriteAtlasEntry example = specs[TILE_GRASS].image;
   TileMap map = tilemap_make(MAXX, MAXY, example->w, example->h);
@@ -241,44 +256,42 @@ TileMap tilemap_testmake(SpriteAtlas atlas) {
   charimage_crosscorrelate(&correlation_img, &reachable_img, &template_img);
   PROFILE_END(&timer);
 
-  charimage_spit(&correlation_img, "correlation.csv");
-
   HeapVector hv = heapvector_make();
 
   PROFILE_START(&timer, "labeling candidate locations");
   charimage_threshold(&correlation_img, 55);
-  charimage_label(&correlation_img, reachable, mark_candidate, hv);
+  charimage_spit(&correlation_img, "correlation.csv");
+
+  struct CandidateUdata_ udata = { hv, map, &reachable_img };
+  int8_t* label_mem = malloc(tilemap_size(map));
+  charimage_label(&correlation_img, label_mem, mark_candidate, &udata);
+  free(label_mem);
+
   int ii;
   int ncivs = HV_SIZE(hv, struct TilePosition_);
+  civilizations = malloc(sizeof(struct Civilization_) * ncivs);
+
   for(ii = 0; ii < ncivs; ++ii) {
-    scatter_buildings(map, HV_GET(hv, struct TilePosition_, ii));
+    TilePosition pos = HV_GET(hv, struct TilePosition_, ii);
+    civilizations[ii].center = tilemap_index(map, pos);
+    scatter_buildings(map, pos, &civilizations[ii]);
   }
   PROFILE_END(&timer);
   printf("%d civilizations\n", ncivs);
 
-  // try some pathfinding
-  TilePosition civ1 = HV_GET(hv, struct TilePosition_, 0);
-  TilePosition civ2 = HV_GET(hv, struct TilePosition_, 1);
-
-  int idx1 = tilemap_index(map, civ1);
-  int idx2 = tilemap_index(map, civ2);
-
-  printf("from %d, %d to %d, %d\n", civ1->x, civ1->y, civ2->x, civ2->y);
-
   PROFILE_START(&timer, "pathfinding");
-  int count;
-  int* path = pathfinder_findpath(map, idx1, idx2, &count);
+  civpaths = pathfinder_findpairwise(map, (TilePosition)hv->data, ncivs);
+
   PROFILE_END(&timer);
 
-  printf("path is %d steps long\n", count);
-
-  for(ii = 0; ii < count; ++ii) {
-    map->tiles[path[ii]] = TILE_STONE2;
+  for(ii = 0; ii < civpaths->npaths; ++ii) {
+    if(ii % 4 == 0) {
+      printf("\n");
+    }
+    printf("%5d   ", civpaths->lengths[ii]);
   }
 
-  free(path);
   heapvector_free(hv);
-
   free(reachable);
   free(correlation_img.data);
 
