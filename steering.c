@@ -140,8 +140,9 @@ void steering_followpath(SteeringResult r, TileMap map, Path path, Vector src, V
   vector_add(&projobj, src, &src_vel_norm);
 
   // find the closest point on the path
+  struct Vector_ tgt;
   float dist;
-  int closest_idx = path_closest_point(map, path, &projobj, &dist);
+  path_closest_point(&tgt, map, path, &projobj, &dist);
 
   // close enough?
   if(dist <= max_offset) {
@@ -150,8 +151,6 @@ void steering_followpath(SteeringResult r, TileMap map, Path path, Vector src, V
   }
 
   // steer towards the point
-  struct Vector_ tgt;
-  vector_tilecenter(&tgt, map, closest_idx);
   steering_seek(r, &tgt, src, src_vel, params);
 }
 

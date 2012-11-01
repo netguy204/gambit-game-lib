@@ -11,28 +11,61 @@ PathElement pathelement_make(StackAllocator allocator) {
   return stack_allocator_alloc(allocator, sizeof(struct PathElement_));
 }
 
-int path_closest_point(TileMap map, Path path, Vector pos, float* dist) {
+void path_closest_point(Vector point, TileMap map, Path path, Vector pos, float* dist) {
+  assert(dist);
   float closest_dist2 = INFINITY;
-  int point = -1;
 
-  int ii = 0;
-  for(ii = 0; ii < path->nsteps; ++ii) {
-    int test = path->steps[ii];
-    struct Vector_ path_center;
-    vector_tilecenter(&path_center, map, test);
+  int ii;
+  for(ii = 1; ii < path->nsteps; ++ii) {
+    int test0 = path->steps[ii - 1];
+    int test1 = path->steps[ii];
+    struct Vector_ path_center0;
+    struct Vector_ path_center1;
+    struct Vector_ tangent;
+    struct Vector_ projection;
+    struct Vector_ projection_pt;
+    struct Vector_ p0_to_pos;
+    Vector refpoint;
 
-    float dist2 = vector_dist2(pos, &path_center);
+    float pt0pt1_dist;
+    float pathdot;
+
+    vector_tilecenter(&path_center0, map, test0);
+    vector_tilecenter(&path_center1, map, test1);
+    vector_sub(&tangent, &path_center1, &path_center0);
+    vector_sub(&p0_to_pos, pos, &path_center0);
+    vector_norm(&tangent, &tangent);
+    pt0pt1_dist = sqrtf(vector_dist2(&path_center0, &path_center1));
+
+    // project the query point onto the path
+    pathdot = vector_project2(&projection, &p0_to_pos, &tangent);
+
+    if(pathdot < 0) {
+      // if the point is behind the starting point then compute distance
+      // from the starting point
+      refpoint = &path_center0;
+    } else if(pathdot > pt0pt1_dist) {
+      // if the point is beyond the ending point then compute distance
+      // from the ending point
+      refpoint = &path_center1;
+    } else {
+      // if the point is between the start and the end then compute
+      // the projection point and find the distance from that
+      vector_add(&projection_pt, &path_center0, &projection);
+      refpoint = &projection_pt;
+    }
+
+    // compute and test the distance
+    float dist2 = vector_dist2(pos, refpoint);
     if(dist2 < closest_dist2) {
       closest_dist2 = dist2;
-      point = test;
+      *point = *refpoint;
     }
   }
 
-  if(dist && point != -1) {
+  if(dist) {
     *dist = sqrtf(closest_dist2);
   }
-
-  return point;
 }
 
 int pathelement_compare(void *a, void *b) {

@@ -23,7 +23,8 @@ typedef struct Path_ {
   int nsteps;
 } *Path;
 
-int path_closest_point(TileMap map, Path path, Vector pos, float* dist);
+// find POINT on PATH closest to POS and return the DIST to it.
+void path_closest_point(Vector point, TileMap map, Path path, Vector pos, float* dist);
 
 /*
  * Distances:
