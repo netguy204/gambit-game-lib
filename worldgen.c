@@ -259,7 +259,7 @@ TileMap tilemap_testmake(SpriteAtlas atlas) {
   HeapVector hv = heapvector_make();
 
   PROFILE_START(&timer, "labeling candidate locations");
-  charimage_threshold(&correlation_img, 55);
+  charimage_threshold(&correlation_img, 57);
   charimage_spit(&correlation_img, "correlation.csv");
 
   struct CandidateUdata_ udata = { hv, map, &reachable_img };

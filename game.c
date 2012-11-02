@@ -224,15 +224,12 @@ void enemyagent_update(Agent agent, float dt) {
     }
   }
 
-  // we are attacking or fleeing
-  struct Vector_ idle_target = {-enemy_speed, 0};
-
   switch(agent->state) {
   case ENEMY_IDLE:
-    // if we're not attacking... then turn to horizontal. also prevent
-    // backtracking
-    vector_tween(&p->vel, &p->vel, &idle_target, 0.5);
-    p->angle = vector_angle(&p->vel);
+    // if we're not attacking... then follow our path
+    steering_followpath(&result, tiles, enemyagent->path, &p->pos, &p->vel,
+                        32, &params);
+
     break;
 
   case ENEMY_ATTACKING:
@@ -277,17 +274,26 @@ Enemy spawn_enemy() {
   enemy->particle.image = image_ally;
   enemy->particle.scale = 1.0f;
 
-  int nrows = floor(screen_height / image_enemy->h);
-  enemy->particle.pos.x = screen_x_br + screen_width + (image_enemy->w / 2);
-  enemy->particle.pos.y = screen_y_br +
-    image_enemy->h * rand_in_range(&rgen, 0, nrows)
-    + (image_enemy->h / 2);
-  enemy->particle.vel.x = -enemy_speed;
-  enemy->particle.vel.y = 0;
+  // pick a path
+  int pathidx = rand_in_range(&rgen, 0, civpaths->npaths);
+  Path path = &civpaths->paths[pathidx];
+  enemy->agent.path = path;
+  enemy->agent.path_dir = 1;
+  enemy->agent.hp = 100;
+
+  // start at its beginning
+  vector_tilecenter(&enemy->particle.pos, tiles, path->steps[0]);
+
+  // velocity aligned with the path
+  vector_path_direction(&enemy->particle.vel, tiles, path, 0, 1);
+  vector_scale(&enemy->particle.vel, &enemy->particle.vel, enemy_speed);
+
+  // not scaling or spinning, let the steering method figure out the
+  // right orientation
   enemy->particle.angle = 180.0;
   enemy->particle.dsdt = 0.0f;
   enemy->particle.dadt = 0.0f;
-  enemy->agent.hp = 100;
+
   agent_fill((Agent)&enemy->agent, &enemy_klass, ENEMY_IDLE);
   dll_add_head(&enemies, (DLLNode)&enemy->particle);
 
@@ -349,13 +355,11 @@ void enemies_update(float dt) {
     p = (Particle)p->node.next;
   }
 
-  /*
-  if(dll_count(&enemies) < 10) {
+  if(dll_count(&enemies) < 30) {
     Enemy enemy = spawn_enemy();
     Message spawn = message_make(NULL, COLLECTIVE_ADD_AGENT, &enemy->agent);
     message_postinbox((Agent)collective, spawn);
   }
-  */
 }
 
 int staying_onscreen_test(Particle p) {
@@ -525,20 +529,9 @@ void collision_dispatcher_update(Agent agent, float dt) {
   CollisionRecord es =
     enemies_collisionrecords(dispatcher, &num_enemies, 0.8f);
 
-  // disregard any enemies that have crossed the screen
-  int ii;
-  for(ii = 0; ii < num_enemies; ++ii) {
-    CollisionRecord rec = &es[ii];
-    EnemyAgent enemyagent = (EnemyAgent)rec->data;
-    Particle p = enemyagent_particle(enemyagent);
-    if(!staying_onscreen_test(p)) {
-      agent_send_terminate((Agent)enemyagent, (Agent)dispatcher);
-      rec->skip = 1;
-    }
-  }
-
   collide_arrays(pbs, num_pbullets, es, num_enemies, &bullet_vs_agent, dispatcher);
 
+  int ii;
   for(ii = 0; ii < num_pbullets; ++ii) {
     CollisionRecord rec = &pbs[ii];
     if(rec->skip) continue;

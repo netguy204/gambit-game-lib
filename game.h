@@ -5,6 +5,7 @@
 #include "particle.h"
 #include "agent.h"
 #include "spriteatlas.h"
+#include "pathfinder.h"
 
 struct InputState_;
 
@@ -13,6 +14,13 @@ void game_step(long delta, struct InputState_* state);
 void game_shutdown();
 
 // implementation specific stuff
+typedef struct EnemyAgent_ {
+  struct Agent_ agent;
+  Path path;
+  int path_dir;
+  int hp;
+} *EnemyAgent;
+
 typedef struct Enemy_ {
   struct Particle_ particle;
   struct EnemyAgent_ agent;

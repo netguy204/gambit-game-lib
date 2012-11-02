@@ -11,6 +11,50 @@ PathElement pathelement_make(StackAllocator allocator) {
   return stack_allocator_alloc(allocator, sizeof(struct PathElement_));
 }
 
+void vector_path_direction(Vector dir, TileMap map, Path path, int test0, int pathdir) {
+  int test1;
+  if(pathdir > 0) {
+    test1 = test0 + 1;
+  } else {
+    test1 = test0 - 1;
+  }
+
+  assert(test1 >= 0 && test1 < path->nsteps);
+
+  struct Vector_ p0;
+  struct Vector_ p1;
+  vector_tilecenter(&p0, map, path->steps[test0]);
+  vector_tilecenter(&p1, map, path->steps[test1]);
+  vector_sub(dir, &p1, &p0);
+  vector_norm(dir, dir);
+}
+
+int path_end_idx(Path path, int pathdir) {
+  if(pathdir > 0) {
+    return path->nsteps - 1;
+  } else {
+    return 0;
+  }
+}
+
+int path_begin_idx(Path path, int pathdir) {
+  if(pathdir > 0) {
+    return 0;
+  } else {
+    return path->nsteps - 1;
+  }
+}
+
+void vector_path_end(Vector end, Path path, TileMap map, int pathdir) {
+  int end_idx = path_end_idx(path, pathdir);
+  vector_tilecenter(end, map, path->steps[end_idx]);
+}
+
+void vector_path_begin(Vector begin, Path path, TileMap map, int pathdir) {
+  int begin_idx = path_begin_idx(path, pathdir);
+  vector_tilecenter(begin, map, path->steps[begin_idx]);
+}
+
 void path_closest_point(Vector point, TileMap map, Path path, Vector pos, float* dist) {
   assert(dist);
   float closest_dist2 = INFINITY;

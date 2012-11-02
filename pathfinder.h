@@ -23,6 +23,12 @@ typedef struct Path_ {
   int nsteps;
 } *Path;
 
+void vector_path_direction(Vector dir, TileMap map, Path path, int test0, int pathdir);
+int path_end_idx(Path path, int pathdir);
+int path_begin_idx(Path path, int pathdir);
+void vector_path_end(Vector end, Path path, TileMap map, int pathdir);
+void vector_path_begin(Vector begin, Path path, TileMap map, int pathdir);
+
 // find POINT on PATH closest to POS and return the DIST to it.
 void path_closest_point(Vector point, TileMap map, Path path, Vector pos, float* dist);
 

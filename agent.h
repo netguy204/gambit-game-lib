@@ -56,11 +56,6 @@ typedef struct Collective_ {
   Dispatcher sub_dispatchers[COLLECTIVE_SUB_DISPATCHERS];
 } *Collective;
 
-typedef struct EnemyAgent_ {
-  struct Agent_ agent;
-  int hp;
-} *EnemyAgent;
-
 enum MessageKind {
   COLLECTIVE_ADD_AGENT,   // collective should own agent
   MESSAGE_MAX0,
