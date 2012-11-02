@@ -55,6 +55,12 @@ void vector_path_begin(Vector begin, Path path, TileMap map, int pathdir) {
   vector_tilecenter(begin, map, path->steps[begin_idx]);
 }
 
+int path_next_idx(Path path, int current_idx, int pathdir) {
+  int next = current_idx + pathdir;
+  if(next >= 0 && next < path->nsteps) return next;
+  return -1;
+}
+
 void path_closest_point(Vector point, TileMap map, Path path, Vector pos, float* dist) {
   assert(dist);
   float closest_dist2 = INFINITY;

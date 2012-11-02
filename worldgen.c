@@ -281,7 +281,6 @@ TileMap tilemap_testmake(SpriteAtlas atlas) {
 
   PROFILE_START(&timer, "pathfinding");
   civpaths = pathfinder_findpairwise(map, (TilePosition)hv->data, ncivs);
-
   PROFILE_END(&timer);
 
   for(ii = 0; ii < civpaths->npaths; ++ii) {
@@ -289,6 +288,14 @@ TileMap tilemap_testmake(SpriteAtlas atlas) {
       printf("\n");
     }
     printf("%5d   ", civpaths->lengths[ii]);
+
+    /* show the paths
+    int kk;
+    Path path = &civpaths->paths[ii];
+    for(kk = 0; kk < path->nsteps; ++kk) {
+      map->tiles[path->steps[kk]] = 4;
+    }
+    */
   }
 
   heapvector_free(hv);

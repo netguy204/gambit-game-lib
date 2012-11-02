@@ -29,6 +29,9 @@ int path_begin_idx(Path path, int pathdir);
 void vector_path_end(Vector end, Path path, TileMap map, int pathdir);
 void vector_path_begin(Vector begin, Path path, TileMap map, int pathdir);
 
+// -1 on fall off the path
+int path_next_idx(Path path, int current_idx, int pathdir);
+
 // find POINT on PATH closest to POS and return the DIST to it.
 void path_closest_point(Vector point, TileMap map, Path path, Vector pos, float* dist);
 

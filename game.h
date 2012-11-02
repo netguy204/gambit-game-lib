@@ -17,6 +17,7 @@ void game_shutdown();
 typedef struct EnemyAgent_ {
   struct Agent_ agent;
   Path path;
+  int step_idx;
   int path_dir;
   int hp;
 } *EnemyAgent;

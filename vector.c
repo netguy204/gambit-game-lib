@@ -77,3 +77,7 @@ float vector_dist2(Vector a, Vector b) {
   float dy = a->y - b->y;
   return dx * dx + dy * dy;
 }
+
+float vector_dist(Vector a, Vector b) {
+  return sqrtf(vector_dist2(a, b));
+}
