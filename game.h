@@ -16,9 +16,7 @@ void game_shutdown();
 // implementation specific stuff
 typedef struct EnemyAgent_ {
   struct Agent_ agent;
-  Path path;
-  int step_idx;
-  int path_dir;
+  struct PathInstance_ pi;
   int hp;
 } *EnemyAgent;
 

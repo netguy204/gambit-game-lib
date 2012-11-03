@@ -29,11 +29,24 @@ int path_begin_idx(Path path, int pathdir);
 void vector_path_end(Vector end, Path path, TileMap map, int pathdir);
 void vector_path_begin(Vector begin, Path path, TileMap map, int pathdir);
 
+typedef struct PathInstance_ {
+  Path path;
+  int pathdir;
+  int pathpos;
+  int max_skip_range;
+} *PathInstance;
+
 // -1 on fall off the path
 int path_next_idx(Path path, int current_idx, int pathdir);
+int pathinstance_next_idx(PathInstance pi);
+void vector_pathinstance_direction(Vector dir, TileMap map, PathInstance pi);
+int pathinstance_end_idx(PathInstance pi);
+int pathinstance_begin_idx(PathInstance pi);
+void vector_pathinstance_end(Vector end, PathInstance pi, TileMap map);
+void vector_pathinstance_begin(Vector begin, PathInstance pi, TileMap map);
 
 // find POINT on PATH closest to POS and return the DIST to it.
-void path_closest_point(Vector point, TileMap map, Path path, Vector pos, float* dist);
+int path_next_closest_point(Vector point, TileMap map, PathInstance pi, Vector pos, float* dist);
 
 /*
  * Distances:

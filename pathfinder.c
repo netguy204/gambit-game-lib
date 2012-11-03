@@ -12,11 +12,11 @@ PathElement pathelement_make(StackAllocator allocator) {
 }
 
 void vector_path_direction(Vector dir, TileMap map, Path path, int test0, int pathdir) {
-  int test1;
-  if(pathdir > 0) {
-    test1 = test0 + 1;
-  } else {
-    test1 = test0 - 1;
+  int test1 = path_next_idx(path, test0, pathdir);
+  if(test1 == -1) {
+    int temp = test0;
+    test0 = path_next_idx(path, test0, -pathdir);
+    test1 = temp;
   }
 
   assert(test1 >= 0 && test1 < path->nsteps);
@@ -56,19 +56,60 @@ void vector_path_begin(Vector begin, Path path, TileMap map, int pathdir) {
 }
 
 int path_next_idx(Path path, int current_idx, int pathdir) {
+  assert(current_idx != -1);
+
   int next = current_idx + pathdir;
   if(next >= 0 && next < path->nsteps) return next;
   return -1;
 }
 
-void path_closest_point(Vector point, TileMap map, Path path, Vector pos, float* dist) {
-  assert(dist);
+int pathinstance_next_idx(PathInstance pi) {
+  return path_next_idx(pi->path, pi->pathpos, pi->pathdir);
+}
+
+void vector_pathinstance_direction(Vector dir, TileMap map, PathInstance pi) {
+  vector_path_direction(dir, map, pi->path, pi->pathpos, pi->pathdir);
+}
+
+int pathinstance_end_idx(PathInstance pi) {
+  return path_end_idx(pi->path, pi->pathdir);
+}
+
+int pathinstance_begin_idx(PathInstance pi) {
+  return path_begin_idx(pi->path, pi->pathdir);
+}
+
+void vector_pathinstance_end(Vector end, PathInstance pi, TileMap map) {
+  vector_path_end(end, pi->path, map, pi->pathdir);
+}
+
+void vector_pathinstance_begin(Vector begin, PathInstance pi, TileMap map) {
+  vector_path_begin(begin, pi->path, map, pi->pathdir);
+}
+
+int path_next_closest_point(Vector point, TileMap map, PathInstance pi, Vector pos, float* dist) {
   float closest_dist2 = INFINITY;
+  int origin_idx = -1;
 
   int ii;
-  for(ii = 1; ii < path->nsteps; ++ii) {
-    int test0 = path->steps[ii - 1];
-    int test1 = path->steps[ii];
+  int range;
+  for(ii = pi->pathpos; ii != -1; ii = path_next_idx(pi->path, ii, pi->pathdir)) {
+    int idx = ii;
+
+    range = abs(idx - pi->pathpos);
+    if(range > pi->max_skip_range) break;
+
+    // if we run out of path then back off one. this ensures that
+    // we'll get at least one hit if we're queried at the end of the
+    // path
+    int next_idx = path_next_idx(pi->path, idx, pi->pathdir);
+    if(next_idx == -1) {
+      next_idx = idx;
+      idx = path_next_idx(pi->path, next_idx, -pi->pathdir);
+    }
+
+    int test0 = pi->path->steps[idx];
+    int test1 = pi->path->steps[next_idx];
     struct Vector_ path_center0;
     struct Vector_ path_center1;
     struct Vector_ tangent;
@@ -110,12 +151,14 @@ void path_closest_point(Vector point, TileMap map, Path path, Vector pos, float*
     if(dist2 < closest_dist2) {
       closest_dist2 = dist2;
       *point = *refpoint;
+      origin_idx = idx;
     }
   }
 
-  if(dist) {
-    *dist = sqrtf(closest_dist2);
-  }
+  assert(dist);
+  *dist = sqrtf(closest_dist2);
+
+  return origin_idx;
 }
 
 int pathelement_compare(void *a, void *b) {

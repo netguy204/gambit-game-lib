@@ -25,6 +25,7 @@ typedef struct SteeringObstacle_ {
 
 void steeringresult_complete(SteeringResult result, SteeringParams params);
 void particle_applysteering(Particle p, SteeringResult r, SteeringParams params, float dt);
+void steering_apply_desired_velocity(SteeringResult r, Vector desired_vel, Vector src_vel);
 
 void steering_seek(SteeringResult r, Vector tgt, Vector src, Vector src_vel,
                    SteeringParams params);
@@ -45,7 +46,7 @@ void steering_offsetarrival(SteeringResult r, Vector tgt, Vector src,
 void steering_avoidance(SteeringResult r, SteeringObstacle objs, int nobjs,
                         Vector src, Vector src_vel, float src_radius, float src_range,
                         SteeringParams params);
-void steering_followpath(SteeringResult r, TileMap map, Path path, Vector src, Vector src_vel,
-                         float max_offset, SteeringParams params);
+int steering_followpath(SteeringResult r, TileMap map, PathInstance path, Vector src, Vector src_vel,
+                        float max_offset, SteeringParams params);
 
 #endif

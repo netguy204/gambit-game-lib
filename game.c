@@ -201,6 +201,13 @@ void enemyagent_update(Agent agent, float dt) {
 
   if(agent->state == ENEMY_DYING) return;
 
+  // then, only make adjustments once every few ticks
+  /*
+  if(clock_time(main_clock) < agent->next_timer) return;
+  agent->next_timer = clock_time(main_clock) +
+    clock_seconds_to_cycles(0.1);
+  */
+
   Particle p = enemyagent_particle(enemyagent);
 
   // nudge ourselves away from our neighbors
@@ -224,26 +231,34 @@ void enemyagent_update(Agent agent, float dt) {
     }
   }
 
+  struct Vector_ path_end;
+  vector_pathinstance_end(&path_end, &enemyagent->pi, tiles);
 
-  Path path = enemyagent->path;
-  struct Vector_ path_next;
-  vector_tilecenter(&path_next, tiles, path->steps[enemyagent->step_idx]);
-
-  // step ourselves along the path, bounce at the end
-  float next_dist = vector_dist(&p->pos, &path_next);
-  if(next_dist < 72) {
-    enemyagent->step_idx = path_next_idx(path, enemyagent->step_idx, enemyagent->path_dir);
-    if(enemyagent->step_idx == -1) {
-      enemyagent->path_dir = -enemyagent->path_dir;
-      enemyagent->step_idx = path_begin_idx(path, enemyagent->path_dir);
-      printf("boing!\n");
-    }
+  // move along the path, bounce at the end
+  float end_dist = vector_dist(&p->pos, &path_end);
+  if(end_dist < 32) {
+    printf("boing!\n");
+    enemyagent->pi.pathdir = -enemyagent->pi.pathdir;
   }
 
   switch(agent->state) {
   case ENEMY_IDLE:
     // if we're not attacking... then follow our path
-    steering_seek(&result, &path_next, &p->pos, &p->vel, &params);
+    enemyagent->pi.pathpos =
+      steering_followpath(&result, tiles, &enemyagent->pi, &p->pos, &p->vel, 32, &params);
+    if(!result.computed) {
+      // no steering force needed to get back to the path, so we'll
+      // just fly along it
+      struct Vector_ desired_vel;
+      int next = pathinstance_next_idx(&enemyagent->pi);
+      if(next == -1) {
+        next = enemyagent->pi.pathpos;
+      }
+
+      vector_path_direction(&desired_vel, tiles, enemyagent->pi.path, next, enemyagent->pi.pathdir);
+      vector_scale(&desired_vel, &desired_vel, enemy_speed);
+      steering_apply_desired_velocity(&result, &desired_vel, &p->vel);
+    }
     break;
 
   case ENEMY_ATTACKING:
@@ -293,17 +308,18 @@ Enemy spawn_enemy() {
   // pick a path
   int pathidx = rand_in_range(&rgen, 0, civpaths->npaths);
   Path path = &civpaths->paths[pathidx];
-  enemy->agent.path = path;
-  enemy->agent.step_idx = 0;
-  enemy->agent.path_dir = 1;
+  enemy->agent.pi.path = path;
+  enemy->agent.pi.pathpos = 0;
+  enemy->agent.pi.pathdir = 1;
+  enemy->agent.pi.max_skip_range = 3;
   enemy->agent.hp = 100;
 
   // start at its beginning
-  vector_tilecenter(&enemy->particle.pos, tiles, path->steps[enemy->agent.step_idx]);
+  vector_tilecenter(&enemy->particle.pos, tiles, path->steps[enemy->agent.pi.pathpos]);
 
   // velocity aligned with the path
   vector_path_direction(&enemy->particle.vel, tiles, path,
-                        enemy->agent.step_idx, enemy->agent.path_dir);
+                        enemy->agent.pi.pathpos, enemy->agent.pi.pathdir);
   vector_scale(&enemy->particle.vel, &enemy->particle.vel, enemy_speed);
 
   // not scaling or spinning, let the steering method figure out the

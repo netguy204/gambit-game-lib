@@ -23,11 +23,15 @@ void particle_applysteering(Particle p, SteeringResult r, SteeringParams params,
   p->angle = vector_angle(&p->vel);
 }
 
+void steering_apply_desired_velocity(SteeringResult r, Vector desired_vel, Vector src_vel) {
+  vector_sub(&r->force, desired_vel, src_vel);
+  r->computed = 1;
+}
+
 void steering_seek(SteeringResult r, Vector tgt, Vector src, Vector src_vel, SteeringParams params) {
   struct Vector_ desired_vel;
   vector_direction_scaled(&desired_vel, tgt, src, params->speed_max);
-  vector_sub(&r->force, &desired_vel, src_vel);
-  r->computed = 1;
+  steering_apply_desired_velocity(r, &desired_vel, src_vel);
 }
 
 void steering_arrival(SteeringResult r, Vector tgt, Vector src, Vector src_vel,
@@ -42,15 +46,13 @@ void steering_arrival(SteeringResult r, Vector tgt, Vector src, Vector src_vel,
 
   struct Vector_ desired_vel;
   vector_scale(&desired_vel, &to_target, speed / mag);
-  vector_sub(&r->force, &desired_vel, src_vel);
-  r->computed = 1;
+  steering_apply_desired_velocity(r, &desired_vel, src_vel);
 }
 
 void steering_flee(SteeringResult r, Vector tgt, Vector src, Vector src_vel, SteeringParams params) {
   struct Vector_ desired_vel;
   vector_direction_scaled(&desired_vel, src, tgt, params->speed_max);
-  vector_sub(&r->force, &desired_vel, src_vel);
-  r->computed = 1;
+  steering_apply_desired_velocity(r, &desired_vel, src_vel);
 }
 
 void steering_predict(Vector prediction, Vector tgt, Vector tgt_vel, Vector src,
@@ -121,37 +123,34 @@ void steering_offsetarrival(SteeringResult r, Vector tgt, Vector src,
   steering_arrival(r, &offset_tgt, src, src_vel, slowing_dist, params);
 }
 
-void steering_followpath(SteeringResult r, TileMap map, Path path, Vector src, Vector src_vel,
-                         float max_offset, SteeringParams params) {
+int steering_followpath(SteeringResult r, TileMap map, PathInstance pi, Vector src, Vector src_vel,
+                        float max_offset, SteeringParams params) {
   float speed = vector_mag(src_vel);
-  if(speed < 0.01f) {
-    // too slow, can't pathfollow
-    r->computed = 0;
-    return;
-  }
-
-  // project our position forward (at least one tile)
-  struct Vector_ src_vel_norm = *src_vel;
-  if(speed < map->tile_width_IP) {
-    vector_scale(&src_vel_norm, src_vel, map->tile_width_IP / speed);
-  }
-
   struct Vector_ projobj;
-  vector_add(&projobj, src, &src_vel_norm);
+
+  if(speed < 0.1f) {
+    // too slow to project to a different future point than we're at
+    // now
+    projobj = *src;
+  } else {
+    struct Vector_ src_vel_norm;
+    vector_scale(&src_vel_norm, src_vel, 1.0f / speed);
+    vector_add(&projobj, src, &src_vel_norm);
+  }
 
   // find the closest point on the path
   struct Vector_ tgt;
   float dist;
-  path_closest_point(&tgt, map, path, &projobj, &dist);
+  int step = path_next_closest_point(&tgt, map, pi, &projobj, &dist);
 
   // close enough?
   if(dist <= max_offset) {
-    r->computed = 0;
-    return;
+    return step;
   }
 
   // steer towards the point
   steering_seek(r, &tgt, src, src_vel, params);
+  return step;
 }
 
 void steering_avoidance(SteeringResult r, SteeringObstacle objs, int nobjs,
