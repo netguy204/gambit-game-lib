@@ -23,6 +23,7 @@ typedef struct ThreadBarrier_ {
   pthread_cond_t cond;
   int nthreads;
   int threads_waiting;
+  int seq_no; // number of times we've waited at this barrier, overflow ok
 } *ThreadBarrier;
 
 ThreadBarrier threadbarrier_make();

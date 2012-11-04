@@ -50,10 +50,13 @@ ThreadBarrier threadbarrier_make(int nthreads) {
   pthread_cond_init(&barrier->cond, NULL);
   barrier->nthreads = nthreads;
   barrier->threads_waiting = 0;
+  barrier->seq_no = 0;
   return barrier;
 }
 
 void threadbarrier_free(ThreadBarrier barrier) {
+  pthread_cond_destroy(&barrier->cond);
+  pthread_mutex_destroy(&barrier->mutex);
   free(barrier);
 }
 
@@ -63,9 +66,11 @@ void threadbarrier_wait(ThreadBarrier barrier) {
 
   if(barrier->threads_waiting == barrier->nthreads) {
     barrier->threads_waiting = 0;
+    barrier->seq_no++;
     pthread_cond_broadcast(&barrier->cond);
   } else {
-    while(barrier->threads_waiting != 0) {
+    int last_seq_no = barrier->seq_no;
+    while(barrier->seq_no == last_seq_no) {
       pthread_cond_wait(&barrier->cond, &barrier->mutex);
     }
   }
