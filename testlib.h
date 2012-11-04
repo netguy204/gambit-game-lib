@@ -100,6 +100,7 @@ Sprite frame_make_sprite();
 typedef struct SpriteList_ {
   struct LLNode_ node;
   Sprite sprite;
+  int count;
 } *SpriteList;
 
 SpriteList frame_spritelist_append(SpriteList list, Sprite sprite);

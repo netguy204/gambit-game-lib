@@ -197,16 +197,17 @@ SpriteList frame_spritelist_append(SpriteList rest, Sprite sprite) {
   SpriteList list = frame_alloc(sizeof(struct SpriteList_));
   list->node.next = (LLNode)rest;
   list->sprite = sprite;
+
+  if(rest) {
+    list->count = rest->count + 1;
+  } else {
+    list->count = 1;
+  }
+
   return list;
 }
 
-void spritelist_render_to_screen(SpriteList list) {
-  for(SpriteList element = list; element != NULL;
-      element = (SpriteList)element->node.next) {
-    Sprite sprite = element->sprite;
-    sprite_render_to_screen(sprite);
-  }
-}
+extern void spritelist_render_to_screen(SpriteList list);
 
 void spritelist_enqueue_for_screen(SpriteList list) {
   renderer_enqueue(spritelist_render_to_screen, list);

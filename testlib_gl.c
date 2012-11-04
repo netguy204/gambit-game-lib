@@ -1,3 +1,6 @@
+#include "memory.h"
+
+StackAllocator gldata_allocator;
 
 static const GLfloat quadCoords[4 * 3] = {
   0.0f, 0.0f, 0.0f,
@@ -44,6 +47,8 @@ void gl_check_(const char * msg) {
 #endif
 
 void renderer_gl_init() {
+  gldata_allocator = stack_allocator_make(1024 * 1024, "gldata_allocator");
+
   glEnable(GL_TEXTURE_2D);
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -58,8 +63,6 @@ void renderer_gl_init() {
 
   // set up for drawing just quads
   glEnableClientState(GL_VERTEX_ARRAY);
-  glVertexPointer(3, GL_FLOAT, 0, quadCoords);
-
   glEnableClientState(GL_TEXTURE_COORD_ARRAY);
   gl_check_("setup");
 }
@@ -69,6 +72,7 @@ void renderer_gl_shutdown() {
 }
 
 void renderer_begin_frame(void* empty) {
+  stack_allocator_freeall(gldata_allocator);
   glClear(GL_COLOR_BUFFER_BIT);
 }
 
@@ -86,8 +90,8 @@ void renderer_finish_image_load(ImageResource resource) {
 
   gl_check(glGenTextures(1, &texture));
   gl_check(glBindTexture(GL_TEXTURE_2D, texture));
-  gl_check(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
-  gl_check(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
+  gl_check(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST));
+  gl_check(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST));
   gl_check(glTexImage2D(GL_TEXTURE_2D, 0, texture_format,
                         resource->w, resource->h, 0,
                         texture_format, GL_UNSIGNED_BYTE, resource->data));
@@ -111,7 +115,7 @@ void sprite_render_to_screen(Sprite sprite) {
   }
 
   glPushMatrix();
-  
+
   const GLfloat texCoords[4 * 2] = {
     sprite->u0, sprite->v0,
     sprite->u1, sprite->v0,
@@ -119,6 +123,7 @@ void sprite_render_to_screen(Sprite sprite) {
     sprite->u0, sprite->v1,
   };
   glTexCoordPointer(2, GL_FLOAT, 0, texCoords);
+  glVertexPointer(3, GL_FLOAT, 0, quadCoords);
 
   glTranslatef(sprite->displayX, sprite->displayY, 0.0f);
   glRotatef(sprite->angle, 0.0f, 0.0f, 1.0f);
@@ -128,4 +133,77 @@ void sprite_render_to_screen(Sprite sprite) {
   glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 
   glPopMatrix();
+}
+
+void spritelist_render_to_screen(SpriteList list) {
+  if(!list) return;
+
+  if(list->sprite->resource->texture != last_texture) {
+    glBindTexture(GL_TEXTURE_2D, list->sprite->resource->texture);
+    last_texture = list->sprite->resource->texture;
+  }
+
+  int nquads = list->count;
+  int ntris = nquads * 2;
+  int nverts = 3 * ntris;
+
+  float* verts = stack_allocator_alloc(gldata_allocator, sizeof(float) * nverts * 3);
+  float* texs = stack_allocator_alloc(gldata_allocator, sizeof(float) * nverts * 2);
+
+  int vert_idx = 0;
+  int tex_idx = 0;
+
+  for(SpriteList element = list; element != NULL;
+      element = (SpriteList)element->node.next) {
+    Sprite sprite = element->sprite;
+
+#define VPROCESS_X(qx) (((qx - sprite->originX) * sprite->w) + sprite->displayX)
+#define VPROCESS_Y(qy) (((qy - sprite->originY) * sprite->h) + sprite->displayY)
+
+    // bottom-left
+    verts[vert_idx++] = VPROCESS_X(0.0f);
+    verts[vert_idx++] = VPROCESS_Y(0.0f);
+    verts[vert_idx++] = 0.0f;
+    texs[tex_idx++] = sprite->u0;
+    texs[tex_idx++] = sprite->v0;
+
+    // bottom-right
+    verts[vert_idx++] = VPROCESS_X(1.0f);
+    verts[vert_idx++] = VPROCESS_Y(0.0f);
+    verts[vert_idx++] = 0.0f;
+    texs[tex_idx++] = sprite->u1;
+    texs[tex_idx++] = sprite->v0;
+
+    // top-right
+    verts[vert_idx++] = VPROCESS_X(1.0f);
+    verts[vert_idx++] = VPROCESS_Y(1.0f);
+    verts[vert_idx++] = 0.0f;
+    texs[tex_idx++] = sprite->u1;
+    texs[tex_idx++] = sprite->v1;
+
+    // top-right
+    verts[vert_idx++] = VPROCESS_X(1.0f);
+    verts[vert_idx++] = VPROCESS_Y(1.0f);
+    verts[vert_idx++] = 0.0f;
+    texs[tex_idx++] = sprite->u1;
+    texs[tex_idx++] = sprite->v1;
+
+    // top-left
+    verts[vert_idx++] = VPROCESS_X(0.0f);
+    verts[vert_idx++] = VPROCESS_Y(1.0f);
+    verts[vert_idx++] = 0.0f;
+    texs[tex_idx++] = sprite->u0;
+    texs[tex_idx++] = sprite->v1;
+
+    // bottom-left
+    verts[vert_idx++] = VPROCESS_X(0.0f);
+    verts[vert_idx++] = VPROCESS_Y(0.0f);
+    verts[vert_idx++] = 0.0f;
+    texs[tex_idx++] = sprite->u0;
+    texs[tex_idx++] = sprite->v0;
+  }
+
+  glTexCoordPointer(2, GL_FLOAT, 0, texs);
+  glVertexPointer(3, GL_FLOAT, 0, verts);
+  glDrawArrays(GL_TRIANGLES, 0, nverts);
 }
