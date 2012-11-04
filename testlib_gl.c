@@ -153,7 +153,8 @@ void spritelist_render_to_screen(SpriteList list) {
   int vert_idx = 0;
   int tex_idx = 0;
 
-  for(SpriteList element = list; element != NULL;
+  SpriteList element;
+  for(element = list; element != NULL;
       element = (SpriteList)element->node.next) {
     Sprite sprite = element->sprite;
 
