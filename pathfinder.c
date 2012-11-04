@@ -126,7 +126,7 @@ int path_next_closest_point(Vector point, TileMap map, PathInstance pi, Vector p
     vector_sub(&tangent, &path_center1, &path_center0);
     vector_sub(&p0_to_pos, pos, &path_center0);
     vector_norm(&tangent, &tangent);
-    pt0pt1_dist = sqrtf(vector_dist2(&path_center0, &path_center1));
+    pt0pt1_dist = vector_dist(&path_center0, &path_center1);
 
     // project the query point onto the path
     pathdot = vector_project2(&projection, &p0_to_pos, &tangent);
@@ -156,6 +156,8 @@ int path_next_closest_point(Vector point, TileMap map, PathInstance pi, Vector p
   }
 
   assert(dist);
+  assert(origin_idx != -1);
+
   *dist = sqrtf(closest_dist2);
 
   return origin_idx;
@@ -194,6 +196,51 @@ PathElement pathfinder_make_element(StackAllocator allocator, TileMap map,
   }
   result->score = result->distance + pathfinder_heuristic(map, p, target);
   return result;
+}
+
+
+void pathfinder_simplifypath(TileMap map, int* steps, int *nsteps) {
+  int read_idx;
+  int write_idx = 0;
+
+  struct TilePosition_ last_tp;
+
+  for(read_idx = 0; read_idx < *nsteps; ++read_idx) {
+    int step = steps[read_idx];
+
+    // always include the first
+    if(read_idx == 0) {
+      tileposition_tilemap(&last_tp, map, step);
+      ++write_idx;
+      continue;
+    }
+
+    struct TilePosition_ current_tp;
+    tileposition_tilemap(&current_tp, map, step);
+
+    int dx = current_tp.x - last_tp.x;
+    int dy = current_tp.y - last_tp.y;
+
+    // moving in an axis aligned line?
+    if((dx == 0) ^ (dy == 0)) {
+      continue;
+    }
+
+    // if we're here then we've turned. we want a waypoint before the
+    // turn and a waypoint after the turn... and this is a smoothing
+    // opportunity.
+    steps[write_idx++] = steps[read_idx - 2];
+    steps[write_idx++] = steps[read_idx];
+    //steps[write_idx++] = steps[read_idx - 1];
+    last_tp = current_tp;
+  }
+
+  // always include the endpoint
+  if(steps[write_idx - 1] != steps[*nsteps - 1]) {
+    steps[write_idx++] = steps[*nsteps - 1];
+  }
+
+  *nsteps = write_idx;
 }
 
 int* pathfinder_findpath(TileMap map, int p1, int p2, int* count) {
@@ -269,8 +316,6 @@ PairwisePaths pathfinder_findpairwise(TileMap map, TilePosition positions, int n
       PathElement element = pathfinder_findpath2(map, idx1, idx2, visited, key, candidates, allocator);
 
       int length = element->distance + 1;
-      result->lengths[idx] = length;
-
       int* path = malloc(sizeof(int) * length);
 
       int kk = 0;
@@ -279,6 +324,10 @@ PairwisePaths pathfinder_findpairwise(TileMap map, TilePosition positions, int n
         element = element->predecessor;
       }
 
+      int original_length = length;
+      pathfinder_simplifypath(map, path, &length);
+
+      result->lengths[idx] = original_length; // used for pathcost
       result->paths[idx].start = *p2;
       result->paths[idx].end = *p1;
       result->paths[idx].steps = path;

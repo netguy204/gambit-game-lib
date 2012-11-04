@@ -250,12 +250,7 @@ void enemyagent_update(Agent agent, float dt) {
       // no steering force needed to get back to the path, so we'll
       // just fly along it
       struct Vector_ desired_vel;
-      int next = pathinstance_next_idx(&enemyagent->pi);
-      if(next == -1) {
-        next = enemyagent->pi.pathpos;
-      }
-
-      vector_path_direction(&desired_vel, tiles, enemyagent->pi.path, next, enemyagent->pi.pathdir);
+      vector_pathinstance_direction(&desired_vel, tiles, &enemyagent->pi);
       vector_scale(&desired_vel, &desired_vel, enemy_speed);
       steering_apply_desired_velocity(&result, &desired_vel, &p->vel);
     }

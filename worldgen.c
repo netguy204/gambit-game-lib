@@ -289,7 +289,8 @@ TileMap tilemap_testmake(SpriteAtlas atlas) {
     }
     printf("%5d   ", civpaths->lengths[ii]);
 
-    /* show the paths
+    /* show the paths */
+    /*
     int kk;
     Path path = &civpaths->paths[ii];
     for(kk = 0; kk < path->nsteps; ++kk) {
