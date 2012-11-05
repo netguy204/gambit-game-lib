@@ -110,33 +110,6 @@ void renderer_finish_image_free(void* texturep) {
 
 GLuint last_texture = -1;
 
-void sprite_render_to_screen(Sprite sprite) {
-  if(sprite->resource->texture != last_texture) {
-    glBindTexture(GL_TEXTURE_2D, sprite->resource->texture);
-    last_texture = sprite->resource->texture;
-  }
-
-  glPushMatrix();
-
-  const GLfloat texCoords[4 * 2] = {
-    sprite->u0, sprite->v0,
-    sprite->u1, sprite->v0,
-    sprite->u1, sprite->v1,
-    sprite->u0, sprite->v1,
-  };
-  glTexCoordPointer(2, GL_FLOAT, 0, texCoords);
-  glVertexPointer(3, GL_FLOAT, 0, quadCoords);
-
-  glTranslatef(sprite->displayX, sprite->displayY, 0.0f);
-  glRotatef(sprite->angle, 0.0f, 0.0f, 1.0f);
-  glScalef(sprite->w, sprite->h, 1.0f);
-  glTranslatef(-sprite->originX, -sprite->originY, 0.0f);
-
-  glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-
-  glPopMatrix();
-}
-
 void spritelist_render_to_screen(SpriteList list) {
   if(!list) return;
 

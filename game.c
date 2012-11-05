@@ -577,6 +577,8 @@ void collision_dispatcher_update(Agent agent, float dt) {
 }
 
 void sprite_submit(Sprite sprite) {
+  if(!sprite) return;
+
   SpriteList sl = frame_spritelist_append(NULL, sprite);
   spritelist_enqueue_for_screen(sl);
 }

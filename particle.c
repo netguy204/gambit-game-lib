@@ -19,10 +19,19 @@ Sprite particle_sprite(Particle particle) {
   Sprite sprite = frame_make_sprite();
   sprite_fillfromentry(sprite, particle->image);
 
-  sprite->w = particle_width(particle);
-  sprite->h = particle_height(particle);
-  sprite->displayX = particle->pos.x - screen_x_br;
-  sprite->displayY = particle->pos.y - screen_y_br;
+  float x = particle->pos.x - screen_x_br;
+  float y = particle->pos.y - screen_y_br;
+  float w = particle_width(particle);
+  float h = particle_height(particle);
+  if(x + w < 0 || x - w > screen_width ||
+     y + h < 0 || y - h > screen_height) {
+    return NULL;
+  }
+
+  sprite->w = w;
+  sprite->h = h;
+  sprite->displayX = x;
+  sprite->displayY = y;
   sprite->originX = 0.5;
   sprite->originY = 0.5;
   sprite->angle = particle->angle;
@@ -39,7 +48,10 @@ SpriteList particles_spritelist(DLL list) {
   SpriteList result = NULL;
   Particle p = (Particle)list->head;
   while(p) {
-    result = frame_spritelist_append(result, particle_sprite(p));
+    Sprite sprite = particle_sprite(p);
+    if(sprite) {
+      result = frame_spritelist_append(result, sprite);
+    }
     p = (Particle)p->node.next;
   }
   return result;
