@@ -1,5 +1,7 @@
 #include "memory.h"
 
+#include <math.h>
+
 StackAllocator gldata_allocator;
 
 static const GLfloat quadCoords[4 * 3] = {
@@ -158,47 +160,58 @@ void spritelist_render_to_screen(SpriteList list) {
       element = (SpriteList)element->node.next) {
     Sprite sprite = element->sprite;
 
-#define VPROCESS_X(qx) (((qx - sprite->originX) * sprite->w) + sprite->displayX)
-#define VPROCESS_Y(qy) (((qy - sprite->originY) * sprite->h) + sprite->displayY)
+    float sa = 0.0f;
+    float ca = 1.0f;
+    if(sprite->angle != 0.0f) {
+      sa = sinf(sprite->angle);
+      ca = cosf(sprite->angle);
+    }
+
+#define VROT_X(qx, qy) (ca * (qx) - sa * (qy))
+#define VROT_Y(qx, qy) (sa * (qx) + ca * (qy))
+#define SCALE_X(qx) ((qx - sprite->originX) * sprite->w)
+#define SCALE_Y(qy) ((qy - sprite->originY) * sprite->h)
+#define VPROCESS_X(qx, qy) (VROT_X(SCALE_X(qx), SCALE_Y(qy)) + sprite->displayX)
+#define VPROCESS_Y(qx, qy) (VROT_Y(SCALE_X(qx), SCALE_Y(qy)) + sprite->displayY)
 
     // bottom-left
-    verts[vert_idx++] = VPROCESS_X(0.0f);
-    verts[vert_idx++] = VPROCESS_Y(0.0f);
+    verts[vert_idx++] = VPROCESS_X(0.0f, 0.0f);
+    verts[vert_idx++] = VPROCESS_Y(0.0f, 0.0f);
     verts[vert_idx++] = 0.0f;
     texs[tex_idx++] = sprite->u0;
     texs[tex_idx++] = sprite->v0;
 
     // bottom-right
-    verts[vert_idx++] = VPROCESS_X(1.0f);
-    verts[vert_idx++] = VPROCESS_Y(0.0f);
+    verts[vert_idx++] = VPROCESS_X(1.0f, 0.0f);
+    verts[vert_idx++] = VPROCESS_Y(1.0f, 0.0f);
     verts[vert_idx++] = 0.0f;
     texs[tex_idx++] = sprite->u1;
     texs[tex_idx++] = sprite->v0;
 
     // top-right
-    verts[vert_idx++] = VPROCESS_X(1.0f);
-    verts[vert_idx++] = VPROCESS_Y(1.0f);
+    verts[vert_idx++] = VPROCESS_X(1.0f, 1.0f);
+    verts[vert_idx++] = VPROCESS_Y(1.0f, 1.0f);
     verts[vert_idx++] = 0.0f;
     texs[tex_idx++] = sprite->u1;
     texs[tex_idx++] = sprite->v1;
 
     // top-right
-    verts[vert_idx++] = VPROCESS_X(1.0f);
-    verts[vert_idx++] = VPROCESS_Y(1.0f);
+    verts[vert_idx++] = VPROCESS_X(1.0f, 1.0f);
+    verts[vert_idx++] = VPROCESS_Y(1.0f, 1.0f);
     verts[vert_idx++] = 0.0f;
     texs[tex_idx++] = sprite->u1;
     texs[tex_idx++] = sprite->v1;
 
     // top-left
-    verts[vert_idx++] = VPROCESS_X(0.0f);
-    verts[vert_idx++] = VPROCESS_Y(1.0f);
+    verts[vert_idx++] = VPROCESS_X(0.0f, 1.0f);
+    verts[vert_idx++] = VPROCESS_Y(0.0f, 1.0f);
     verts[vert_idx++] = 0.0f;
     texs[tex_idx++] = sprite->u0;
     texs[tex_idx++] = sprite->v1;
 
     // bottom-left
-    verts[vert_idx++] = VPROCESS_X(0.0f);
-    verts[vert_idx++] = VPROCESS_Y(0.0f);
+    verts[vert_idx++] = VPROCESS_X(0.0f, 0.0f);
+    verts[vert_idx++] = VPROCESS_Y(0.0f, 0.0f);
     verts[vert_idx++] = 0.0f;
     texs[tex_idx++] = sprite->u0;
     texs[tex_idx++] = sprite->v0;

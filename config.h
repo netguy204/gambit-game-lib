@@ -56,5 +56,6 @@
 
 #define NEXT_ALIGNED_SIZE(x) ((x + 8 - 1) & ~(8 - 1))
 
+#define IN_RADIANS(d) (d * M_PI / 180.0f)
 
 #endif

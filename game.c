@@ -306,7 +306,7 @@ Enemy spawn_enemy() {
   enemy->agent.pi.path = path;
   enemy->agent.pi.pathpos = 0;
   enemy->agent.pi.pathdir = 1;
-  enemy->agent.pi.max_skip_range = 3;
+  enemy->agent.pi.max_skip_range = 2;
   enemy->agent.hp = 100;
 
   // start at its beginning
@@ -319,7 +319,7 @@ Enemy spawn_enemy() {
 
   // not scaling or spinning, let the steering method figure out the
   // right orientation
-  enemy->particle.angle = 180.0;
+  enemy->particle.angle = M_PI;
   enemy->particle.dsdt = 0.0f;
   enemy->particle.dadt = 0.0f;
 
@@ -336,8 +336,8 @@ Particle bullet_make(Vector pos, Vector vel, SpriteAtlasEntry image) {
   bullet->vel = *vel;
   bullet->scale = 0.25f;
   bullet->dsdt = 0.5;
-  bullet->angle = rand_in_range(&rgen, 0, 360);
-  bullet->dadt = 500;
+  bullet->angle = IN_RADIANS(rand_in_range(&rgen, 0, 360));
+  bullet->dadt = IN_RADIANS(500);
   return bullet;
 }
 
@@ -346,9 +346,9 @@ PrettyParticle spawn_smoke(Vector pos, Vector vel) {
   smoke->particle.image = image_smoke;
   smoke->particle.pos = *pos;
   smoke->particle.vel = *vel;
-  smoke->particle.angle = rand_in_range(&rgen, 0, 360);
+  smoke->particle.angle = IN_RADIANS(rand_in_range(&rgen, 0, 360));
   smoke->particle.dsdt = 0.5f * rand_in_range(&rgen, 1, 4);
-  smoke->particle.dadt = rand_in_range(&rgen, -20, 20);
+  smoke->particle.dadt = IN_RADIANS(rand_in_range(&rgen, -20, 20));
   smoke->end_time =
     clock_time(main_clock) +
     clock_seconds_to_cycles(rand_in_range(&rgen, 500, 3500) / 1000.0f);

@@ -32,7 +32,7 @@ void vector_norm(Vector dst, Vector src) {
 
 float vector_angle(Vector v) {
   float angle = atan2(v->y, v->x);
-  return angle * 180.0f / M_PI;
+  return angle;
 }
 
 int vector_direction_scaled(Vector dst, Vector a, Vector b, float s) {
