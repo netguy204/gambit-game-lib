@@ -48,6 +48,10 @@ void tileposition_tilemap(TilePosition pos, TileMap map, int index);
 int tilemap_index_vector(TileMap map, Vector vector);
 void vector_tilecenter(Vector v, TileMap map, int idx);
 
+typedef int(*LineCallback)(TileMap map, TilePosition pos, void* udata);
+int tilemap_trace_line(TileMap map, TilePosition start, TilePosition end,
+                       LineCallback callback, void* udata);
+
 typedef struct CharImage_ {
   int w, h;
   int8_t* data;

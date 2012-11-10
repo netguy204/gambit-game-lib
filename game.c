@@ -202,7 +202,7 @@ void enemyagent_update(Agent agent, float dt) {
   if(agent->state == ENEMY_DYING) return;
 
   Particle p = enemyagent_particle(enemyagent);
-  struct SteeringParams_ params = { 50.0, enemy_speed, p->angle, 0.1 };
+  struct SteeringParams_ params = { 50.0, enemy_speed, p->angle, 0.08 };
   SteeringResult result = &enemyagent->last_result;
 
   // then, only make adjustments once every few ticks

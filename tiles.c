@@ -55,6 +55,46 @@ int tilemap_validindex(TileMap map, TilePosition pos) {
     && pos->y >= 0 && pos->y < map->height_IT;
 }
 
+
+int tilemap_trace_line(TileMap map, TilePosition start, TilePosition end,
+                        LineCallback callback, void* udata) {
+  /* Bresenham's algorithm */
+  struct TilePosition_ pos = *start;
+  int dx = abs(start->x - end->x);
+  int dy = abs(start->y - end->y);
+
+  int sx, sy;
+  if(start->x < end->x) {
+    sx = 1;
+  } else {
+    sx = -1;
+  }
+
+  if(start->y < end->y) {
+    sy = 1;
+  } else {
+    sy = -1;
+  }
+
+  int err = dx - dy;
+  while(1) {
+    int result = callback(map, &pos, udata);
+    if(result) return result;
+
+    if (pos.x == end->x && pos.y == end->y) return 0;
+    int e2 = 2 * err;
+    if (e2 > -dy) {
+      err = err - dy;
+      pos.x = pos.x + sx;
+    }
+    if (e2 < dx) {
+      err = err + dx;
+      pos.y =  pos.y + sy;
+    }
+  }
+}
+
+
 int clamp(int val, int min, int max) {
   if(val < min) return min;
   if(val > max) return max;

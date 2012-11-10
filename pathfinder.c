@@ -198,6 +198,12 @@ PathElement pathfinder_make_element(StackAllocator allocator, TileMap map,
   return result;
 }
 
+int pathfinder_visibility_callback(TileMap map, TilePosition pos, void* udata) {
+  int index = tilemap_index(map, pos);
+  int spec = map->tiles[index];
+  if(map->tile_specs[spec].bitmask & TILESPEC_COLLIDABLE) return 1;
+  return 0;
+}
 
 void pathfinder_simplifypath(TileMap map, int* steps, int *nsteps) {
   int read_idx;
@@ -218,20 +224,17 @@ void pathfinder_simplifypath(TileMap map, int* steps, int *nsteps) {
     struct TilePosition_ current_tp;
     tileposition_tilemap(&current_tp, map, step);
 
-    int dx = current_tp.x - last_tp.x;
-    int dy = current_tp.y - last_tp.y;
+    int result = tilemap_trace_line(map, &last_tp, &current_tp,
+                                    pathfinder_visibility_callback, NULL);
 
-    // moving in an axis aligned line?
-    if((dx == 0) ^ (dy == 0)) {
+    // didn't encounter obstruction
+    if(!result) {
       continue;
     }
 
-    // if we're here then we've turned. we want a waypoint before the
-    // turn and a waypoint after the turn... and this is a smoothing
-    // opportunity.
-    steps[write_idx++] = steps[read_idx - 2];
-    steps[write_idx++] = steps[read_idx];
-    //steps[write_idx++] = steps[read_idx - 1];
+    // we hit our first obstruction, back off one and search from
+    // there
+    steps[write_idx++] = steps[read_idx - 1];
     last_tp = current_tp;
   }
 
