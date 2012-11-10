@@ -201,18 +201,22 @@ void enemyagent_update(Agent agent, float dt) {
 
   if(agent->state == ENEMY_DYING) return;
 
-  // then, only make adjustments once every few ticks
-  /*
-  if(clock_time(main_clock) < agent->next_timer) return;
-  agent->next_timer = clock_time(main_clock) +
-    clock_seconds_to_cycles(0.1);
-  */
-
   Particle p = enemyagent_particle(enemyagent);
+  struct SteeringParams_ params = { 50.0, enemy_speed, p->angle, 0.1 };
+  SteeringResult result = &enemyagent->last_result;
 
-  // nudge ourselves away from our neighbors
-  struct SteeringResult_ result = { {0, 0}, 0 };
-  struct SteeringParams_ params = { 500.0, enemy_speed, p->angle };
+  // then, only make adjustments once every few ticks
+  if(clock_time(main_clock) < agent->next_timer) {
+    if(result->computed) {
+      particle_applysteering(p, result, &params, dt);
+    }
+    return;
+  }
+  agent->next_timer = clock_time(main_clock) +
+    clock_seconds_to_cycles(params.application_time);
+
+  // zero the result
+  memset(result, 0, sizeof(struct SteeringResult_));
 
   // idle mode agents avoid the player
   if(agent->state == ENEMY_IDLE) {
@@ -221,12 +225,12 @@ void enemyagent_update(Agent agent, float dt) {
     pobjs.center = player->pos;
     pobjs.radius = particle_width(player) * 0.5;
 
-    steering_avoidance(&result, &pobjs, 1, &p->pos, &p->vel,
+    steering_avoidance(result, &pobjs, 1, &p->pos, &p->vel,
                        particle_width(p) * 0.4, 200, &params);
 
-    if(result.computed) {
-      steeringresult_complete(&result, &params);
-      particle_applysteering(p, &result, &params, dt);
+    if(result->computed) {
+      steeringresult_complete(result, &params);
+      particle_applysteering(p, result, &params, dt);
       return;
     }
   }
@@ -245,19 +249,19 @@ void enemyagent_update(Agent agent, float dt) {
   case ENEMY_IDLE:
     // if we're not attacking... then follow our path
     enemyagent->pi.pathpos =
-      steering_followpath(&result, tiles, &enemyagent->pi, &p->pos, &p->vel, 32, &params);
-    if(!result.computed) {
+      steering_followpath(result, tiles, &enemyagent->pi, &p->pos, &p->vel, 32, &params);
+    if(!result->computed) {
       // no steering force needed to get back to the path, so we'll
       // just fly along it
       struct Vector_ desired_vel;
       vector_pathinstance_direction(&desired_vel, tiles, &enemyagent->pi);
       vector_scale(&desired_vel, &desired_vel, enemy_speed);
-      steering_apply_desired_velocity(&result, &desired_vel, &p->vel);
+      steering_apply_desired_velocity(result, &desired_vel, &p->vel);
     }
     break;
 
   case ENEMY_ATTACKING:
-    steering_offsetarrival(&result, &player->pos, &p->pos, &p->vel,
+    steering_offsetarrival(result, &player->pos, &p->pos, &p->vel,
                            2.0f * particle_width(player), 3.0f * particle_width(player),
                            &params);
     /*
@@ -270,16 +274,16 @@ void enemyagent_update(Agent agent, float dt) {
     break;
 
   case ENEMY_FLEEING:
-    steering_flee(&result, &player->pos, &p->pos, &p->vel, &params);
+    steering_flee(result, &player->pos, &p->pos, &p->vel, &params);
     break;
 
   default:
     printf("enemyagent_update unknown state: %d\n", agent->state);
   }
 
-  if(result.computed) {
-    steeringresult_complete(&result, &params);
-    particle_applysteering(p, &result, &params, dt);
+  if(result->computed) {
+    steeringresult_complete(result, &params);
+    particle_applysteering(p, result, &params, dt);
   }
 
   /*
@@ -306,7 +310,7 @@ Enemy spawn_enemy() {
   enemy->agent.pi.path = path;
   enemy->agent.pi.pathpos = 0;
   enemy->agent.pi.pathdir = 1;
-  enemy->agent.pi.max_skip_range = 2;
+  enemy->agent.pi.max_skip_range = 3;
   enemy->agent.hp = 100;
 
   // start at its beginning

@@ -6,6 +6,7 @@
 #include "agent.h"
 #include "spriteatlas.h"
 #include "pathfinder.h"
+#include "steering.h"
 
 struct InputState_;
 
@@ -17,6 +18,7 @@ void game_shutdown();
 typedef struct EnemyAgent_ {
   struct Agent_ agent;
   struct PathInstance_ pi;
+  struct SteeringResult_ last_result;
   int hp;
 } *EnemyAgent;
 

@@ -14,6 +14,7 @@ typedef struct SteeringParams_ {
   float force_max;
   float speed_max;
   float old_angle;
+  float application_time;
 } *SteeringParams;
 
 typedef struct SteeringObstacle_ {

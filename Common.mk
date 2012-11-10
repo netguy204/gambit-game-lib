@@ -14,6 +14,7 @@ C_OBJS=$(patsubst %.c,%.o,$(C_SRC))
 
 EXE_OBJS=$(C_OBJS) gambitmain.o
 
+#testlib.o: testlib_gl.c
 all: $(BIN) resources
 
 $(BIN): $(EXE_OBJS)

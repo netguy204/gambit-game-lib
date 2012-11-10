@@ -10,7 +10,7 @@ void steeringresult_complete(SteeringResult result, SteeringParams params) {
 
 void particle_applysteering(Particle p, SteeringResult r, SteeringParams params, float dt) {
   struct Vector_ dvdt;
-  vector_scale(&dvdt, &r->force, dt);
+  vector_scale(&dvdt, &r->force, dt / params->application_time);
   vector_add(&p->vel, &p->vel, &dvdt);
   vector_clamp(&p->vel, &p->vel, params->speed_max);
 
