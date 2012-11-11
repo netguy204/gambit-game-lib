@@ -1,24 +1,12 @@
 #include "memory.h"
+#include "utils.h"
 #include "config.h"
 
-#include <stdarg.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <memory.h>
 #include <assert.h>
 
-void* fail_exit(const char * message, ...) {
-  fprintf(stderr, "FAIL_EXIT: ");
-
-  va_list args;
-  va_start(args, message);
-  vfprintf(stderr, message, args);
-  va_end(args);
-
-  fprintf(stderr, "\n");
-  fflush(stderr);
-  exit(1);
-  return NULL;
-}
 
 /**
  * FixedAllocator's are used to quickly allocate and free objects of

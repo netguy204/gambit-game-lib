@@ -1,5 +1,6 @@
 #include "listlib.h"
 #include "memory.h"
+#include "utils.h"
 #include "config.h"
 
 #include <assert.h>

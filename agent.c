@@ -1,5 +1,6 @@
 #include "agent.h"
 #include "memory.h"
+#include "utils.h"
 #include "config.h"
 #include "game.h"
 #include "particle.h"

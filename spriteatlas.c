@@ -1,6 +1,6 @@
 #include "spriteatlas.h"
 #include "testlib.h"
-#include "memory.h"
+#include "utils.h"
 
 #include <stdio.h>
 #include <string.h>

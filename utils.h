@@ -3,6 +3,8 @@
 
 #include <sys/time.h>
 
+void* fail_exit(const char * message, ...);
+
 typedef struct Timer_ {
   struct timeval val;
 } *Timer;
@@ -21,5 +23,8 @@ long timer_elapsed_msecs(Timer timer);
     long msecs = timer_elapsed_msecs(timer);    \
     printf("%ld\n", msecs);                     \
   } while(0)
+
+long filename_size(char* filename);
+char* filename_slurp(char* filename);
 
 #endif
