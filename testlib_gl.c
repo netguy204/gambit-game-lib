@@ -132,11 +132,6 @@ void renderer_gl_init() {
 
   glClearColor(0.8f, 0.8f, 0.8f, 1.0f);
   glViewport(0, 0, screen_width, screen_height);
-  glMatrixMode(GL_PROJECTION);
-  glLoadIdentity();
-  glOrthof(0.0f, screen_width, 0.0f, screen_height, -1.0f, 1.0f);
-  glMatrixMode(GL_MODELVIEW);
-  glLoadIdentity();
 
   matrix_orthographic_proj(&orthographic_projection, 0.0f, screen_width, 0.0f, screen_height,
                            -1.0f, 1.0f);
