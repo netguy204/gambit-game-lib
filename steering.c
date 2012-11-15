@@ -125,18 +125,10 @@ void steering_offsetarrival(SteeringResult r, Vector tgt, Vector src,
 
 int steering_followpath(SteeringResult r, TileMap map, PathInstance pi, Vector src, Vector src_vel,
                         float max_offset, SteeringParams params) {
-  float speed = vector_mag(src_vel);
   struct Vector_ projobj;
-
-  if(speed < 0.1f) {
-    // too slow to project to a different future point than we're at
-    // now
-    projobj = *src;
-  } else {
-    struct Vector_ src_vel_norm;
-    vector_scale(&src_vel_norm, src_vel, 1.0f / speed);
-    vector_add(&projobj, src, &src_vel_norm);
-  }
+  struct Vector_ src_vel_offset;
+  vector_scale(&src_vel_offset, src_vel, params->application_time);
+  vector_add(&projobj, src, &src_vel_offset);
 
   // find the closest point on the path
   struct Vector_ tgt;
@@ -156,13 +148,15 @@ int steering_followpath(SteeringResult r, TileMap map, PathInstance pi, Vector s
 void steering_avoidance(SteeringResult r, SteeringObstacle objs, int nobjs,
                         Vector src, Vector src_vel, float src_radius, float src_range,
                         SteeringParams params) {
-  if(vector_mag(src_vel) < 0.01) {
+
+  float speed = vector_mag(src_vel);
+  if(speed < 0.01) {
     r->computed = 0;
     return; // don't do anything
   }
 
   struct Vector_ src_vel_norm;
-  vector_norm(&src_vel_norm, src_vel);
+  vector_scale(&src_vel_norm, src_vel, 1.0f / speed);
 
   int ii;
   SteeringObstacle closest = NULL;
@@ -175,10 +169,10 @@ void steering_avoidance(SteeringResult r, SteeringObstacle objs, int nobjs,
 
     // project along our direction of travel. bail if behind us
     struct Vector_ objproj;
-    if(vector_project2(&objproj, &objpos, &src_vel_norm) < 0) continue;
+    float projdist = vector_project2(&objproj, &objpos, &src_vel_norm);
+    if(projdist < 0) continue;
 
     // is that in range?
-    float projdist = vector_mag(&objproj);
     if(projdist > src_range) continue;
 
     // does the cylinder intersect it?
@@ -208,9 +202,8 @@ void steering_avoidance(SteeringResult r, SteeringObstacle objs, int nobjs,
     // obstacle is dead-ahead, just turn
     closest->perp_offset.x = src_vel->y;
     closest->perp_offset.y = -src_vel->x;
-    pmag = vector_mag(&closest->perp_offset);
+    pmag = speed;
   }
   vector_scale(&goal_vel, &closest->perp_offset, params->speed_max / pmag);
-  vector_sub(&r->force, &goal_vel, src_vel);
-  r->computed = 1;
+  steering_apply_desired_velocity(r, &goal_vel, src_vel);
 }
