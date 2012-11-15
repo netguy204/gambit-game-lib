@@ -46,7 +46,7 @@ void gl_check_(const char * msg) {
 
 int renderer_load_shader(const char* src, int kind) {
   int shader = glCreateShader(kind);
-  gl_check("glCreateShader");
+  gl_check_("glCreateShader");
 
   glShaderSource(shader, 1, &src, NULL);
   gl_check_("glShaderSource");

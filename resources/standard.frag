@@ -1,4 +1,6 @@
+#ifdef GLES2
 precision mediump float;
+#endif
 
 uniform sampler2D textureUnit0;
 varying vec2 tex0;

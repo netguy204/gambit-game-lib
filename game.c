@@ -241,7 +241,6 @@ void enemyagent_update(Agent agent, float dt) {
   // move along the path, bounce at the end
   float end_dist = vector_dist(&p->pos, &path_end);
   if(end_dist < 32) {
-    printf("boing!\n");
     enemyagent->pi.pathdir = -enemyagent->pi.pathdir;
   }
 
@@ -729,6 +728,7 @@ void game_step(long delta, InputState state) {
   // draw the player
   sprite_submit(particle_sprite((Particle)player));
 
+  /*
   if(step_number % 100 == 0) {
     printf("player: %f, %f ", player->pos.x, player->pos.y);
     printf("particle_allocator: %ld (%ld) ; stack_allocator: (%ld of %ld)\n",
@@ -737,6 +737,7 @@ void game_step(long delta, InputState state) {
            frame_allocator->max_alloced,
            (char*)frame_allocator->stack_max - (char*)frame_allocator->stack_bottom);
   }
+  */
 }
 
 void game_shutdown() {
