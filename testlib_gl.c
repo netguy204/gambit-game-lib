@@ -28,12 +28,6 @@ void gl_check_(const char * msg) {
   case GL_INVALID_OPERATION:
     e_msg = "GL_INVALID_OPERATION";
     break;
-  case GL_STACK_OVERFLOW:
-    e_msg = "GL_STACK_OVERFLOW";
-    break;
-  case GL_STACK_UNDERFLOW:
-    e_msg = "GL_STACK_UNDERFLOW";
-    break;
   case GL_OUT_OF_MEMORY:
     e_msg = "GL_OUT_OF_MEMORY";
     break;
@@ -50,12 +44,11 @@ void gl_check_(const char * msg) {
 #define gl_check(command) command
 #endif
 
-int renderer_load_shader(char* src, int kind) {
+int renderer_load_shader(const char* src, int kind) {
   int shader = glCreateShader(kind);
-  int length = strlen(src);
-  const char* lines[1] = {src};
-  glShaderSource(shader, 1, lines, &length);
+  gl_check("glCreateShader");
 
+  glShaderSource(shader, 1, &src, NULL);
   gl_check_("glShaderSource");
 
   glCompileShader(shader);
@@ -269,12 +262,12 @@ void spritelist_render_to_screen(SpriteList list) {
 
   glEnableVertexAttribArray(GLPARAM_VERTEX);
   glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 3 * nverts, verts, GL_STREAM_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 3 * nverts, verts, GL_DYNAMIC_DRAW);
   glVertexAttribPointer(GLPARAM_VERTEX, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
   glEnableVertexAttribArray(GLPARAM_TEXCOORD0);
   glBindBuffer(GL_ARRAY_BUFFER, texcoord_buffer);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 2 * nverts, texs, GL_STREAM_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 2 * nverts, texs, GL_DYNAMIC_DRAW);
   glVertexAttribPointer(GLPARAM_TEXCOORD0, 2, GL_FLOAT, GL_FALSE, 0, 0);
 
   glDrawArrays(GL_TRIANGLES, 0, nverts);

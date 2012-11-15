@@ -14,7 +14,7 @@
 
 #include "bcm_host.h"
 
-#include "GLES/gl.h"
+#include "GLES2/gl2.h"
 #include "EGL/egl.h"
 #include "EGL/eglext.h"
 
@@ -88,7 +88,7 @@ void native_init() {
 
 long time_millis() {
   struct timeval now_time;
-  gettimeofday(&now_time);
+  gettimeofday(&now_time, NULL);
 
   long delta_secs = now_time.tv_sec - start_time.tv_sec;
   long delta_usecs = now_time.tv_usec - start_time.tv_usec;
@@ -138,6 +138,12 @@ void renderer_init(void* empty) {
       EGL_NONE
     };
 
+   static const EGLint context_attributes[] = 
+   {
+      EGL_CONTEXT_CLIENT_VERSION, 2,
+      EGL_NONE
+   };
+
   EGLConfig config;
 
   bcm_host_init();
@@ -156,8 +162,11 @@ void renderer_init(void* empty) {
   result = eglChooseConfig(display, attribute_list, &config, 1, &num_config);
   egl_assert(EGL_FALSE != result);
 
+  result = eglBindAPI(EGL_OPENGL_ES_API);
+  egl_assert(EGL_FALSE != result);
+
   // create an EGL rendering context
-  context = eglCreateContext(display, config, EGL_NO_CONTEXT, NULL);
+  context = eglCreateContext(display, config, EGL_NO_CONTEXT, context_attributes);
   egl_assert(context!=EGL_NO_CONTEXT);
 
   // create an EGL window surface
