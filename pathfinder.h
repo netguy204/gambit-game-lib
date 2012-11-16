@@ -11,6 +11,7 @@ typedef struct PathElement_ {
   struct PathElement_* predecessor;
   int score;
   int distance;
+  int heuristic;
   int index;
 } *PathElement;
 

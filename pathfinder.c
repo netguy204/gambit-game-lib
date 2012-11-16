@@ -169,6 +169,10 @@ int pathelement_compare(void *a, void *b) {
 
   if(pe_a->score < pe_b->score) return -1;
   if(pe_a->score > pe_b->score) return 1;
+
+  if(pe_a->heuristic < pe_b->heuristic) return -1;
+  if(pe_a->heuristic > pe_b->heuristic) return 1;
+
   return 0;
 }
 
@@ -194,7 +198,8 @@ PathElement pathfinder_make_element(StackAllocator allocator, TileMap map,
   } else {
     result->distance = 0;
   }
-  result->score = result->distance + pathfinder_heuristic(map, p, target);
+  result->heuristic = pathfinder_heuristic(map, p, target);
+  result->score = result->distance + result->heuristic;
   return result;
 }
 
