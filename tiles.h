@@ -24,6 +24,11 @@ typedef struct TileSpec_ {
   int bitmask;
 } *TileSpec;
 
+typedef struct CharImage_ {
+  int w, h;
+  int8_t* data;
+} *CharImage;
+
 typedef struct TileMap_ {
   TileSpec tile_specs;
   int width_IT, height_IT;
@@ -52,11 +57,6 @@ typedef int(*LineCallback)(TileMap map, TilePosition pos, void* udata);
 int tilemap_trace_line(TileMap map, TilePosition start, TilePosition end,
                        LineCallback callback, void* udata);
 
-typedef struct CharImage_ {
-  int w, h;
-  int8_t* data;
-} *CharImage;
-
 #define charimage_index(img, x, y) (((img)->w * (y)) + x)
 #define charimage_set(img, x, y, val) ((img)->data[charimage_index(img, x, y)] = val)
 #define charimage_get(img, x, y) ((img)->data[charimage_index(img, x, y)])
@@ -70,6 +70,7 @@ int charimage_floodfill(CharImage out, CharImage input, TilePosition startpos,
                         int8_t value, FloodfillCallback callback, void* udata);
 
 void charimage_from_tilemap(CharImage img, TileMap map);
+void charimage_init_sizeof_tilemap(CharImage img, TileMap map);
 void charimage_crosscorrelate(CharImage out, CharImage big, CharImage small);
 int charimage_size(CharImage img);
 void charimage_replace_value(CharImage img, int8_t from, int8_t to);
@@ -87,5 +88,7 @@ void charimage_label(CharImage img, int8_t* working, LabelCallback callback, voi
 
 void charimage_write(CharImage img, FILE* target);
 void charimage_spit(CharImage img, const char* filename);
+
+void charimage_ambient_occlusion(CharImage occlusion, TileMap map);
 
 #endif

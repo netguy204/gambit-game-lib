@@ -66,6 +66,7 @@ float vector_scalarproject(Vector src, Vector onto) {
   return vector_dot(src, &normonto);
 }
 
+// compute the vector and scalar projection of SRC onto NORMONTO
 float vector_project2(Vector dst, Vector src, Vector normonto) {
   float scalarproj = vector_dot(src, normonto);
   vector_scale(dst, normonto, scalarproj);

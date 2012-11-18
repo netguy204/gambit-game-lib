@@ -19,6 +19,7 @@ enum TestTiles {
   TILE_DIRT,
   TILE_STONE,
   TILE_STONE2,
+  TILE_DIRTSTONE_TRANSITION,
   TILE_BUILDING,
   TILE_MAX
 };
@@ -97,16 +98,18 @@ TileMap tilemap_testmake(SpriteAtlas atlas) {
   TileSpec specs = malloc(sizeof(struct TileSpec_) * TILE_MAX);
   int standard = TILESPEC_COLLIDABLE | TILESPEC_VISIBLE;
 
-  specs[TILE_BLANK].bitmask = TILESPEC_PASSABLE;
   specs[TILE_BLANK].image = NULL;
+  specs[TILE_BLANK].bitmask = TILESPEC_PASSABLE;
   specs[TILE_GRASS].image = spriteatlas_find(atlas, "grass.png");
   specs[TILE_GRASS].bitmask = standard;
-  specs[TILE_DIRT].image = spriteatlas_find(atlas, "dirt.png");
+  specs[TILE_DIRT].image = spriteatlas_find(atlas, "techno1.png");
   specs[TILE_DIRT].bitmask = standard;
-  specs[TILE_STONE].image = spriteatlas_find(atlas, "stone.png");
+  specs[TILE_STONE].image = spriteatlas_find(atlas, "techno2.png");
   specs[TILE_STONE].bitmask = standard;
   specs[TILE_STONE2].image = spriteatlas_find(atlas, "stone2.png");
   specs[TILE_STONE2].bitmask = standard;
+  specs[TILE_DIRTSTONE_TRANSITION].image = spriteatlas_find(atlas, "12uptransition.png");
+  specs[TILE_DIRTSTONE_TRANSITION].bitmask = standard;
   specs[TILE_BUILDING].image = spriteatlas_find(atlas, "building.png");
   specs[TILE_BUILDING].bitmask = standard | TILESPEC_PASSABLE;
 
@@ -216,6 +219,19 @@ TileMap tilemap_testmake(SpriteAtlas atlas) {
   }
   PROFILE_END(&timer);
 
+  // look for stone to dirt transition points
+  int mapsize = MAXX * MAXY;
+  for(xx = 0; xx < mapsize; ++xx) {
+    if(map->tiles[xx] == TILE_DIRT) {
+      int up_idx = xx + MAXX;
+      if(up_idx >= mapsize) continue;
+
+      if(map->tiles[up_idx] == TILE_STONE) {
+        map->tiles[xx] = TILE_DIRTSTONE_TRANSITION;
+      }
+    }
+  }
+
   // replace the bottom row with stone and the top row with sky
   int top_row = (MAXY - 1) * (MAXX - 1);
   for(xx = 0; xx < MAXX; ++xx) {
@@ -226,10 +242,14 @@ TileMap tilemap_testmake(SpriteAtlas atlas) {
   // floodfill from the top and see what we get
   PROFILE_START(&timer, "finding reachable regions");
   struct TilePosition_ start = {0, MAXY - 1};
-  int8_t * reachable = malloc(tilemap_size(map));
-  memset(reachable, -1, tilemap_size(map));
-  struct CharImage_ reachable_img = { MAXX, MAXY, reachable };
-  struct CharImage_ map_img = { MAXX, MAXY, map->tiles };
+
+  struct CharImage_ reachable_img;
+  charimage_init_sizeof_tilemap(&reachable_img, map);
+  memset(reachable_img.data, -1, tilemap_size(map));
+
+  struct CharImage_ map_img;
+  charimage_from_tilemap(&map_img, map);
+
   charimage_floodfill(&reachable_img, &map_img, &start, 1, NULL, NULL);
   PROFILE_END(&timer);
 
@@ -300,7 +320,7 @@ TileMap tilemap_testmake(SpriteAtlas atlas) {
   }
 
   heapvector_free(hv);
-  free(reachable);
+  free(reachable_img.data);
   free(correlation_img.data);
 
   return map;

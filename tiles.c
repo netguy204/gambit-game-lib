@@ -207,6 +207,12 @@ void charimage_from_tilemap(CharImage img, TileMap map) {
   img->data = map->tiles;
 }
 
+void charimage_init_sizeof_tilemap(CharImage img, TileMap map) {
+  img->w = map->width_IT;
+  img->h = map->height_IT;
+  img->data = malloc(img->w * img->h);
+}
+
 void charimage_crosscorrelate(CharImage out, CharImage big, CharImage small) {
   int out_width = big->w - small->w;
   int out_height = big->h - small->h;
@@ -311,4 +317,51 @@ void charimage_spit(CharImage img, const char* filename) {
   }
   charimage_write(img, target);
   fclose(target);
+}
+
+static int region[][3] = {
+  {0, 1, 2},
+  {1, 1, 3},
+  {1, 0, 2},
+  {1, -1, 3},
+  {0, -1, 2},
+  {-1, -1, 3},
+  {-1, 0, 2},
+  {-1, 1, 3}
+};
+
+static int nregion = sizeof(region) / 3;
+
+// chars are ~dist scaled by 2
+char ambient_occlusion(TileMap map, int xx, int yy) {
+  int zz;
+  char result = 0;
+  for(zz = 0; zz < nregion; ++zz) {
+    int ox = region[zz][0];
+    int oy = region[zz][1];
+    int incr = region[zz][2];
+
+    struct TilePosition_ tpos = {xx + ox, yy + oy};
+    if(!tilemap_validindex(map, &tpos)) {
+      // the world edges are occluders
+      result += incr;
+      continue;
+    }
+
+    int8_t kind = map->tiles[tilemap_index(map, &tpos)];
+    if(map->tile_specs[kind].bitmask & TILESPEC_VISIBLE) {
+      result += incr;
+    }
+  }
+  return result;
+}
+
+void charimage_ambient_occlusion(CharImage occlusion, TileMap map) {
+  int xx, yy;
+  for(yy = 0; yy < map->height_IT; ++yy) {
+    for(xx = 0; xx < map->width_IT; ++xx) {
+      int ridx = charimage_index(occlusion, xx, yy);
+      occlusion->data[ridx] = ambient_occlusion(map, xx, yy);
+    }
+  }
 }
