@@ -350,10 +350,10 @@ void CollectiveObject_update(void* _self, float dt) {
   // drain inbox
   foreach_inboxmessage((Agent)collective, collective_handle_inbox, NULL);
 
-  Message message = (Message)dll_remove_tail(&collective->dispatcher.agent.inbox);
+  Message message = (Message)dll_remove_tail(&((Agent)collective)->inbox);
   while(message) {
     message_free(message);
-    message = (Message)dll_remove_tail(&collective->dispatcher.agent.inbox);
+    message = (Message)dll_remove_tail(&((Agent)collective)->inbox);
   }
 
   // update all of our sub-agents
