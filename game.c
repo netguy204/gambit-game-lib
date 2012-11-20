@@ -18,12 +18,6 @@
 #include <stdlib.h>
 #include <math.h>
 
-/*
- * Convention: spawn methods create and add the spawned object to the
- * appropriate internal list. remove methods remove objects from that
- * list and free them.
- */
-
 float player_speed = 600;
 float player_bullet_speed = 1200;
 float enemy_speed = 250;
@@ -32,6 +26,10 @@ float enemy_fire_rate = 1;
 
 Particle player;
 struct RepeatingLatch_ player_gun_latch;
+
+const void* EnemyObject;
+const void* EnemyCoordinatorObject;
+const void* CollisionObject;
 
 Collective collective;
 struct DLL_ enemies;
@@ -92,12 +90,24 @@ void prettyparticle_remove(DLL list, PrettyParticle particle) {
   prettyparticle_free(particle);
 }
 
-Enemy enemy_make() {
+static void* EnemyObject_alloci(void* _self) {
   return fixed_allocator_alloc(enemy_allocator);
 }
 
-void enemy_free(Enemy enemy) {
-  fixed_allocator_free(enemy_allocator, enemy);
+static void EnemyObject_dealloci(const void* _class, void* _self) {
+  fixed_allocator_free(enemy_allocator, _self);
+}
+
+static void* EnemyObject_ctor(void* _self, va_list* app) {
+  EnemyAgent enemyagent = super_ctor(EnemyObject, _self, app);
+  dll_add_head(&enemies, (DLLNode)&enemyagent->particle);
+  return enemyagent;
+}
+
+static void* EnemyObject_dtor(void* _self) {
+  EnemyAgent enemyagent = _self;
+  dll_remove(&enemies, (DLLNode)&enemyagent->particle);
+  return super_dtor(EnemyObject, _self);
 }
 
 Sprite frame_resource_sprite(ImageResource resource) {
@@ -108,33 +118,21 @@ Sprite frame_resource_sprite(ImageResource resource) {
   return sprite;
 }
 
-Particle enemyagent_particle(EnemyAgent enemyagent) {
-  Enemy enemy = container_of(enemyagent, struct Enemy_, agent);
-  return &enemy->particle;
-}
-
-void enemyagent_free(Agent agent) {
-  EnemyAgent enemyagent = (EnemyAgent)agent;
-  Enemy enemy = container_of(enemyagent, struct Enemy_, agent);
-  dll_remove(&enemies, (DLLNode)&enemy->particle);
-  enemy_free(enemy);
-}
-
 // coordinate joint enemy behavior
-void coordinator_update(Agent agent, float dt) {
-  Dispatcher dispatcher = (Dispatcher)agent;
+void EnemyCoordinatorObject_update(void* _self, float dt) {
+  Dispatcher dispatcher = _self;
 
   // drain and ignore our inbox
-  foreach_inboxmessage(agent, NULL, NULL);
+  foreach_inboxmessage((Agent)dispatcher, NULL, NULL);
 
   // drain our dispatchees
   foreach_dispatcheemessage(dispatcher, NULL, NULL);
 
   // see if we can issue new commands yet
-  if(clock_time(main_clock) < agent->next_timer) return;
+  if(clock_time(main_clock) < ((Agent)dispatcher)->next_timer) return;
 
   // schedule our next update
-  agent->next_timer = clock_time(main_clock) +
+  ((Agent)dispatcher)->next_timer = clock_time(main_clock) +
     clock_seconds_to_cycles(10 * enemy_fire_rate);
 
   // send attack command to n agents, also transition non-idlers
@@ -160,7 +158,7 @@ void coordinator_update(Agent agent, float dt) {
 
 void enemyagent_process_inbox(Agent agent, Message message, void * udata) {
   Message reply;
-  Particle p = enemyagent_particle((EnemyAgent)agent);
+  Particle p = &((EnemyAgent)agent)->particle;
 
   switch(message->kind) {
   case MESSAGE_TERMINATE:
@@ -186,22 +184,18 @@ void enemyagent_process_inbox(Agent agent, Message message, void * udata) {
   }
 }
 
-void vector_tween(Vector dst, Vector a, Vector b, float deltamax) {
-  struct Vector_ ab;
-  if(vector_direction_scaled(&ab, b, a, deltamax)) {
-    vector_add(dst, dst, &ab);
-  }
-}
+void EnemyObject_update(void* _self, float dt) {
+  super_agent_update(EnemyObject, _self, dt);
 
-void enemyagent_update(Agent agent, float dt) {
-  EnemyAgent enemyagent = (EnemyAgent)agent;
+  Agent agent = _self;
+  EnemyAgent enemyagent = _self;
 
   // drain our inbox
   foreach_inboxmessage(agent, enemyagent_process_inbox, NULL);
 
   if(agent->state == ENEMY_DYING) return;
 
-  Particle p = enemyagent_particle(enemyagent);
+  Particle p = &enemyagent->particle;
   struct SteeringParams_ params = { 50.0, enemy_speed, p->angle, 0.08 };
   SteeringResult result = &enemyagent->last_result;
 
@@ -296,40 +290,36 @@ void enemyagent_update(Agent agent, float dt) {
   */
 }
 
-struct AgentClass_ enemy_klass = {enemyagent_update, enemyagent_free};
+EnemyAgent spawn_enemy() {
+  EnemyAgent enemyagent = new(EnemyObject, ENEMY_IDLE);
 
-Enemy spawn_enemy() {
-  Enemy enemy = enemy_make();
-  enemy->particle.image = image_ally;
-  enemy->particle.scale = 1.0f;
+  enemyagent->particle.image = image_ally;
+  enemyagent->particle.scale = 1.0f;
 
   // pick a path
   int pathidx = rand_in_range(&rgen, 0, civpaths->npaths);
   Path path = &civpaths->paths[pathidx];
-  enemy->agent.pi.path = path;
-  enemy->agent.pi.pathpos = 0;
-  enemy->agent.pi.pathdir = 1;
-  enemy->agent.pi.max_skip_range = 3;
-  enemy->agent.hp = 100;
+  enemyagent->pi.path = path;
+  enemyagent->pi.pathpos = 0;
+  enemyagent->pi.pathdir = 1;
+  enemyagent->pi.max_skip_range = 3;
+  enemyagent->hp = 100;
 
   // start at its beginning
-  vector_tilecenter(&enemy->particle.pos, tiles, path->steps[enemy->agent.pi.pathpos]);
+  vector_tilecenter(&enemyagent->particle.pos, tiles, path->steps[enemyagent->pi.pathpos]);
 
   // velocity aligned with the path
-  vector_path_direction(&enemy->particle.vel, tiles, path,
-                        enemy->agent.pi.pathpos, enemy->agent.pi.pathdir);
-  vector_scale(&enemy->particle.vel, &enemy->particle.vel, enemy_speed);
+  vector_path_direction(&enemyagent->particle.vel, tiles, path,
+                        enemyagent->pi.pathpos, enemyagent->pi.pathdir);
+  vector_scale(&enemyagent->particle.vel, &enemyagent->particle.vel, enemy_speed);
 
   // not scaling or spinning, let the steering method figure out the
   // right orientation
-  enemy->particle.angle = M_PI;
-  enemy->particle.dsdt = 0.0f;
-  enemy->particle.dadt = 0.0f;
+  enemyagent->particle.angle = M_PI;
+  enemyagent->particle.dsdt = 0.0f;
+  enemyagent->particle.dadt = 0.0f;
 
-  agent_fill((Agent)&enemy->agent, &enemy_klass, ENEMY_IDLE);
-  dll_add_head(&enemies, (DLLNode)&enemy->particle);
-
-  return enemy;
+  return enemyagent;
 }
 
 Particle bullet_make(Vector pos, Vector vel, SpriteAtlasEntry image) {
@@ -388,8 +378,8 @@ void enemies_update(float dt) {
   }
 
   if(dll_count(&enemies) < 30) {
-    Enemy enemy = spawn_enemy();
-    Message spawn = message_make(NULL, COLLECTIVE_ADD_AGENT, &enemy->agent);
+    EnemyAgent enemyagent = spawn_enemy();
+    Message spawn = message_make(NULL, COLLECTIVE_ADD_AGENT, enemyagent);
     message_postinbox((Agent)collective, spawn);
   }
 }
@@ -432,7 +422,7 @@ int particle_timeout_test(Particle p) {
 
 void prettyparticles_update(float dt) {
   particles_update(&pretty_particles, dt, &particle_timeout_test,
-                       (ParticleRemove)&prettyparticle_remove);
+                   (ParticleRemove)&prettyparticle_remove);
 }
 
 void collide_arrays(CollisionRecord as, int na, CollisionRecord bs, int nb,
@@ -474,13 +464,12 @@ CollisionRecord particles_collisionrecords(DLL list, int* count, float scale) {
 
 CollisionRecord enemies_collisionrecords(Dispatcher dispatcher, int* count, float scale) {
   *count = ll_count(dispatcher->dispatchees);
-  CollisionRecord crs = frame_alloc(sizeof(struct CollisionRecord_) *
-                                    *count);
+  CollisionRecord crs = frame_alloc(sizeof(struct CollisionRecord_) * (*count));
   LLNode node = dispatcher->dispatchees;
   EnemyAgent enemyagent;
   int ii = 0;
   while((enemyagent = llentry_nextvalue(&node))) {
-    Particle ep = enemyagent_particle(enemyagent);
+    Particle ep = &enemyagent->particle;
 
     rect_for_particle(&(crs[ii].rect), ep, scale);
     crs[ii].data = enemyagent;
@@ -541,11 +530,11 @@ void bullet_vs_map(CollisionRecord bullet, DLL list) {
   tiles->tiles[index] = 0;
 }
 
-void collision_dispatcher_update(Agent agent, float dt) {
-  Dispatcher dispatcher = (Dispatcher)agent;
+void CollisionObject_update(void* _self, float dt) {
+  Dispatcher dispatcher = _self;
 
   // drain our inbox
-  foreach_inboxmessage(agent, NULL, NULL);
+  foreach_inboxmessage((Agent)dispatcher, NULL, NULL);
 
   // drain the outboxes of our dispatchees
   foreach_dispatcheemessage(dispatcher, NULL, NULL);
@@ -586,9 +575,6 @@ void sprite_submit(Sprite sprite) {
   spritelist_enqueue_for_screen(sl);
 }
 
-struct AgentClass_ collision_klass = {collision_dispatcher_update, basicagent_free};
-struct AgentClass_ coordinator_klass = {coordinator_update, basicagent_free};
-
 void game_init() {
   agent_init();
 
@@ -603,29 +589,47 @@ void game_init() {
                          "prettyparticle_allocator");
 
   enemy_allocator =
-    fixed_allocator_make(sizeof(struct Enemy_),
+    fixed_allocator_make(sizeof(struct EnemyAgent_),
                          MAX_NUM_PARTICLES,
                          "enemy_allocator");
 
   main_clock = clock_make();
 
   atlas = spriteatlas_load("resources/images_default.dat", "resources/images_default.png");
-  image_stars = image_load("resources/night-sky-stars.jpg");
-
-  // test
-  tiles = tilemap_testmake(atlas);
-
-  random_init(&rgen, 1234);
   image_enemy = spriteatlas_find(atlas, "ship-right.png");
   image_ally = spriteatlas_find(atlas, "ship-right-good.png");
   image_player_bullet = spriteatlas_find(atlas, "plasma.png");
   image_enemy_bullet = spriteatlas_find(atlas, "enemy-bullet.png");
   image_smoke = spriteatlas_find(atlas, "smoke.png");
 
+  EnemyObject = new(AgentClass, "Enemy",
+                    AgentObject, sizeof(struct EnemyAgent_),
+                    alloci, EnemyObject_alloci,
+                    dealloci, EnemyObject_dealloci,
+                    ctor, EnemyObject_ctor,
+                    dtor, EnemyObject_dtor,
+                    agent_update, EnemyObject_update,
+                    0);
+
+  EnemyCoordinatorObject = new(AgentClass, "EnemyCoordinator",
+                               DispatcherObject, sizeof(struct Dispatcher_),
+                               agent_update, EnemyCoordinatorObject_update,
+                               0);
+
+  CollisionObject = new(AgentClass, "Collision",
+                        DispatcherObject, sizeof(struct Dispatcher_),
+                        agent_update, CollisionObject_update,
+                        0);
+
   dll_zero(&enemies);
   dll_zero(&player_bullets);
   dll_zero(&enemy_bullets);
   dll_zero(&pretty_particles);
+
+  // worldgen
+  random_init(&rgen, 1234);
+  image_stars = image_load("resources/night-sky-stars.jpg");
+  tiles = tilemap_testmake(atlas);
 
   player = particle_make();
   player->image = spriteatlas_find(atlas, "hero.png");
@@ -639,12 +643,9 @@ void game_init() {
   player_gun_latch.last_time = 0;
   player_gun_latch.last_state = 0;
 
-  Dispatcher dispatchers[COLLECTIVE_SUB_DISPATCHERS] = {
-    dispatcher_make(&collision_klass),
-    dispatcher_make(&coordinator_klass),
-  };
-
-  collective = collective_make(dispatchers);
+  collective = new(CollectiveObject, COLLECTIVE_IDLE,
+                   new(EnemyCoordinatorObject, DISPATCHER_IDLE),
+                   new(CollisionObject, DISPATCHER_IDLE));
 }
 
 void spawn_player_fire() {
@@ -732,8 +733,8 @@ void game_step(long delta, InputState state) {
   if(step_number % 100 == 0) {
     printf("player: %f, %f ", player->pos.x, player->pos.y);
     printf("particle_allocator: %ld (%ld) ; stack_allocator: (%ld of %ld)\n",
-           particle_allocator->inflight,
-           particle_allocator->max_inflight,
+           enemy_allocator->inflight,
+           enemy_allocator->max_inflight,
            frame_allocator->max_alloced,
            (char*)frame_allocator->stack_max - (char*)frame_allocator->stack_bottom);
   }

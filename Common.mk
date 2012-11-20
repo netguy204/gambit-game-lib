@@ -4,7 +4,7 @@ C_SRC+= \
 	rect.c controls.c agent.c steering.c spriteatlas.c \
 	realmain.c stb_image.c tiles.c sfmt/SFMT.c random.c \
 	perlin.c items.c heapvector.c worldgen.c xmltools.c \
-	pathfinder.c utils.c matrix.c
+	pathfinder.c utils.c matrix.c ooc.c
 
 XML_INCLUDE:=-I/usr/include/libxml2
 CFLAGS+=$(XML_INCLUDE) -Isfmt/

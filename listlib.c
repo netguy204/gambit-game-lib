@@ -151,6 +151,7 @@ void dll_remove(DLL list, DLLNode node) {
 
   if(list->tail == node) {
     dll_remove_tail(list);
+    return;
   }
 
   REMOVE(node);

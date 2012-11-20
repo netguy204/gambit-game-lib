@@ -1,0 +1,50 @@
+#ifndef OOC_H
+#define OOC_H
+
+#include <stdio.h>
+
+struct Class;
+
+struct Object {
+  const struct Class * class;
+};
+
+struct Class;
+
+struct Class {
+  const struct Object _;
+  const char * name;
+  const struct Class * super;
+  size_t size;
+  void*(*alloci)(const void* class);
+  void(*dealloci)(void* self);
+  void*(*ctor)(void* self, va_list * args);
+  void*(*dtor)(void* self);
+  int(*differ)(const void* self, const void* b);
+  int(*tofile)(const void* self, FILE* fp);
+};
+
+extern const void* Object;
+extern const void* Class;
+
+void * new(const void * class, ...);
+void delete(void * self);
+
+int differ(const void * self, const void * b);
+int tofile(const void * self, FILE * fp);
+
+const void* classOf(const void* self);
+size_t sizeOf(const void* self);
+const void* super(const void* self);
+
+void* dtor(void* _self);
+void* ctor(void* _self, va_list* app);
+void* alloci(const void* class);
+void dealloci(void* _self);
+
+void* super_ctor(const void* class, void* self, va_list* app);
+void* super_dtor(const void* class, void* self);
+
+typedef void (*voidf)();
+
+#endif

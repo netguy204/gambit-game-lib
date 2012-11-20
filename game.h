@@ -19,13 +19,9 @@ typedef struct EnemyAgent_ {
   struct Agent_ agent;
   struct PathInstance_ pi;
   struct SteeringResult_ last_result;
+  struct Particle_ particle;
   int hp;
 } *EnemyAgent;
-
-typedef struct Enemy_ {
-  struct Particle_ particle;
-  struct EnemyAgent_ agent;
-} *Enemy;
 
 typedef struct PrettyParticle_ {
   struct Particle_ particle;
@@ -55,10 +51,7 @@ Particle particle_make();
 void particle_free(Particle particle);
 void particle_remove(DLL list, Particle particle);
 
-Particle enemyagent_particle(EnemyAgent enemyagent);
-Enemy spawn_enemy();
 PrettyParticle spawn_smoke(Vector pos, Vector vel);
-void enemy_free(Enemy enemy);
 Particle spawn_bullet(Vector pos, Vector vel, SpriteAtlasEntry image);
 void spawn_enemy_fire(Particle enemy);
 

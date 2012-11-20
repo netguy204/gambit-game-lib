@@ -16,7 +16,7 @@ void perlin_init(Perlin perlin, Random rng, Vector offset, Vector scale) {
     perlin->state[ii] = ii;
   }
 
-  random_shuffle_bytes(rng, perlin->state, array_size(perlin->state));
+  random_shuffle_bytes(rng, perlin->state, 256);
 
   // duplicate those bytes into the next 256 slots
   for(ii = 0; ii < 256; ++ii) {

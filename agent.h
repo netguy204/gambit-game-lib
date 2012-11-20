@@ -2,6 +2,12 @@
 #define AGENT_C
 
 #include "listlib.h"
+#include "ooc.h"
+
+extern const void* AgentClass;
+extern const void* AgentObject;
+extern const void* DispatcherObject;
+extern const void* CollectiveObject;
 
 void agent_init();
 
@@ -24,19 +30,16 @@ typedef struct Message_ {
 
 struct Agent_;
 
-typedef void(*AgentUpdate)(struct Agent_*, float dt);
-typedef void(*AgentFree)(struct Agent_*);
-
-typedef struct AgentClass_ {
-  AgentUpdate update;
-  AgentFree free;
-} *AgentClass;
+struct AgentClass_ {
+  const struct Class _;
+  void(*agent_update)(void* self, float dt);
+};
 
 typedef struct Agent_ {
+  const struct Object _;
   struct DLLNode_ node; // list of ownership siblings
   struct DLL_ inbox;
   struct DLL_ outbox;
-  AgentClass klass;
   long next_timer;
   int delta_subscribers; // subscriber count update is deferred
   int subscribers;
@@ -44,14 +47,14 @@ typedef struct Agent_ {
 } *Agent;
 
 typedef struct Dispatcher_ {
-  struct Agent_ agent;
+  struct Agent_ _;
   LLNode dispatchees;
 } *Dispatcher;
 
 #define COLLECTIVE_SUB_DISPATCHERS 2
 
 typedef struct Collective_ {
-  struct Dispatcher_ dispatcher;
+  struct Dispatcher_ _;
   struct DLL_ children;
   Dispatcher sub_dispatchers[COLLECTIVE_SUB_DISPATCHERS];
 } *Collective;
@@ -87,17 +90,11 @@ void message_postinbox(Agent dst, Message message);
 void message_postoutbox(Agent src, Message message, ReportCompleted report_completed);
 void messages_dropall(Agent agent);
 
-void basicagent_free(Agent agent);
-void agent_fill(Agent agent, AgentClass klass, int state);
-
-// eventually orchestrates the scenario
-Collective collective_make(Dispatcher sub_dispatchers[COLLECTIVE_SUB_DISPATCHERS]);
-Dispatcher dispatcher_make(AgentClass klass);
-
 void dispatcher_add_agent(Dispatcher dispatcher, Agent agent);
 void dispatcher_remove_agent(Dispatcher dispatcher, Agent agent);
 
-void agent_update(Agent agent, float dt);
+void agent_update(void* self, float dt);
+void super_agent_update(const void* _class, void* _self, float dt);
 
 typedef void(*OutboxMessageCallback)(Dispatcher dispatcher, Message message, void * udata);
 typedef void(*InboxMessageCallback)(Agent agent, Message message, void * udata);
