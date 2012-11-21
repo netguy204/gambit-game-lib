@@ -30,6 +30,7 @@ Particle player;
 struct RepeatingLatch_ player_gun_latch;
 
 const void* ParticleObject;
+const void* BulletObject;
 const void* TimedParticleObject;
 
 const void* EnemyObject;
@@ -86,6 +87,11 @@ void* ParticleObject_dtor(void* _self) {
 
 void ParticleObject_dealloci(void* _self) {
   fixed_allocator_free(particle_allocator, _self);
+}
+
+void ParticleObject_update(void* _self, float dt) {
+  Particle particle = _self;
+  particle_integrate(particle, dt);
 }
 
 void* TimedParticleObject_alloci(const void* _class) {
@@ -329,7 +335,7 @@ EnemyAgent spawn_enemy() {
 }
 
 Particle bullet_make(Vector pos, Vector vel, SpriteAtlasEntry image, DLL list) {
-  Particle bullet = new(ParticleObject, list);
+  Particle bullet = new(BulletObject, list);
   bullet->image = image;
   bullet->pos = *pos;
   bullet->vel = *vel;
@@ -357,32 +363,21 @@ TimedParticle spawn_smoke(Vector pos, Vector vel) {
   return smoke;
 }
 
-typedef int(*ParticleTest)(Particle p);
-typedef void(*ParticleRemove)(DLL, Particle);
-
-// step all particles forward and remove those that fail the test
-void particles_update(DLL list, float dt, ParticleTest test) {
+void particles_update(DLL list, float dt) {
   DLLNode node = list->head;
 
   while(node) {
+    DLLNode next = node->next;
     Particle p = node_to_particle(node);
-    particle_integrate(p, dt);
 
-    if(!test(p)) {
-      delete(p);
-    }
+    update(p, dt);
 
-    node = node->next;
+    node = next;
   }
 }
 
 void enemies_update(float dt) {
-  DLLNode node = enemies.head;
-  while(node) {
-    Particle p = node_to_particle(node);
-    particle_integrate(p, dt);
-    node = node->next;
-  }
+  particles_update(&enemies, dt);
 
   if(dll_count(&enemies) < 30) {
     EnemyAgent enemyagent = spawn_enemy();
@@ -412,21 +407,34 @@ int staying_onscreen_test(Particle p) {
   return 1;
 }
 
+void BulletObject_update(void* _self, float dt) {
+  super_update(BulletObject, _self, dt);
+
+  Particle particle = _self;
+  if(!staying_onscreen_test(particle)) {
+    delete(particle);
+  }
+}
+
+void TimedParticleObject_update(void* _self, float dt) {
+  super_update(TimedParticleObject, _self, dt);
+
+  TimedParticle particle = _self;
+  if(clock_time(main_clock) >= particle->end_time) {
+    delete(particle);
+  }
+}
+
 void player_bullets_update(float dt) {
-  particles_update(&player_bullets, dt, staying_onscreen_test);
+  particles_update(&player_bullets, dt);
 }
 
 void enemy_bullets_update(float dt) {
-  particles_update(&enemy_bullets, dt, staying_onscreen_test);
-}
-
-int particle_timeout_test(Particle p) {
-  TimedParticle smoke = (TimedParticle)p;
-  return clock_time(main_clock) < smoke->end_time;
+  particles_update(&enemy_bullets, dt);
 }
 
 void prettyparticles_update(float dt) {
-  particles_update(&pretty_particles, dt, &particle_timeout_test);
+  particles_update(&pretty_particles, dt);
 }
 
 void collide_arrays(CollisionRecord as, int na, CollisionRecord bs, int nb,
@@ -616,12 +624,19 @@ void game_init() {
                        dealloci, ParticleObject_dealloci,
                        ctor, ParticleObject_ctor,
                        dtor, ParticleObject_dtor,
+                       update, ParticleObject_update,
                        0);
+
+  BulletObject = new(UpdateableClass, "Bullet",
+                     ParticleObject, sizeof(struct Particle_),
+                     update, BulletObject_update,
+                     0);
 
   TimedParticleObject = new(UpdateableClass, "TimedParticle",
                             ParticleObject, sizeof(struct TimedParticle_),
                             alloci, TimedParticleObject_alloci,
                             dealloci, TimedParticleObject_dealloci,
+                            update, TimedParticleObject_update,
                             0);
 
   EnemyObject = new(UpdateableClass, "Enemy",
