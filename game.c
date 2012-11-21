@@ -11,6 +11,7 @@
 #include "tiles.h"
 #include "worldgen.h"
 #include "random.h"
+#include "updateable.h"
 
 #include "config.h"
 
@@ -185,7 +186,7 @@ void enemyagent_process_inbox(Agent agent, Message message, void * udata) {
 }
 
 void EnemyObject_update(void* _self, float dt) {
-  super_agent_update(EnemyObject, _self, dt);
+  super_update(EnemyObject, _self, dt);
 
   Agent agent = _self;
   EnemyAgent enemyagent = _self;
@@ -608,23 +609,23 @@ void game_init() {
   image_enemy_bullet = spriteatlas_find(atlas, "enemy-bullet.png");
   image_smoke = spriteatlas_find(atlas, "smoke.png");
 
-  EnemyObject = new(AgentClass, "Enemy",
+  EnemyObject = new(UpdateableClass, "Enemy",
                     AgentObject, sizeof(struct EnemyAgent_),
                     alloci, EnemyObject_alloci,
                     dealloci, EnemyObject_dealloci,
                     ctor, EnemyObject_ctor,
                     dtor, EnemyObject_dtor,
-                    agent_update, EnemyObject_update,
+                    update, EnemyObject_update,
                     0);
 
-  EnemyCoordinatorObject = new(AgentClass, "EnemyCoordinator",
+  EnemyCoordinatorObject = new(UpdateableClass, "EnemyCoordinator",
                                DispatcherObject, sizeof(struct Dispatcher_),
-                               agent_update, EnemyCoordinatorObject_update,
+                               update, EnemyCoordinatorObject_update,
                                0);
 
-  CollisionObject = new(AgentClass, "Collision",
+  CollisionObject = new(UpdateableClass, "Collision",
                         DispatcherObject, sizeof(struct Dispatcher_),
-                        agent_update, CollisionObject_update,
+                        update, CollisionObject_update,
                         0);
 
   dll_zero(&enemies);
@@ -720,7 +721,7 @@ void game_step(long delta, InputState state) {
   prettyparticles_update(dt);
 
   // AI and collision detection
-  agent_update((Agent)collective, dt);
+  update((Agent)collective, dt);
 
   // draw the particles
   spritelist_enqueue_for_screen(particles_spritelist(&pretty_particles));

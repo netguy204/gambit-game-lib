@@ -4,49 +4,18 @@
 #include "config.h"
 #include "game.h"
 #include "particle.h"
+#include "updateable.h"
 
 #include <stdio.h>
 #include <assert.h>
 #include <stdarg.h>
 
-const void* AgentClass;
 const void* AgentObject;
 const void* DispatcherObject;
 const void* CollectiveObject;
 
 FixedAllocator message_allocator;
 FixedAllocator agent_allocator;
-
-// new selector added in AgentClass metaclass
-void agent_update(void* _self, float dt) {
-  const struct AgentClass_* class = classOf(_self);
-  assert(class->agent_update);
-  class->agent_update(_self, dt);
-}
-
-void super_agent_update(const void* _class, void* _self, float dt) {
-  const struct AgentClass_* superclass = super(_class);
-  assert(_self && superclass->agent_update);
-  superclass->agent_update(_self, dt);
-}
-
-static void* AgentClass_ctor(void* _self, va_list * app) {
-  struct AgentClass_* self = super_ctor(AgentClass, _self, app);
-  va_list ap;
-  va_copy(ap, *app);
-
-  while(1) {
-    voidf selector = va_arg(ap, voidf);
-    if(!((int)selector)) break;
-
-    voidf method = va_arg(ap, voidf);
-    if(selector == (voidf)agent_update) {
-      *(voidf*)&self->agent_update = method;
-    }
-  }
-
-  return self;
-}
 
 // agentobject methods
 static void* AgentObject_alloci(void* _self) {
@@ -130,30 +99,26 @@ void agent_init() {
                          MAX_NUM_AGENTS,
                          "agent_allocator");
 
+  updateable_init();
 
-  AgentClass = new(Class, "AgentClass",
-                   Class, sizeof(struct AgentClass_),
-                   ctor, AgentClass_ctor,
-                   0);
-
-  AgentObject = new(AgentClass, "Agent",
+  AgentObject = new(UpdateableClass, "Agent",
                     Object, sizeof(struct Agent_),
                     alloci, AgentObject_alloci,
                     dealloci, AgentObject_dealloci,
                     ctor, AgentObject_ctor,
                     dtor, AgentObject_dtor,
-                    agent_update, AgentObject_update,
+                    update, AgentObject_update,
                     0);
 
-  DispatcherObject = new(AgentClass, "Dispatcher",
+  DispatcherObject = new(UpdateableClass, "Dispatcher",
                          AgentObject, sizeof(struct Dispatcher_),
                          ctor, DispatcherObject_ctor,
                          0);
 
-  CollectiveObject = new(AgentClass, "Collective",
+  CollectiveObject = new(UpdateableClass, "Collective",
                          DispatcherObject, sizeof(struct Collective_),
                          ctor, CollectiveObject_ctor,
-                         agent_update, CollectiveObject_update,
+                         update, CollectiveObject_update,
                          0);
 }
 
@@ -344,7 +309,7 @@ void collective_handle_inbox(Agent agent, Message message, void * udata) {
 }
 
 void CollectiveObject_update(void* _self, float dt) {
-  super_agent_update(CollectiveObject, _self, dt);
+  super_update(CollectiveObject, _self, dt);
   Collective collective = _self;
 
   // drain inbox
@@ -359,7 +324,7 @@ void CollectiveObject_update(void* _self, float dt) {
   // update all of our sub-agents
   DLLNode child = collective->children.head;
   while(child) {
-    agent_update(container_of(child, struct Agent_, node), dt);
+    update(container_of(child, struct Agent_, node), dt);
     child = child->next;
   }
 

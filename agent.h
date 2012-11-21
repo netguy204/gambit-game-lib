@@ -30,11 +30,6 @@ typedef struct Message_ {
 
 struct Agent_;
 
-struct AgentClass_ {
-  const struct Class _;
-  void(*agent_update)(void* self, float dt);
-};
-
 typedef struct Agent_ {
   const struct Object _;
   struct DLLNode_ node; // list of ownership siblings
@@ -92,9 +87,6 @@ void messages_dropall(Agent agent);
 
 void dispatcher_add_agent(Dispatcher dispatcher, Agent agent);
 void dispatcher_remove_agent(Dispatcher dispatcher, Agent agent);
-
-void agent_update(void* self, float dt);
-void super_agent_update(const void* _class, void* _self, float dt);
 
 typedef void(*OutboxMessageCallback)(Dispatcher dispatcher, Message message, void * udata);
 typedef void(*InboxMessageCallback)(Agent agent, Message message, void * udata);
