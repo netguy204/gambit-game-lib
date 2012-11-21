@@ -36,8 +36,8 @@ void* new(const void* _class, ...) {
   struct Object* object;
   va_list ap;
 
-  assert(class && class->alloci);
-  object = class->alloci(class);
+  assert(class);
+  object = alloci(class);
   assert(object);
   object->class = class;
   va_start(ap, _class);
@@ -58,13 +58,15 @@ void* super_dtor(const void* _class, void* _self) {
   return superclass->dtor(_self);
 }
 
-// selectors
+// class method
 
-void* alloci(const void* _self) {
-  const struct Class* class = classOf(_self);
+void* alloci(const void* _class) {
+  const struct Class* class = _class;
   assert(class->alloci);
-  return class->alloci(_self);
+  return class->alloci(_class);
 }
+
+// selectors
 
 void dealloci(void* _self) {
   const struct Class* class = classOf(_self);

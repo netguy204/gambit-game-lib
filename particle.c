@@ -44,15 +44,20 @@ void particle_integrate(Particle particle, float dt) {
   particle->angle += (particle->dadt * dt);
 }
 
+Particle node_to_particle(DLLNode node) {
+  return container_of(node, struct Particle_, node);
+}
+
 SpriteList particles_spritelist(DLL list) {
   SpriteList result = NULL;
-  Particle p = (Particle)list->head;
-  while(p) {
+  DLLNode node = list->head;
+  while(node) {
+    Particle p = node_to_particle(node);
     Sprite sprite = particle_sprite(p);
     if(sprite) {
       result = frame_spritelist_append(result, sprite);
     }
-    p = (Particle)p->node.next;
+    node = node->next;
   }
   return result;
 }

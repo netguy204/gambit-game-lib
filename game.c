@@ -67,7 +67,7 @@ void particle_free(Particle particle) {
 }
 
 void particle_remove(DLL list, Particle particle) {
-  dll_remove(list, (DLLNode)particle);
+  dll_remove(list, &particle->node);
   particle_free(particle);
 }
 
@@ -86,7 +86,7 @@ void prettyparticle_free(PrettyParticle particle) {
 }
 
 void prettyparticle_remove(DLL list, PrettyParticle particle) {
-  dll_remove(list, (DLLNode)particle);
+  dll_remove(list, &((Particle)particle)->node);
   prettyparticle_free(particle);
 }
 
@@ -100,13 +100,13 @@ static void EnemyObject_dealloci(const void* _class, void* _self) {
 
 static void* EnemyObject_ctor(void* _self, va_list* app) {
   EnemyAgent enemyagent = super_ctor(EnemyObject, _self, app);
-  dll_add_head(&enemies, (DLLNode)&enemyagent->particle);
+  dll_add_head(&enemies, &enemyagent->particle.node);
   return enemyagent;
 }
 
 static void* EnemyObject_dtor(void* _self) {
   EnemyAgent enemyagent = _self;
-  dll_remove(&enemies, (DLLNode)&enemyagent->particle);
+  dll_remove(&enemies, &enemyagent->particle.node);
   return super_dtor(EnemyObject, _self);
 }
 
@@ -345,7 +345,7 @@ PrettyParticle spawn_smoke(Vector pos, Vector vel) {
   smoke->end_time =
     clock_time(main_clock) +
     clock_seconds_to_cycles(rand_in_range(&rgen, 500, 3500) / 1000.0f);
-  dll_add_head(&pretty_particles, (DLLNode)smoke);
+  dll_add_head(&pretty_particles, &((Particle)smoke)->node);
 
   return smoke;
 }
@@ -356,25 +356,27 @@ typedef void(*ParticleRemove)(DLL, Particle);
 // step all particles forward and remove those that fail the test
 void particles_update(DLL list, float dt,
                       ParticleTest test, ParticleRemove remove) {
-  Particle p = (Particle)list->head;
+  DLLNode node = list->head;
 
-  while(p != NULL) {
+  while(node) {
+    Particle p = node_to_particle(node);
     particle_integrate(p, dt);
-    Particle next = (Particle)p->node.next;
+    DLLNode next = node->next;
 
     if(!test(p)) {
       remove(list, p);
     }
 
-    p = next;
+    node = next;
   }
 }
 
 void enemies_update(float dt) {
-  Particle p = (Particle)enemies.head;
-  while(p != NULL) {
+  DLLNode node = enemies.head;
+  while(node) {
+    Particle p = node_to_particle(node);
     particle_integrate(p, dt);
-    p = (Particle)p->node.next;
+    node = node->next;
   }
 
   if(dll_count(&enemies) < 30) {
@@ -452,7 +454,8 @@ CollisionRecord particles_collisionrecords(DLL list, int* count, float scale) {
   DLLNode node = list->head;
   int ii = 0;
   while(node) {
-    rect_for_particle(&(crs[ii].rect), (Particle)node, scale);
+    Particle p = node_to_particle(node);
+    rect_for_particle(&(crs[ii].rect), p, scale);
     crs[ii].data = node;
     crs[ii].skip = 0;
     node = node->next;
@@ -482,9 +485,9 @@ CollisionRecord enemies_collisionrecords(Dispatcher dispatcher, int* count, floa
 
 void bullet_vs_agent(CollisionRecord bullet, CollisionRecord enemy, void* dispatcher_) {
   Dispatcher dispatcher = (Dispatcher)dispatcher_;
-  particle_remove(&player_bullets, bullet->data);
+  particle_remove(&player_bullets, node_to_particle(bullet->data));
 
-  Agent enemyagent = (Agent)enemy->data;
+  Agent enemyagent = enemy->data;
   agent_send_terminate(enemyagent, (Agent)dispatcher);
 
   bullet->skip = 1;
@@ -495,6 +498,7 @@ void bullet_vs_agent(CollisionRecord bullet, CollisionRecord enemy, void* dispat
 int particle_vs_map(Particle particle) {
   float hw = particle_width(particle) / 2.0f;
   float hh = particle_height(particle) / 2.0f;
+  int max = tilemap_size(tiles);
 
   struct Vector_ corners[] = {
     { particle->pos.x - hw,
@@ -510,6 +514,8 @@ int particle_vs_map(Particle particle) {
   int ii;
   for(ii = 0; ii < array_size(corners); ++ii) {
     int index = tilemap_index_vector(tiles, &corners[ii]);
+    if(index >= max) continue;
+
     int kind = tiles->tiles[index];
 
     if(tiles->tile_specs[kind].bitmask & TILESPEC_COLLIDABLE) {
@@ -520,12 +526,12 @@ int particle_vs_map(Particle particle) {
 }
 
 void bullet_vs_map(CollisionRecord bullet, DLL list) {
-  Particle pbullet = bullet->data;
+  Particle pbullet = node_to_particle(bullet->data);
 
   int index = particle_vs_map(pbullet);
   if(index == -1) return;
 
-  particle_remove(list, bullet->data);
+  particle_remove(list, pbullet);
   bullet->skip = 1;
   tiles->tiles[index] = 0;
 }
@@ -652,7 +658,7 @@ void spawn_player_fire() {
   struct Vector_ v = { player_bullet_speed, 0.0f };
   Particle bullet = bullet_make(&player->pos, &v,
                                 image_player_bullet);
-  dll_add_head(&player_bullets, (DLLNode)bullet);
+  dll_add_head(&player_bullets, &bullet->node);
 }
 
 void spawn_enemy_fire(Particle enemy) {
@@ -662,7 +668,7 @@ void spawn_enemy_fire(Particle enemy) {
 
   Particle bullet = bullet_make(&enemy->pos, &v,
                                 image_enemy_bullet);
-  dll_add_head(&enemy_bullets, (DLLNode)bullet);
+  dll_add_head(&enemy_bullets, &bullet->node);
 }
 
 void handle_input(InputState state) {
