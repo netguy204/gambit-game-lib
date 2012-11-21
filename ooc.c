@@ -46,6 +46,19 @@ void* new(const void* _class, ...) {
   return object;
 }
 
+void* init(const void* _class, void* _self, ...) {
+  const struct Class* class = _class;
+  struct Object* object = _self;
+  va_list ap;
+
+  assert(class && object);
+  object->class = class;
+  va_start(ap, _self);
+  object = ctor(object, &ap);
+  va_end(ap);
+  return object;
+}
+
 void* super_ctor(const void* _class, void* _self, va_list* app) {
   const struct Class* superclass = super(_class);
   assert(_self && superclass->ctor);

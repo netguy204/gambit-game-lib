@@ -16,17 +16,17 @@ void game_shutdown();
 
 // implementation specific stuff
 typedef struct EnemyAgent_ {
-  struct Agent_ agent;
+  struct Agent_ _;
   struct PathInstance_ pi;
   struct SteeringResult_ last_result;
   struct Particle_ particle;
   int hp;
 } *EnemyAgent;
 
-typedef struct PrettyParticle_ {
-  struct Particle_ particle;
+typedef struct TimedParticle_ {
+  struct Particle_ _;
   long end_time;
-} *PrettyParticle;
+} *TimedParticle;
 
 extern float player_speed;
 extern float player_bullet_speed;
@@ -47,11 +47,7 @@ extern SpriteAtlasEntry image_smoke;
 
 extern Clock main_clock;
 
-Particle particle_make();
-void particle_free(Particle particle);
-void particle_remove(DLL list, Particle particle);
-
-PrettyParticle spawn_smoke(Vector pos, Vector vel);
+TimedParticle spawn_smoke(Vector pos, Vector vel);
 Particle spawn_bullet(Vector pos, Vector vel, SpriteAtlasEntry image);
 void spawn_enemy_fire(Particle enemy);
 

@@ -2,6 +2,14 @@
 #include "testlib.h"
 #include "vector.h"
 
+void* ParticleObject = NULL;
+
+void particle_integrate(Particle particle, float dt) {
+  vector_integrate(&particle->pos, &particle->pos, &particle->vel, dt);
+  particle->scale += (particle->dsdt * dt);
+  particle->angle += (particle->dadt * dt);
+}
+
 float particle_width(Particle particle) {
   return particle->image->w * particle->scale;
 }
@@ -36,12 +44,6 @@ Sprite particle_sprite(Particle particle) {
   sprite->originY = 0.5;
   sprite->angle = particle->angle;
   return sprite;
-}
-
-void particle_integrate(Particle particle, float dt) {
-  vector_integrate(&particle->pos, &particle->pos, &particle->vel, dt);
-  particle->scale += (particle->dsdt * dt);
-  particle->angle += (particle->dadt * dt);
 }
 
 Particle node_to_particle(DLLNode node) {

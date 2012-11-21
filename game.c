@@ -17,6 +17,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <math.h>
 
 float player_speed = 600;
@@ -27,6 +28,9 @@ float enemy_fire_rate = 1;
 
 Particle player;
 struct RepeatingLatch_ player_gun_latch;
+
+const void* ParticleObject;
+const void* TimedParticleObject;
 
 const void* EnemyObject;
 const void* EnemyCoordinatorObject;
@@ -54,8 +58,17 @@ FixedAllocator particle_allocator;
 FixedAllocator prettyparticle_allocator;
 FixedAllocator enemy_allocator;
 
-Particle particle_make() {
-  Particle particle = fixed_allocator_alloc(particle_allocator);
+void* ParticleObject_alloci(const void* _class) {
+  return fixed_allocator_alloc(particle_allocator);
+}
+
+void* ParticleObject_ctor(void* _self, va_list* app) {
+  Particle particle = super_ctor(ParticleObject, _self, app);
+  particle->containing_list = va_arg(*app, DLL);
+  if(particle->containing_list) {
+    dll_add_head(particle->containing_list, &particle->node);
+  }
+
   particle->scale = 1.0f;
   particle->angle = 0.0f;
   particle->dsdt = 0.0f;
@@ -63,32 +76,24 @@ Particle particle_make() {
   return particle;
 }
 
-void particle_free(Particle particle) {
-  fixed_allocator_free(particle_allocator, particle);
+void* ParticleObject_dtor(void* _self) {
+  Particle particle = _self;
+  if(particle->containing_list) {
+    dll_remove(particle->containing_list, &particle->node);
+  }
+  return super_dtor(ParticleObject, _self);
 }
 
-void particle_remove(DLL list, Particle particle) {
-  dll_remove(list, &particle->node);
-  particle_free(particle);
+void ParticleObject_dealloci(void* _self) {
+  fixed_allocator_free(particle_allocator, _self);
 }
 
-PrettyParticle prettyparticle_make() {
-  PrettyParticle pp = fixed_allocator_alloc(prettyparticle_allocator);
-  Particle p = (Particle)pp;
-  p->scale = 1.0f;
-  p->angle = 0.0f;
-  p->dsdt = 0.0f;
-  p->dadt = 0.0f;
-  return pp;
+void* TimedParticleObject_alloci(const void* _class) {
+  return fixed_allocator_alloc(prettyparticle_allocator);
 }
 
-void prettyparticle_free(PrettyParticle particle) {
-  fixed_allocator_free(prettyparticle_allocator, particle);
-}
-
-void prettyparticle_remove(DLL list, PrettyParticle particle) {
-  dll_remove(list, &((Particle)particle)->node);
-  prettyparticle_free(particle);
+void TimedParticleObject_dealloci(void* _self) {
+  fixed_allocator_free(prettyparticle_allocator, _self);
 }
 
 static void* EnemyObject_alloci(void* _self) {
@@ -101,13 +106,13 @@ static void EnemyObject_dealloci(const void* _class, void* _self) {
 
 static void* EnemyObject_ctor(void* _self, va_list* app) {
   EnemyAgent enemyagent = super_ctor(EnemyObject, _self, app);
-  dll_add_head(&enemies, &enemyagent->particle.node);
+  init(ParticleObject, &enemyagent->particle, &enemies);
   return enemyagent;
 }
 
 static void* EnemyObject_dtor(void* _self) {
   EnemyAgent enemyagent = _self;
-  dll_remove(&enemies, &enemyagent->particle.node);
+  dtor(&enemyagent->particle);
   return super_dtor(EnemyObject, _self);
 }
 
@@ -323,8 +328,8 @@ EnemyAgent spawn_enemy() {
   return enemyagent;
 }
 
-Particle bullet_make(Vector pos, Vector vel, SpriteAtlasEntry image) {
-  Particle bullet = particle_make();
+Particle bullet_make(Vector pos, Vector vel, SpriteAtlasEntry image, DLL list) {
+  Particle bullet = new(ParticleObject, list);
   bullet->image = image;
   bullet->pos = *pos;
   bullet->vel = *vel;
@@ -335,18 +340,19 @@ Particle bullet_make(Vector pos, Vector vel, SpriteAtlasEntry image) {
   return bullet;
 }
 
-PrettyParticle spawn_smoke(Vector pos, Vector vel) {
-  PrettyParticle smoke = prettyparticle_make();
-  smoke->particle.image = image_smoke;
-  smoke->particle.pos = *pos;
-  smoke->particle.vel = *vel;
-  smoke->particle.angle = IN_RADIANS(rand_in_range(&rgen, 0, 360));
-  smoke->particle.dsdt = 0.5f * rand_in_range(&rgen, 1, 4);
-  smoke->particle.dadt = IN_RADIANS(rand_in_range(&rgen, -20, 20));
+TimedParticle spawn_smoke(Vector pos, Vector vel) {
+  TimedParticle smoke = new(TimedParticleObject, &pretty_particles);
+  Particle particle = (Particle)smoke;
+
+  particle->image = image_smoke;
+  particle->pos = *pos;
+  particle->vel = *vel;
+  particle->angle = IN_RADIANS(rand_in_range(&rgen, 0, 360));
+  particle->dsdt = 0.5f * rand_in_range(&rgen, 1, 4);
+  particle->dadt = IN_RADIANS(rand_in_range(&rgen, -20, 20));
   smoke->end_time =
     clock_time(main_clock) +
     clock_seconds_to_cycles(rand_in_range(&rgen, 500, 3500) / 1000.0f);
-  dll_add_head(&pretty_particles, &((Particle)smoke)->node);
 
   return smoke;
 }
@@ -355,20 +361,18 @@ typedef int(*ParticleTest)(Particle p);
 typedef void(*ParticleRemove)(DLL, Particle);
 
 // step all particles forward and remove those that fail the test
-void particles_update(DLL list, float dt,
-                      ParticleTest test, ParticleRemove remove) {
+void particles_update(DLL list, float dt, ParticleTest test) {
   DLLNode node = list->head;
 
   while(node) {
     Particle p = node_to_particle(node);
     particle_integrate(p, dt);
-    DLLNode next = node->next;
 
     if(!test(p)) {
-      remove(list, p);
+      delete(p);
     }
 
-    node = next;
+    node = node->next;
   }
 }
 
@@ -409,23 +413,20 @@ int staying_onscreen_test(Particle p) {
 }
 
 void player_bullets_update(float dt) {
-  particles_update(&player_bullets, dt, staying_onscreen_test,
-                   particle_remove);
+  particles_update(&player_bullets, dt, staying_onscreen_test);
 }
 
 void enemy_bullets_update(float dt) {
-  particles_update(&enemy_bullets, dt, staying_onscreen_test,
-                   particle_remove);
+  particles_update(&enemy_bullets, dt, staying_onscreen_test);
 }
 
 int particle_timeout_test(Particle p) {
-  PrettyParticle smoke = (PrettyParticle)p;
+  TimedParticle smoke = (TimedParticle)p;
   return clock_time(main_clock) < smoke->end_time;
 }
 
 void prettyparticles_update(float dt) {
-  particles_update(&pretty_particles, dt, &particle_timeout_test,
-                   (ParticleRemove)&prettyparticle_remove);
+  particles_update(&pretty_particles, dt, &particle_timeout_test);
 }
 
 void collide_arrays(CollisionRecord as, int na, CollisionRecord bs, int nb,
@@ -486,7 +487,7 @@ CollisionRecord enemies_collisionrecords(Dispatcher dispatcher, int* count, floa
 
 void bullet_vs_agent(CollisionRecord bullet, CollisionRecord enemy, void* dispatcher_) {
   Dispatcher dispatcher = (Dispatcher)dispatcher_;
-  particle_remove(&player_bullets, node_to_particle(bullet->data));
+  delete(node_to_particle(bullet->data));
 
   Agent enemyagent = enemy->data;
   agent_send_terminate(enemyagent, (Agent)dispatcher);
@@ -532,7 +533,7 @@ void bullet_vs_map(CollisionRecord bullet, DLL list) {
   int index = particle_vs_map(pbullet);
   if(index == -1) return;
 
-  particle_remove(list, pbullet);
+  delete(pbullet);
   bullet->skip = 1;
   tiles->tiles[index] = 0;
 }
@@ -591,7 +592,7 @@ void game_init() {
                          "particle_allocator");
 
   prettyparticle_allocator =
-    fixed_allocator_make(sizeof(struct PrettyParticle_),
+    fixed_allocator_make(sizeof(struct TimedParticle_),
                          MAX_NUM_PRETTYPARTICLES,
                          "prettyparticle_allocator");
 
@@ -608,6 +609,20 @@ void game_init() {
   image_player_bullet = spriteatlas_find(atlas, "plasma.png");
   image_enemy_bullet = spriteatlas_find(atlas, "enemy-bullet.png");
   image_smoke = spriteatlas_find(atlas, "smoke.png");
+
+  ParticleObject = new(UpdateableClass, "Particle",
+                       Object, sizeof(struct Particle_),
+                       alloci, ParticleObject_alloci,
+                       dealloci, ParticleObject_dealloci,
+                       ctor, ParticleObject_ctor,
+                       dtor, ParticleObject_dtor,
+                       0);
+
+  TimedParticleObject = new(UpdateableClass, "TimedParticle",
+                            ParticleObject, sizeof(struct TimedParticle_),
+                            alloci, TimedParticleObject_alloci,
+                            dealloci, TimedParticleObject_dealloci,
+                            0);
 
   EnemyObject = new(UpdateableClass, "Enemy",
                     AgentObject, sizeof(struct EnemyAgent_),
@@ -638,7 +653,7 @@ void game_init() {
   image_stars = image_load("resources/night-sky-stars.jpg");
   tiles = tilemap_testmake(atlas);
 
-  player = particle_make();
+  player = new(ParticleObject, NULL);
   player->image = spriteatlas_find(atlas, "hero.png");
   player->pos.x = 500 * 64;
   player->pos.y = 100 * 64;
@@ -658,8 +673,8 @@ void game_init() {
 void spawn_player_fire() {
   struct Vector_ v = { player_bullet_speed, 0.0f };
   Particle bullet = bullet_make(&player->pos, &v,
-                                image_player_bullet);
-  dll_add_head(&player_bullets, &bullet->node);
+                                image_player_bullet,
+                                &player_bullets);
 }
 
 void spawn_enemy_fire(Particle enemy) {
@@ -668,8 +683,8 @@ void spawn_enemy_fire(Particle enemy) {
   vector_scale(&v, &v, enemy_bullet_speed);
 
   Particle bullet = bullet_make(&enemy->pos, &v,
-                                image_enemy_bullet);
-  dll_add_head(&enemy_bullets, &bullet->node);
+                                image_enemy_bullet,
+                                &enemy_bullets);
 }
 
 void handle_input(InputState state) {

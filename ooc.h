@@ -27,7 +27,8 @@ struct Class {
 extern const void* Object;
 extern const void* Class;
 
-void * new(const void * class, ...);
+void* new(const void * class, ...);
+void* init(const void * class, void* self, ...);
 void delete(void * self);
 
 int differ(const void * self, const void * b);
@@ -37,9 +38,9 @@ const void* classOf(const void* self);
 size_t sizeOf(const void* self);
 const void* super(const void* self);
 
-void* dtor(void* _self);
-void* ctor(void* _self, va_list* app);
 void* alloci(const void* class);
+void* ctor(void* _self, va_list* app);
+void* dtor(void* _self);
 void dealloci(void* _self);
 
 void* super_ctor(const void* class, void* self, va_list* app);
