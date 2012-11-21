@@ -130,6 +130,38 @@ Sprite frame_resource_sprite(ImageResource resource) {
   return sprite;
 }
 
+EnemyAgent spawn_enemy() {
+  EnemyAgent enemyagent = new(EnemyObject, ENEMY_IDLE);
+
+  enemyagent->particle.image = image_ally;
+  enemyagent->particle.scale = 1.0f;
+
+  // pick a path
+  int pathidx = rand_in_range(&rgen, 0, civpaths->npaths);
+  Path path = &civpaths->paths[pathidx];
+  enemyagent->pi.path = path;
+  enemyagent->pi.pathpos = 0;
+  enemyagent->pi.pathdir = 1;
+  enemyagent->pi.max_skip_range = 3;
+  enemyagent->hp = 100;
+
+  // start at its beginning
+  vector_tilecenter(&enemyagent->particle.pos, tiles, path->steps[enemyagent->pi.pathpos]);
+
+  // velocity aligned with the path
+  vector_path_direction(&enemyagent->particle.vel, tiles, path,
+                        enemyagent->pi.pathpos, enemyagent->pi.pathdir);
+  vector_scale(&enemyagent->particle.vel, &enemyagent->particle.vel, enemy_speed);
+
+  // not scaling or spinning, let the steering method figure out the
+  // right orientation
+  enemyagent->particle.angle = M_PI;
+  enemyagent->particle.dsdt = 0.0f;
+  enemyagent->particle.dadt = 0.0f;
+
+  return enemyagent;
+}
+
 // coordinate joint enemy behavior
 void EnemyCoordinatorObject_update(void* _self, float dt) {
   Dispatcher dispatcher = _self;
@@ -166,6 +198,13 @@ void EnemyCoordinatorObject_update(void* _self, float dt) {
       message_postinbox(subagent, command);
     }
   }
+
+  // if there aren't enough enemies, ask for more
+  if(ll_count(dispatcher->dispatchees) < 30) {
+    EnemyAgent enemyagent = spawn_enemy();
+    Message spawn = message_make(NULL, COLLECTIVE_ADD_AGENT, enemyagent);
+    message_postinbox((Agent)collective, spawn);
+  }
 }
 
 void enemyagent_process_inbox(Agent agent, Message message, void * udata) {
@@ -201,6 +240,9 @@ void EnemyObject_update(void* _self, float dt) {
 
   Agent agent = _self;
   EnemyAgent enemyagent = _self;
+
+  // integrate forward
+  update(&enemyagent->particle, dt);
 
   // drain our inbox
   foreach_inboxmessage(agent, enemyagent_process_inbox, NULL);
@@ -302,38 +344,6 @@ void EnemyObject_update(void* _self, float dt) {
   */
 }
 
-EnemyAgent spawn_enemy() {
-  EnemyAgent enemyagent = new(EnemyObject, ENEMY_IDLE);
-
-  enemyagent->particle.image = image_ally;
-  enemyagent->particle.scale = 1.0f;
-
-  // pick a path
-  int pathidx = rand_in_range(&rgen, 0, civpaths->npaths);
-  Path path = &civpaths->paths[pathidx];
-  enemyagent->pi.path = path;
-  enemyagent->pi.pathpos = 0;
-  enemyagent->pi.pathdir = 1;
-  enemyagent->pi.max_skip_range = 3;
-  enemyagent->hp = 100;
-
-  // start at its beginning
-  vector_tilecenter(&enemyagent->particle.pos, tiles, path->steps[enemyagent->pi.pathpos]);
-
-  // velocity aligned with the path
-  vector_path_direction(&enemyagent->particle.vel, tiles, path,
-                        enemyagent->pi.pathpos, enemyagent->pi.pathdir);
-  vector_scale(&enemyagent->particle.vel, &enemyagent->particle.vel, enemy_speed);
-
-  // not scaling or spinning, let the steering method figure out the
-  // right orientation
-  enemyagent->particle.angle = M_PI;
-  enemyagent->particle.dsdt = 0.0f;
-  enemyagent->particle.dadt = 0.0f;
-
-  return enemyagent;
-}
-
 Particle bullet_make(Vector pos, Vector vel, SpriteAtlasEntry image, DLL list) {
   Particle bullet = new(BulletObject, list);
   bullet->image = image;
@@ -376,16 +386,6 @@ void particles_update(DLL list, float dt) {
   }
 }
 
-void enemies_update(float dt) {
-  particles_update(&enemies, dt);
-
-  if(dll_count(&enemies) < 30) {
-    EnemyAgent enemyagent = spawn_enemy();
-    Message spawn = message_make(NULL, COLLECTIVE_ADD_AGENT, enemyagent);
-    message_postinbox((Agent)collective, spawn);
-  }
-}
-
 int staying_onscreen_test(Particle p) {
   float hw = particle_width(p) / 2.0f;
   float hh = particle_height(p) / 2.0f;
@@ -423,18 +423,6 @@ void TimedParticleObject_update(void* _self, float dt) {
   if(clock_time(main_clock) >= particle->end_time) {
     delete(particle);
   }
-}
-
-void player_bullets_update(float dt) {
-  particles_update(&player_bullets, dt);
-}
-
-void enemy_bullets_update(float dt) {
-  particles_update(&enemy_bullets, dt);
-}
-
-void prettyparticles_update(float dt) {
-  particles_update(&pretty_particles, dt);
 }
 
 void collide_arrays(CollisionRecord as, int na, CollisionRecord bs, int nb,
@@ -738,20 +726,17 @@ void game_step(long delta, InputState state) {
   handle_input(state);
 
   // update player position
-  particle_integrate((Particle)player, dt);
-
-  // update enemies
-  enemies_update(dt);
+  update(player, dt);
 
   // update bullets
-  player_bullets_update(dt);
-  enemy_bullets_update(dt);
+  particles_update(&player_bullets, dt);
+  particles_update(&enemy_bullets, dt);
 
   // update particles
-  prettyparticles_update(dt);
+  particles_update(&pretty_particles, dt);
 
   // AI and collision detection
-  update((Agent)collective, dt);
+  update(collective, dt);
 
   // draw the particles
   spritelist_enqueue_for_screen(particles_spritelist(&pretty_particles));
