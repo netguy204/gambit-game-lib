@@ -19,6 +19,7 @@ typedef struct LLEntry_ {
 void llentry_add(LLNode* head, void* value);
 void* llentry_nextvalue(LLNode* current);
 void llentry_remove(LLNode* head, void* value);
+void llentry_free(LLEntry entry);
 
 typedef struct DLLNode_ *DLLNode;
 

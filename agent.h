@@ -2,6 +2,7 @@
 #define AGENT_C
 
 #include "listlib.h"
+#include "heapvector.h"
 #include "ooc.h"
 
 extern const void* AgentClass;
@@ -46,12 +47,10 @@ typedef struct Dispatcher_ {
   LLNode dispatchees;
 } *Dispatcher;
 
-#define COLLECTIVE_SUB_DISPATCHERS 2
-
 typedef struct Collective_ {
   struct Dispatcher_ _;
   struct DLL_ children;
-  Dispatcher sub_dispatchers[COLLECTIVE_SUB_DISPATCHERS];
+  HeapVector sub_dispatchers;
 } *Collective;
 
 enum MessageKind {

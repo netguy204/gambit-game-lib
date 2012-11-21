@@ -670,7 +670,8 @@ void game_init() {
 
   collective = new(CollectiveObject, COLLECTIVE_IDLE,
                    new(EnemyCoordinatorObject, DISPATCHER_IDLE),
-                   new(CollisionObject, DISPATCHER_IDLE));
+                   new(CollisionObject, DISPATCHER_IDLE),
+                   0);
 }
 
 void spawn_player_fire() {

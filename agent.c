@@ -64,6 +64,22 @@ void* DispatcherObject_ctor(void* _self, va_list* app) {
   return dispatcher;
 }
 
+void* DispatcherObject_dtor(void* _self) {
+  // a dispatcher should free its entries (but not the agents they
+  // point to since lifetime of agents is controlled by the
+  // collective)
+  Dispatcher dispatcher = _self;
+  LLNode node = dispatcher->dispatchees;
+  while(node) {
+    LLNode next = node->next;
+    llentry_free((LLEntry)node);
+    node = next;
+  }
+  dispatcher->dispatchees = NULL;
+
+  return super_dtor(DispatcherObject, _self);
+}
+
 // collective
 
 void collective_add(Collective collective, Agent agent);
@@ -71,18 +87,29 @@ void collective_add(Collective collective, Agent agent);
 void* CollectiveObject_ctor(void* _self, va_list* app) {
   Collective collective = super_ctor(CollectiveObject, _self, app);
   dll_zero(&collective->children);
+  collective->sub_dispatchers = heapvector_make();
 
-  int ii = 0;
-  for(ii = 0; ii < COLLECTIVE_SUB_DISPATCHERS; ++ii) {
+  while(1) {
     Dispatcher dispatcher = va_arg(*app, Dispatcher);
-    collective->sub_dispatchers[ii] = dispatcher;
-
-    if(dispatcher) {
-      collective_add(collective, (Agent)dispatcher);
-    }
+    if(0 == (int)dispatcher) break;
+    HV_PUSH_VALUE(collective->sub_dispatchers, Dispatcher, dispatcher);
+    collective_add(collective, (Agent)dispatcher);
   }
 
   return collective;
+}
+
+void* CollectiveObject_dtor(void* _self) {
+  Collective collective = _self;
+  DLLNode node = collective->children.head;
+  while(node) {
+    DLLNode next = node->next;
+    Agent agent = container_of(node, struct Agent_, node);
+    delete(agent);
+    node = next;
+  }
+
+  return super_dtor(CollectiveObject, _self);
 }
 
 void CollectiveObject_update(void* _self, float dt);
@@ -113,11 +140,13 @@ void agent_init() {
   DispatcherObject = new(UpdateableClass, "Dispatcher",
                          AgentObject, sizeof(struct Dispatcher_),
                          ctor, DispatcherObject_ctor,
+                         dtor, DispatcherObject_dtor,
                          0);
 
   CollectiveObject = new(UpdateableClass, "Collective",
                          DispatcherObject, sizeof(struct Collective_),
                          ctor, CollectiveObject_ctor,
+                         dtor, CollectiveObject_dtor,
                          update, CollectiveObject_update,
                          0);
 }
@@ -274,11 +303,9 @@ void collective_add_agent(Collective collective, void * data) {
   collective_add(collective, agent);
 
   int ii = 0;
-  for(ii = 0; ii < COLLECTIVE_SUB_DISPATCHERS; ++ii) {
-    Dispatcher dispatcher = collective->sub_dispatchers[ii];
-    if(dispatcher) {
-      dispatcher_add_agent(dispatcher, agent);
-    }
+  for(ii = 0; ii < HV_SIZE(collective->sub_dispatchers, Dispatcher); ++ii) {
+    Dispatcher dispatcher = *HV_GET(collective->sub_dispatchers, Dispatcher, ii);
+    dispatcher_add_agent(dispatcher, agent);
   }
 }
 
