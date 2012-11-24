@@ -7,42 +7,8 @@
 
 #include <stddef.h>
 
-#define ITEM_MAX_NAME 12
-
-typedef enum {
-  HEAT,
-  POWER,
-  FUEL,
-  SPACE,
-  MAX_RESOURCE
-} Resource;
-
-extern char* resource_names[MAX_RESOURCE];
-
-typedef enum {
-  FIRE,
-  IMPACT,
-  MAX_ACTIVATION
-} Activation;
-
-typedef float Resources_[MAX_RESOURCE];
-typedef float* Resources;
-
-void resources_zero(Resources attr);
-
-/* update cycle:
- * - consumers request from producers and producers reply until depleted
- * - producers release remaining mandatory productions to the system
- */
-
 struct SystemInstance_;
 struct ComponentInstance_;
-
-typedef struct Stats_ {
-  Resources_ storage;
-  Resources_ max_capacity;
-  Resources_ production_rates;
-} *Stats;
 
 typedef enum {
   PORT_NORTH,
@@ -54,68 +20,44 @@ typedef enum {
   PORT_MAX
 } PortDirection;
 
+typedef enum {
+  ACTIVATION_FIRE,
+  ACTIVATION_MAX
+} Activation;
+
 typedef struct ComponentPort_ {
-  struct Class _;
-  struct DLLNode_ node;
-  PortDirection direction;
+  int valid;
   int offsetx;
   int offsety;
   int type;
 } *ComponentPort;
 
-void* ComponentPortClass;
+struct ActivatableClass {
+  struct UpdateableClass_ _;
+  void(*activate)(void* self, Activation activation);
+};
+
+extern void* ActivatableClass;
 
 struct ComponentClass {
-  struct UpdateableClass_ _;
-
-  void(*activate)(void* self, Activation activation);
-  int(*push)(void* self, Resources resources);
-  int(*pull)(void* self, Resources resources);
-
+  struct ActivatableClass _;
   struct DLLNode_ node; // keeps us in the class registry
-  LLNode subcomponents; // non-intrusive list of subcomponents
-  struct DLL_ ports; // possible ports on this class
-
-  Resources_ requirements;
-  struct Stats_ stats;
-  float quality;
+  struct ComponentPort_ ports[PORT_MAX];
 };
 
 void activate(void* self, Activation activation);
-int push(void* self, Resources resources);
-int pull(void* self, Resources resources);
 
 void items_init();
 
 struct ComponentClass* componentclass_find(char *name);
 
-struct ComponentInstance_;
-
 typedef struct ComponentInstance_ {
   struct Object _;
-  struct DLLNode_ node; // siblings
-  struct ComponentInstance_* parent;
-  struct DLL_ children;
-  struct Stats_ stats;
-  struct DLL_ ports; // port instances
-  float quality;
+  struct ComponentInstance_* connected[PORT_MAX];
 } *ComponentInstance;
-
-typedef struct ComponentPortInstance_ {
-  struct Object _;
-  struct DLLNode_ node;
-  ComponentInstance component;
-} *ComponentPortInstance;
 
 extern void* ComponentClass;
 extern void* ComponentObject;
-extern void* ComponentSystemObject;
-extern void* ComponentPortClass;
-extern void* ComponentPortObject;
-
-void componentinstance_addchild(ComponentInstance parent, ComponentInstance child);
-void componentinstance_removechild(ComponentInstance child);
-ComponentInstance componentinstance_findchild(ComponentInstance root, char* klass_name);
 
 // temporary XML based file loading. I'll come up with something
 // better once I've decided this system is a good idea at all.
