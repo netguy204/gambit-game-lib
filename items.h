@@ -44,6 +44,27 @@ typedef struct Stats_ {
   Resources_ production_rates;
 } *Stats;
 
+typedef enum {
+  PORT_NORTH,
+  PORT_SOUTH,
+  PORT_EAST,
+  PORT_WEST,
+  PORT_TOP,
+  PORT_BOTTOM,
+  PORT_MAX
+} PortDirection;
+
+typedef struct ComponentPort_ {
+  struct Class _;
+  struct DLLNode_ node;
+  PortDirection direction;
+  int offsetx;
+  int offsety;
+  int type;
+} *ComponentPort;
+
+void* ComponentPortClass;
+
 struct ComponentClass {
   struct UpdateableClass_ _;
 
@@ -53,6 +74,7 @@ struct ComponentClass {
 
   struct DLLNode_ node; // keeps us in the class registry
   LLNode subcomponents; // non-intrusive list of subcomponents
+  struct DLL_ ports; // possible ports on this class
 
   Resources_ requirements;
   struct Stats_ stats;
@@ -75,12 +97,21 @@ typedef struct ComponentInstance_ {
   struct ComponentInstance_* parent;
   struct DLL_ children;
   struct Stats_ stats;
+  struct DLL_ ports; // port instances
   float quality;
 } *ComponentInstance;
+
+typedef struct ComponentPortInstance_ {
+  struct Object _;
+  struct DLLNode_ node;
+  ComponentInstance component;
+} *ComponentPortInstance;
 
 extern void* ComponentClass;
 extern void* ComponentObject;
 extern void* ComponentSystemObject;
+extern void* ComponentPortClass;
+extern void* ComponentPortObject;
 
 void componentinstance_addchild(ComponentInstance parent, ComponentInstance child);
 void componentinstance_removechild(ComponentInstance child);

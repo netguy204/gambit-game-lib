@@ -11,7 +11,8 @@
 void* ComponentClass;
 void* ComponentObject;
 void* ComponentSystemObject;
-
+void* ComponentPortClass;
+void* ComponentPortObject;
 
 void activate(void* _self, Activation activation) {
   const struct ComponentClass* class = classOf(_self);
@@ -58,6 +59,36 @@ char* resource_names[MAX_RESOURCE] = {
   "fuel",
   "space"
 };
+
+char* port_names[PORT_MAX] = {
+  "north",
+  "south",
+  "east",
+  "west",
+  "top",
+  "bottom"
+};
+
+void* ComponentPortClass_ctor(void* _self, va_list *app) {
+  ComponentPort self = super_ctor(ComponentPortClass, _self, app);
+  size_t offset = offsetof(struct ComponentPort_, node);
+  memset((char*)self + offset, 0, sizeof(struct ComponentPort_) - offset);
+  return self;
+}
+
+void* ComponentPortObject_ctor(void* _self, va_list *app) {
+  ComponentPortInstance self = super_ctor(ComponentPortObject, _self, app);
+  self->component = NULL;
+  return self;
+}
+
+ComponentPort node_to_componentport(DLLNode node) {
+  return container_of(node, struct ComponentPort_, node);
+}
+
+ComponentPortInstance node_to_componentportinstance(DLLNode node) {
+  return container_of(node, struct ComponentPortInstance_, node);
+}
 
 struct ComponentClass* node_to_componentclass(DLLNode node) {
   return container_of(node, struct ComponentClass, node);
@@ -210,6 +241,16 @@ void* ComponentInstance_ctor(void* _self, va_list* app) {
   stats_assign(&self->stats, &class->stats);
   self->quality = class->quality;
 
+  // build our ports
+  DLLNode portnode = class->ports.head;
+  while(portnode) {
+    ComponentPort port = node_to_componentport(portnode);
+    ComponentPortInstance port_instance = new(port);
+    dll_add_head(&self->ports, &port_instance->node);
+    portnode = portnode->next;
+  }
+
+  // build our children
   LLNode child = class->subcomponents;
   struct ComponentClass* child_class;
   while((child_class = llentry_nextvalue(&child))) {
@@ -224,9 +265,18 @@ void* ComponentInstance_dtor(void* _self) {
   ComponentInstance comp = _self;
   SAFETY(if(comp->parent) fail_exit("freeing component that has a parent"));
 
-  DLLNode node = comp->children.head;
+
+  // free our ports
+  DLLNode node = comp->ports.head;
+  while(node) {
+    DLLNode next = node->next;
+    ComponentPortInstance port_instance = node_to_componentportinstance(node);
+    delete(port_instance);
+    node = next;
+  }
 
   // free remaining children
+  node = comp->children.head;
   while(node) {
     ComponentInstance child = node_to_componentinstance(node);
     child->parent = NULL;
@@ -392,6 +442,35 @@ void* find_function(char* fnname) {
   return fn;
 }
 
+PortDirection string_to_portdirection(const char* str) {
+  int ii;
+  for(ii = 0; ii < PORT_MAX; ++ii) {
+    if(streq(port_names[ii], str)) {
+      return ii;
+    }
+  }
+  fprintf(stderr, "unknown port direction %s\n", str);
+  exit(1);
+  return PORT_MAX;
+}
+
+void component_add_port(struct ComponentClass* klass, xmlNode* child) {
+  const char* direction = node_attr(child, "direction", "error");
+  char port_name[256];
+  snprintf(port_name, sizeof(port_name), "%s-%s-port", className(klass), direction);
+
+  ComponentPort port = new(ComponentPortClass, port_name,
+                           ComponentPortObject, sizeof(struct ComponentPortInstance_),
+                           0);
+
+  port->direction = string_to_portdirection(direction);
+  port->offsetx = atoi(node_attr(child, "offsetx", "0"));
+  port->offsety = atoi(node_attr(child, "offsety", "0"));
+  port->type = atoi(node_attr(child, "type", "error"));
+
+  dll_add_head(&klass->ports, &port->node);
+}
+
 void component_fill_from_xml(struct ComponentClass* klass, xmlNode* child) {
   if(streq(child->name, "produces")) {
     resource_add_name(klass->stats.production_rates, node_attr(child, "name", "error"),
@@ -408,6 +487,8 @@ void component_fill_from_xml(struct ComponentClass* klass, xmlNode* child) {
   } else if(streq(child->name, "maxcapacity")) {
     resource_add_name(klass->stats.max_capacity, node_attr(child, "name", "error"),
                       atof(node_attr(child, "value", "error")));
+  } else if(streq(child->name, "port")) {
+    component_add_port(klass, child);
   } else if(streq(child->name, "quality")) {
     klass->quality = atof(node_attr(child, "value", "error"));
   } else if(streq(child->name, "updatefn")) {
@@ -533,6 +614,16 @@ void items_init() {
   self_handle = dlopen(NULL, RTLD_LAZY);
 
   updateable_init();
+
+  ComponentPortClass = new(Class, "ComponentPortClass",
+                           Class, sizeof(struct ComponentPort_),
+                           ctor, ComponentPortClass_ctor,
+                           0);
+
+  ComponentPortObject = new(ComponentPortClass, "ComponentPortObject",
+                            Object, sizeof(struct ComponentPortInstance_),
+                            ctor, ComponentPortObject_ctor,
+                            0);
 
   ComponentClass = new(UpdateableClass, "ComponentClass",
                        UpdateableClass, sizeof(struct ComponentClass),

@@ -4,6 +4,9 @@
     <produces name="power" rate="100" />
     <consumes name="fuel" rate="10" />
     <requires name="space" value="10" />
+
+    <port direction="bottom" type="10" offsetx="11" offsety="11" />
+
   </item>
 
   <item name="alpha-battery">
@@ -14,18 +17,38 @@
   <item name="fuel-storage">
     <maxcapacity name="fuel" value="200" />
     <requires name="space" value="10" />
+
+    <port direction="north" type="26" offsetx="9" />
   </item>
 
   <item name="heat-sink">
     <updatefn name="heatsink_update" />
     <quality value="0.30" />
     <requires name="space" value="10" />
+
+    <port direction="east" type="38" offsety="0" />
   </item>
 
   <item name="alpha-laser">
     <activatefn name="laser_fire" />
     <requires name="space" value="10" />
     <quality value="0.5" />
+
+    <port direction="south" type="26" offsetx="1" />
+  </item>
+
+  <item name="alpha-hull">
+    <provides name="space" value="50" />
+
+    <!-- types are the lengths in the normal direction,
+         offsets are relative to top, left corner. The
+         non-normal direction is always flush with the
+         edge of the picture. -->
+    <port direction="north" type="26" offsetx="5" />
+    <port direction="south" type="26" offsetx="5" />
+    <port direction="west"  type="38" offsety="9" />
+    <port direction="east"  type="20" offsety="18" />
+    <port direction="top" type="10" offsetx="32" offsety="28" />
   </item>
 
   <system name="alpha-power">
@@ -33,13 +56,6 @@
     <component name="alpha-reactor" />
     <component name="heat-sink" />
     <maxcapacity name="heat" value="40" />
-  </system>
-
-  <system name="alpha-hull">
-    <component name="alpha-power" />
-    <component name="fuel-storage" />
-    <component name="alpha-laser" />
-    <provides name="space" value="50" />
   </system>
 
 </items>

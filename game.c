@@ -26,8 +26,7 @@ float enemy_speed = 250;
 float enemy_bullet_speed = 400;
 float enemy_fire_rate = 1;
 
-Particle player;
-struct RepeatingLatch_ player_gun_latch;
+struct PlayerState_ player;
 
 const void* ParticleObject;
 const void* BulletObject;
@@ -40,7 +39,6 @@ const void* CollisionObject;
 
 Collective collective;
 struct DLL_ enemies;
-struct DLL_ player_bullets;
 struct DLL_ enemy_bullets;
 struct DLL_ pretty_particles;
 struct Random_ rgen;
@@ -258,6 +256,7 @@ void EnemyObject_update(void* _self, float dt) {
   Particle p = &((VisibleAgent)enemyagent)->particle;
   struct SteeringParams_ params = { 50.0, enemy_speed, p->angle, 0.08 };
   SteeringResult result = &enemyagent->last_result;
+  float player_width = particle_width(&player.particle);
 
   // then, only make adjustments once every few ticks
   if(clock_time(main_clock) < agent->next_timer) {
@@ -276,8 +275,8 @@ void EnemyObject_update(void* _self, float dt) {
   if(agent->state == ENEMY_IDLE) {
     struct SteeringObstacle_ pobjs;
 
-    pobjs.center = player->pos;
-    pobjs.radius = particle_width(player) * 0.5;
+    pobjs.center = player.particle.pos;
+    pobjs.radius = player_width * 0.5;
 
     steering_avoidance(result, &pobjs, 1, &p->pos, &p->vel,
                        particle_width(p) * 0.4, 200, &params);
@@ -314,13 +313,14 @@ void EnemyObject_update(void* _self, float dt) {
     break;
 
   case ENEMY_ATTACKING:
-    steering_offsetarrival(result, &player->pos, &p->pos, &p->vel,
-                           2.0f * particle_width(player), 3.0f * particle_width(player),
+    steering_offsetarrival(result, &player.particle.pos, &p->pos, &p->vel,
+                           2.0f * player_width,
+                           3.0f * player_width,
                            &params);
     break;
 
   case ENEMY_FLEEING:
-    steering_flee(result, &player->pos, &p->pos, &p->vel, &params);
+    steering_flee(result, &player.particle.pos, &p->pos, &p->vel, &params);
     break;
 
   default:
@@ -537,7 +537,7 @@ void CollisionObject_update(void* _self, float dt) {
   int num_enemies;
 
   CollisionRecord pbs =
-    particles_collisionrecords(&player_bullets, &num_pbullets, 0.7f);
+    particles_collisionrecords(&player.bullets, &num_pbullets, 0.7f);
   CollisionRecord ebs =
     particles_collisionrecords(&enemy_bullets, &num_ebullets, 0.5f);
   CollisionRecord es =
@@ -550,7 +550,7 @@ void CollisionObject_update(void* _self, float dt) {
     CollisionRecord rec = &pbs[ii];
     if(rec->skip) continue;
 
-    bullet_vs_map(rec, &player_bullets);
+    bullet_vs_map(rec, &player.bullets);
   }
 
   for(ii = 0; ii < num_ebullets; ++ii) {
@@ -636,7 +636,7 @@ void game_init() {
                         0);
 
   dll_zero(&enemies);
-  dll_zero(&player_bullets);
+  dll_zero(&player.bullets);
   dll_zero(&enemy_bullets);
   dll_zero(&pretty_particles);
 
@@ -649,17 +649,17 @@ void game_init() {
 
   image_stars = image_load("resources/night-sky-stars.jpg");
 
-  player = new(ParticleObject, NULL);
-  player->image = spriteatlas_find(atlas, "hero.png");
-  player->pos.x = 500 * 64;
-  player->pos.y = 100 * 64;
-  player->vel.x = 0;
-  player->vel.y = 0;
+  init(ParticleObject, &player.particle, NULL);
+  player.particle.image = spriteatlas_find(atlas, "hero.png");
+  player.particle.pos.x = 500 * 64;
+  player.particle.pos.y = 100 * 64;
+  player.particle.vel.x = 0;
+  player.particle.vel.y = 0;
 
-  player_gun_latch.period = 0.2;
-  player_gun_latch.latch_value = 0;
-  player_gun_latch.last_time = 0;
-  player_gun_latch.last_state = 0;
+  player.gun_latch.period = 0.2;
+  player.gun_latch.latch_value = 0;
+  player.gun_latch.last_time = 0;
+  player.gun_latch.last_state = 0;
 
   collective = new(CollectiveObject, COLLECTIVE_IDLE,
                    new(EnemyCoordinatorObject, DISPATCHER_IDLE),
@@ -669,9 +669,9 @@ void game_init() {
 
 void spawn_player_fire() {
   struct Vector_ v = { player_bullet_speed, 0.0f };
-  Particle bullet = bullet_make(&player->pos, &v,
+  Particle bullet = bullet_make(&player.particle.pos, &v,
                                 image_player_bullet,
-                                &player_bullets);
+                                &player.bullets);
 }
 
 void spawn_enemy_fire(Particle enemy) {
@@ -685,9 +685,9 @@ void spawn_enemy_fire(Particle enemy) {
 }
 
 void handle_input(InputState state) {
-  player->vel.x = state->leftright * player_speed;
-  player->vel.y = state->updown * player_speed;
-  if(repeatinglatch_state(&player_gun_latch, main_clock, state->action1)) {
+  player.particle.vel.x = state->leftright * player_speed;
+  player.particle.vel.y = state->updown * player_speed;
+  if(repeatinglatch_state(&player.gun_latch, main_clock, state->action1)) {
     spawn_player_fire();
   }
 }
@@ -701,8 +701,8 @@ void game_step(long delta, InputState state) {
   ++step_number;
 
   // center the screen on the player
-  screen_x_br = player->pos.x - screen_width / 2;
-  screen_y_br = player->pos.y - screen_height / 2;
+  screen_x_br = player.particle.pos.x - screen_width / 2;
+  screen_y_br = player.particle.pos.y - screen_height / 2;
 
   // draw stars
   Sprite background = frame_resource_sprite(image_stars);
@@ -720,10 +720,10 @@ void game_step(long delta, InputState state) {
   handle_input(state);
 
   // update player position
-  update(player, dt);
+  update(&player.particle, dt);
 
   // update bullets
-  particles_update(&player_bullets, dt);
+  particles_update(&player.bullets, dt);
   particles_update(&enemy_bullets, dt);
 
   // update particles
@@ -739,15 +739,15 @@ void game_step(long delta, InputState state) {
   spritelist_enqueue_for_screen(particles_spritelist(&enemies));
 
   // draw the bullets
-  spritelist_enqueue_for_screen(particles_spritelist(&player_bullets));
+  spritelist_enqueue_for_screen(particles_spritelist(&player.bullets));
   spritelist_enqueue_for_screen(particles_spritelist(&enemy_bullets));
 
   // draw the player
-  sprite_submit(particle_sprite((Particle)player));
+  sprite_submit(particle_sprite((Particle)&player.particle));
 
   /*
   if(step_number % 100 == 0) {
-    printf("player: %f, %f ", player->pos.x, player->pos.y);
+    printf("player: %f, %f ", player.pos.x, player.pos.y);
     printf("particle_allocator: %ld (%ld) ; stack_allocator: (%ld of %ld)\n",
            enemy_allocator->inflight,
            enemy_allocator->max_inflight,

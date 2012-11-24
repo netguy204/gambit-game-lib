@@ -7,6 +7,7 @@
 #include "spriteatlas.h"
 #include "pathfinder.h"
 #include "steering.h"
+#include "controls.h"
 
 struct InputState_;
 
@@ -32,12 +33,18 @@ typedef struct TimedParticle_ {
   long end_time;
 } *TimedParticle;
 
+typedef struct PlayerState_ {
+  struct Particle_ particle;
+  struct RepeatingLatch_ gun_latch;
+  struct DLL_ bullets;
+} *PlayerState;
+
 extern float player_speed;
 extern float player_bullet_speed;
 extern float enemy_speed;
 extern float enemy_bullet_speed;
 extern float enemy_fire_rate;
-extern Particle player;
+
 extern struct DLL_ enemies;
 extern struct DLL_ player_bullets;
 extern struct DLL_ enemy_bullets;
