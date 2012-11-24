@@ -7,11 +7,16 @@
 #include "heapvector.h"
 #include "utils.h"
 #include "pathfinder.h"
+#include "updateable.h"
 
 #include <math.h>
+#include <stdarg.h>
 
-Civilization civilizations;
+void* CivilizationObject = NULL;
+struct DLL_ civilizations;
 PairwisePaths civpaths;
+TileMap tiles;
+SpriteAtlas atlas;
 
 enum TestTiles {
   TILE_BLANK,
@@ -23,6 +28,10 @@ enum TestTiles {
   TILE_BUILDING,
   TILE_MAX
 };
+
+Civilization node_to_civilization(DLLNode node) {
+  return container_of(node, struct Civilization_, node);
+}
 
 typedef struct CandidateUdata_ {
   HeapVector hv;
@@ -91,7 +100,32 @@ void scatter_buildings(TileMap map, TilePosition pos, Civilization civilization)
   civilization->nbuildings = building;
 }
 
-TileMap tilemap_testmake(SpriteAtlas atlas) {
+void CivilizationObject_update(void* _self, float dt) {
+  // super is Object which doesn't no about update, don't call it.
+}
+
+void* CivilizationObject_ctor(void* _self, va_list* app) {
+  Civilization civ = _self;
+  civ->index = va_arg(*app, int);
+  return civ;
+}
+
+void init_resources() {
+  if(CivilizationObject) return;
+
+  CivilizationObject = new(UpdateableClass, "Civilization",
+                           Object, sizeof(struct Civilization_),
+                           ctor, CivilizationObject_ctor,
+                           update, CivilizationObject_update,
+                           0);
+
+  atlas = spriteatlas_load("resources/images_default.dat", "resources/images_default.png");
+  dll_zero(&civilizations);
+}
+
+void worldgen_init() {
+  init_resources();
+
   int MAXX = 1000;
   int MAXY = 100;
 
@@ -113,6 +147,8 @@ TileMap tilemap_testmake(SpriteAtlas atlas) {
   specs[TILE_BUILDING].image = spriteatlas_find(atlas, "building.png");
   specs[TILE_BUILDING].bitmask = standard | TILESPEC_PASSABLE;
 
+  // assume that all tiles will be the same size as example... better
+  // be true.
   SpriteAtlasEntry example = specs[TILE_GRASS].image;
   TileMap map = tilemap_make(MAXX, MAXY, example->w, example->h);
   map->tile_specs = specs;
@@ -289,13 +325,15 @@ TileMap tilemap_testmake(SpriteAtlas atlas) {
 
   int ii;
   int ncivs = HV_SIZE(hv, struct TilePosition_);
-  civilizations = malloc(sizeof(struct Civilization_) * ncivs);
 
   for(ii = 0; ii < ncivs; ++ii) {
+    Civilization civ = new(CivilizationObject, ii);
     TilePosition pos = HV_GET(hv, struct TilePosition_, ii);
-    civilizations[ii].center = tilemap_index(map, pos);
-    scatter_buildings(map, pos, &civilizations[ii]);
+    civ->center = tilemap_index(map, pos);
+    scatter_buildings(map, pos, civ);
+    dll_add_head(&civilizations, &civ->node);
   }
+
   PROFILE_END(&timer);
   printf("%d civilizations\n", ncivs);
 
@@ -323,5 +361,5 @@ TileMap tilemap_testmake(SpriteAtlas atlas) {
   free(reachable_img.data);
   free(correlation_img.data);
 
-  return map;
+  tiles = map;
 }

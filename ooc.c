@@ -5,12 +5,17 @@
 #include <stddef.h>
 #include <string.h>
 #include <stdlib.h>
-
+#include <string.h>
 
 const void* classOf(const void* _self) {
   const struct Object* self = _self;
   assert(self && self->class);
   return self->class;
+}
+
+const char* className(const void* _self) {
+  const struct Class* self = _self;
+  return self->name;
 }
 
 size_t sizeOf(const void* _self) {
@@ -157,7 +162,7 @@ static void* Class_dtor(void* _self) {
 
 static void* Class_ctor(void* _self, va_list* app) {
   struct Class* self = _self;
-  self->name = va_arg(*app, char*);
+  self->name = strdup(va_arg(*app, char*));
   self->super = va_arg(*app, struct Class*);
   self->size = va_arg(*app, size_t);
   assert(self->super);

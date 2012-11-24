@@ -3,6 +3,7 @@
 
 #include "agent.h"
 #include "config.h"
+#include "updateable.h"
 
 #include <stddef.h>
 
@@ -37,42 +38,39 @@ void resources_zero(Resources attr);
 struct SystemInstance_;
 struct ComponentInstance_;
 
-typedef void(*UpdateComponent)(struct ComponentInstance_*);
-typedef void(*ActivateComponent)(struct ComponentInstance_*, Activation activation);
-typedef int(*ComponentPullResource)(struct ComponentInstance_*, Resources resources);
-typedef int(*ComponentPushResource)(struct ComponentInstance_*, Resources resources);
-typedef char ComponentName[ITEM_MAX_NAME];
-
 typedef struct Stats_ {
   Resources_ storage;
   Resources_ max_capacity;
   Resources_ production_rates;
 } *Stats;
 
-typedef struct ComponentClass_ {
+struct ComponentClass {
+  struct UpdateableClass_ _;
+
+  void(*activate)(void* self, Activation activation);
+  int(*push)(void* self, Resources resources);
+  int(*pull)(void* self, Resources resources);
+
   struct DLLNode_ node; // keeps us in the class registry
   LLNode subcomponents; // non-intrusive list of subcomponents
+
   Resources_ requirements;
-  UpdateComponent update;
-  ActivateComponent activate;
-  ComponentPushResource push;
-  ComponentPullResource pull;
   struct Stats_ stats;
   float quality;
-  ComponentName name;
-} *ComponentClass;
+};
+
+void activate(void* self, Activation activation);
+int push(void* self, Resources resources);
+int pull(void* self, Resources resources);
 
 void items_init();
 
-ComponentClass componentclass_make_(char *name, size_t size);
-#define componentclass_make(name, klass) (klass*)componentclass_make_(name, sizeof(klass))
-
-ComponentClass componentclass_find(char *name);
+struct ComponentClass* componentclass_find(char *name);
 
 struct ComponentInstance_;
 
 typedef struct ComponentInstance_ {
-  ComponentClass klass;
+  struct Object _;
   struct DLLNode_ node; // siblings
   struct ComponentInstance_* parent;
   struct DLL_ children;
@@ -80,19 +78,13 @@ typedef struct ComponentInstance_ {
   float quality;
 } *ComponentInstance;
 
-ComponentInstance componentinstance_make(ComponentClass klass);
-void componentinstance_free(ComponentInstance instance);
+extern void* ComponentClass;
+extern void* ComponentObject;
+extern void* ComponentSystemObject;
 
 void componentinstance_addchild(ComponentInstance parent, ComponentInstance child);
 void componentinstance_removechild(ComponentInstance child);
 ComponentInstance componentinstance_findchild(ComponentInstance root, char* klass_name);
-
-int component_push(ComponentInstance comp, Resources resources);
-int component_pull(ComponentInstance comp, Resources resources);
-void component_update(ComponentInstance comp);
-void component_activate(ComponentInstance comp, Activation activation);
-
-#define componentinstance_from_node(n) container_of(n, struct ComponentInstance_, node)
 
 // temporary XML based file loading. I'll come up with something
 // better once I've decided this system is a good idea at all.

@@ -101,6 +101,7 @@ void* CollectiveObject_ctor(void* _self, va_list* app) {
 
 void* CollectiveObject_dtor(void* _self) {
   Collective collective = _self;
+
   DLLNode node = collective->children.head;
   while(node) {
     DLLNode next = node->next;
@@ -108,6 +109,8 @@ void* CollectiveObject_dtor(void* _self) {
     delete(agent);
     node = next;
   }
+
+  heapvector_free(collective->sub_dispatchers);
 
   return super_dtor(CollectiveObject, _self);
 }

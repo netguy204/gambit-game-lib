@@ -21,7 +21,7 @@ $(BIN): $(EXE_OBJS)
 	$(CC) $(CFLAGS) -o $@ $(EXE_OBJS) $(LDFLAGS)
 
 clean:
-	rm -rf *.o $(BIN) buildatlas test
+	rm -rf *.o $(BIN) buildatlas test items_bin
 
 test_bin: $(C_OBJS) testlib_test.o
 	$(CC) $(CFLAGS) -o $@ $(C_OBJS) testlib_test.o $(LDFLAGS)

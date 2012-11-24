@@ -311,13 +311,6 @@ void EnemyObject_update(void* _self, float dt) {
     steering_offsetarrival(result, &player->pos, &p->pos, &p->vel,
                            2.0f * particle_width(player), 3.0f * particle_width(player),
                            &params);
-    /*
-    // use our bullet speed as the predictor
-    params.speed_max = enemy_bullet_speed;
-    steering_offsetpursuit(&result, &player->pos, &player->vel, &p->pos, &p->vel,
-                           2.0f * particle_width(player), &params);
-    params.speed_max = enemy_speed;
-    */
     break;
 
   case ENEMY_FLEEING:
@@ -332,16 +325,6 @@ void EnemyObject_update(void* _self, float dt) {
     steeringresult_complete(result, &params);
     particle_applysteering(p, result, &params, dt);
   }
-
-  /*
-  if(clock_time(main_clock) < agent->next_timer) return;
-  agent->next_timer = clock_time(main_clock) +
-    clock_seconds_to_cycles(enemy_fire_rate);
-
-  if(agent->state == ENEMY_ATTACKING) {
-    spawn_enemy_fire(p);
-  }
-  */
 }
 
 Particle bullet_make(Vector pos, Vector vel, SpriteAtlasEntry image, DLL list) {
@@ -581,6 +564,8 @@ void sprite_submit(Sprite sprite) {
 
 void game_init() {
   agent_init();
+  worldgen_init(); // also builds atlas
+  random_init(&rgen, 1234);
 
   particle_allocator =
     fixed_allocator_make(sizeof(struct Particle_),
@@ -598,13 +583,6 @@ void game_init() {
                          "enemy_allocator");
 
   main_clock = clock_make();
-
-  atlas = spriteatlas_load("resources/images_default.dat", "resources/images_default.png");
-  image_enemy = spriteatlas_find(atlas, "ship-right.png");
-  image_ally = spriteatlas_find(atlas, "ship-right-good.png");
-  image_player_bullet = spriteatlas_find(atlas, "plasma.png");
-  image_enemy_bullet = spriteatlas_find(atlas, "enemy-bullet.png");
-  image_smoke = spriteatlas_find(atlas, "smoke.png");
 
   ParticleObject = new(UpdateableClass, "Particle",
                        Object, sizeof(struct Particle_),
@@ -651,10 +629,14 @@ void game_init() {
   dll_zero(&enemy_bullets);
   dll_zero(&pretty_particles);
 
-  // worldgen
-  random_init(&rgen, 1234);
+  // pull some often used things out of the atlas
+  image_enemy = spriteatlas_find(atlas, "ship-right.png");
+  image_ally = spriteatlas_find(atlas, "ship-right-good.png");
+  image_player_bullet = spriteatlas_find(atlas, "plasma.png");
+  image_enemy_bullet = spriteatlas_find(atlas, "enemy-bullet.png");
+  image_smoke = spriteatlas_find(atlas, "smoke.png");
+
   image_stars = image_load("resources/night-sky-stars.jpg");
-  tiles = tilemap_testmake(atlas);
 
   player = new(ParticleObject, NULL);
   player->image = spriteatlas_find(atlas, "hero.png");

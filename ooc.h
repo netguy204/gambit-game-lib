@@ -35,6 +35,7 @@ int differ(const void * self, const void * b);
 int tofile(const void * self, FILE * fp);
 
 const void* classOf(const void* self);
+const char* className(const void* class);
 size_t sizeOf(const void* self);
 const void* super(const void* self);
 
