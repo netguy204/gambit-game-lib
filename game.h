@@ -15,11 +15,15 @@ void game_step(long delta, struct InputState_* state);
 void game_shutdown();
 
 // implementation specific stuff
-typedef struct EnemyAgent_ {
+typedef struct VisibleAgent_ {
   struct Agent_ _;
+  struct Particle_ particle;
+} *VisibleAgent;
+
+typedef struct EnemyAgent_ {
+  struct VisibleAgent_ _;
   struct PathInstance_ pi;
   struct SteeringResult_ last_result;
-  struct Particle_ particle;
   int hp;
 } *EnemyAgent;
 

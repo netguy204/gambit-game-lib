@@ -33,6 +33,7 @@ const void* ParticleObject;
 const void* BulletObject;
 const void* TimedParticleObject;
 
+const void* VisibleObject;
 const void* EnemyObject;
 const void* EnemyCoordinatorObject;
 const void* CollisionObject;
@@ -102,24 +103,31 @@ void TimedParticleObject_dealloci(void* _self) {
   fixed_allocator_free(prettyparticle_allocator, _self);
 }
 
+static void* VisibleObject_ctor(void* _self, va_list* app) {
+  VisibleAgent agent = super_ctor(VisibleObject, _self, app);
+  vinit(ParticleObject, &agent->particle, app);
+  return agent;
+}
+
+static void* VisibleObject_dtor(void* _self) {
+  VisibleAgent agent = _self;
+  dtor(&agent->particle);
+  return super_dtor(VisibleObject, _self);
+}
+
+static void VisibleObject_update(void* _self, float dt) {
+  super_update(VisibleObject, _self, dt);
+
+  VisibleAgent agent = _self;
+  update(&agent->particle, dt);
+}
+
 static void* EnemyObject_alloci(void* _self) {
   return fixed_allocator_alloc(enemy_allocator);
 }
 
 static void EnemyObject_dealloci(const void* _class, void* _self) {
   fixed_allocator_free(enemy_allocator, _self);
-}
-
-static void* EnemyObject_ctor(void* _self, va_list* app) {
-  EnemyAgent enemyagent = super_ctor(EnemyObject, _self, app);
-  init(ParticleObject, &enemyagent->particle, &enemies);
-  return enemyagent;
-}
-
-static void* EnemyObject_dtor(void* _self) {
-  EnemyAgent enemyagent = _self;
-  dtor(&enemyagent->particle);
-  return super_dtor(EnemyObject, _self);
 }
 
 Sprite frame_resource_sprite(ImageResource resource) {
@@ -131,10 +139,11 @@ Sprite frame_resource_sprite(ImageResource resource) {
 }
 
 EnemyAgent spawn_enemy() {
-  EnemyAgent enemyagent = new(EnemyObject, ENEMY_IDLE);
+  EnemyAgent enemyagent = new(EnemyObject, ENEMY_IDLE, &enemies);
+  VisibleAgent visible = (VisibleAgent)enemyagent;
 
-  enemyagent->particle.image = image_ally;
-  enemyagent->particle.scale = 1.0f;
+  visible->particle.image = image_ally;
+  visible->particle.scale = 1.0f;
 
   // pick a path
   int pathidx = rand_in_range(&rgen, 0, civpaths->npaths);
@@ -146,18 +155,18 @@ EnemyAgent spawn_enemy() {
   enemyagent->hp = 100;
 
   // start at its beginning
-  vector_tilecenter(&enemyagent->particle.pos, tiles, path->steps[enemyagent->pi.pathpos]);
+  vector_tilecenter(&visible->particle.pos, tiles, path->steps[enemyagent->pi.pathpos]);
 
   // velocity aligned with the path
-  vector_path_direction(&enemyagent->particle.vel, tiles, path,
+  vector_path_direction(&visible->particle.vel, tiles, path,
                         enemyagent->pi.pathpos, enemyagent->pi.pathdir);
-  vector_scale(&enemyagent->particle.vel, &enemyagent->particle.vel, enemy_speed);
+  vector_scale(&visible->particle.vel, &visible->particle.vel, enemy_speed);
 
   // not scaling or spinning, let the steering method figure out the
   // right orientation
-  enemyagent->particle.angle = M_PI;
-  enemyagent->particle.dsdt = 0.0f;
-  enemyagent->particle.dadt = 0.0f;
+  visible->particle.angle = M_PI;
+  visible->particle.dsdt = 0.0f;
+  visible->particle.dadt = 0.0f;
 
   return enemyagent;
 }
@@ -209,7 +218,7 @@ void EnemyCoordinatorObject_update(void* _self, float dt) {
 
 void enemyagent_process_inbox(Agent agent, Message message, void * udata) {
   Message reply;
-  Particle p = &((EnemyAgent)agent)->particle;
+  Particle p = &((VisibleAgent)agent)->particle;
 
   switch(message->kind) {
   case MESSAGE_TERMINATE:
@@ -241,15 +250,12 @@ void EnemyObject_update(void* _self, float dt) {
   Agent agent = _self;
   EnemyAgent enemyagent = _self;
 
-  // integrate forward
-  update(&enemyagent->particle, dt);
-
   // drain our inbox
   foreach_inboxmessage(agent, enemyagent_process_inbox, NULL);
 
   if(agent->state == ENEMY_DYING) return;
 
-  Particle p = &enemyagent->particle;
+  Particle p = &((VisibleAgent)enemyagent)->particle;
   struct SteeringParams_ params = { 50.0, enemy_speed, p->angle, 0.08 };
   SteeringResult result = &enemyagent->last_result;
 
@@ -453,7 +459,7 @@ CollisionRecord enemies_collisionrecords(Dispatcher dispatcher, int* count, floa
   EnemyAgent enemyagent;
   int ii = 0;
   while((enemyagent = llentry_nextvalue(&node))) {
-    Particle ep = &enemyagent->particle;
+    Particle ep = &((VisibleAgent)enemyagent)->particle;
 
     rect_for_particle(&(crs[ii].rect), ep, scale);
     crs[ii].data = enemyagent;
@@ -605,12 +611,17 @@ void game_init() {
                             update, TimedParticleObject_update,
                             0);
 
+  VisibleObject = new(UpdateableClass, "Visible",
+                      AgentObject, sizeof(struct VisibleAgent_),
+                      ctor, VisibleObject_ctor,
+                      dtor, VisibleObject_dtor,
+                      update, VisibleObject_update,
+                      0);
+
   EnemyObject = new(UpdateableClass, "Enemy",
-                    AgentObject, sizeof(struct EnemyAgent_),
+                    VisibleObject, sizeof(struct EnemyAgent_),
                     alloci, EnemyObject_alloci,
                     dealloci, EnemyObject_dealloci,
-                    ctor, EnemyObject_ctor,
-                    dtor, EnemyObject_dtor,
                     update, EnemyObject_update,
                     0);
 

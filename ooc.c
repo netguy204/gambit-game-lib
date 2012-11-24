@@ -36,32 +36,39 @@ void delete(void* _self) {
   }
 }
 
+void* vinit(const void* _class, void* _self, va_list* app) {
+  const struct Class* class = _class;
+  struct Object* object = _self;
+
+  assert(class && object);
+  object->class = class;
+  object = ctor(object, app);
+  return object;
+}
+
 void* new(const void* _class, ...) {
   const struct Class* class = _class;
   struct Object* object;
   va_list ap;
 
   assert(class);
+
   object = alloci(class);
   assert(object);
-  object->class = class;
+
   va_start(ap, _class);
-  object = ctor(object, &ap);
+  vinit(class, object, &ap);
   va_end(ap);
   return object;
 }
 
 void* init(const void* _class, void* _self, ...) {
-  const struct Class* class = _class;
-  struct Object* object = _self;
   va_list ap;
 
-  assert(class && object);
-  object->class = class;
   va_start(ap, _self);
-  object = ctor(object, &ap);
+  vinit(_class, _self, &ap);
   va_end(ap);
-  return object;
+  return _self;
 }
 
 void* super_ctor(const void* _class, void* _self, va_list* app) {

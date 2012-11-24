@@ -27,12 +27,13 @@ struct Class {
 extern const void* Object;
 extern const void* Class;
 
-void* new(const void * class, ...);
+void* new(const void* class, ...);
+void* vinit(const void* class, void* self, va_list *app);
 void* init(const void * class, void* self, ...);
-void delete(void * self);
+void delete(void* self);
 
-int differ(const void * self, const void * b);
-int tofile(const void * self, FILE * fp);
+int differ(const void* self, const void * b);
+int tofile(const void* self, FILE * fp);
 
 const void* classOf(const void* self);
 const char* className(const void* class);
