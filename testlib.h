@@ -50,6 +50,9 @@ typedef struct InputState_ {
   int action1;
 } *InputState;
 
+typedef void(*GameStep)(long delta, InputState state);
+void set_game_step(GameStep fn);
+
 /* provided by system specific lib */
 void native_init();
 void inputstate_latest(InputState state);

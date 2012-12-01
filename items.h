@@ -53,11 +53,22 @@ struct ComponentClass* componentclass_find(char *name);
 
 typedef struct ComponentInstance_ {
   struct Object _;
-  struct ComponentInstance_* connected[PORT_MAX];
 } *ComponentInstance;
 
 extern void* ComponentClass;
 extern void* ComponentObject;
+
+struct ComponentAssembly_;
+
+typedef struct ComponentAssembly_ {
+  struct Object _;
+  ComponentInstance component;
+  struct ComponentAssembly_* children[PORT_MAX];
+} *ComponentAssembly;
+
+extern void* ComponentAssemblyObject;
+
+int assembly_insert(ComponentAssembly assembly, ComponentInstance component);
 
 // temporary XML based file loading. I'll come up with something
 // better once I've decided this system is a good idea at all.

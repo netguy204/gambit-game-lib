@@ -12,6 +12,7 @@
 struct InputState_;
 
 void game_init();
+void menu_step(long delta, struct InputState_* state);
 void game_step(long delta, struct InputState_* state);
 void game_shutdown();
 

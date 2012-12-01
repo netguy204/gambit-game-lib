@@ -2,6 +2,13 @@
 
 #include <stdio.h>
 
+void tryAdd(ComponentAssembly assembly, ComponentInstance component) {
+  if(!assembly_insert(assembly, component)) {
+    tofile(component, stderr);
+    fprintf(stderr, ": error adding component to assembly\n");
+  }
+}
+
 int main(int argc, char *argv[])
 {
   if(argc != 2) {
@@ -14,17 +21,23 @@ int main(int argc, char *argv[])
 
   items_load_xml(argv[1]);
 
-  struct ComponentClass* alpha_class = componentclass_find("alpha-hull");
-  ComponentInstance alpha = new(alpha_class);
+  ComponentInstance alpha = new(componentclass_find("alpha-hull"));
+
+  ComponentAssembly assembly = new(ComponentAssemblyObject, alpha);
+
+  // add some stuff...
+  tryAdd(assembly, new(componentclass_find("fuel-storage")));
+  tryAdd(assembly, new(componentclass_find("alpha-laser")));
+  tryAdd(assembly, new(componentclass_find("alpha-reactor")));
 
   int ii;
   for(ii = 0; ii < 10; ++ii) {
-    update(alpha, 1.0f);
-    tofile(alpha, stdout);
-    activate(alpha, ACTIVATION_FIRE);
+    update(assembly, 1.0f);
+    tofile(assembly, stdout);
+    activate(assembly, ACTIVATION_FIRE);
   }
 
-  delete(alpha);
+  delete(assembly);
 
   return 0;
 }

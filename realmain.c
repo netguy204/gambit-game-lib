@@ -5,14 +5,19 @@
 #define min_time 15
 #define max_time 100
 
-int last_time;
+static int last_time;
+static GameStep game_step_fn;
+
+void set_game_step(GameStep fn) {
+  game_step_fn = fn;
+}
 
 int loop_once() {
   int new_time;
 
   struct InputState_ state;
   inputstate_latest(&state);
-  if(state.quit_requested) {
+  if(!game_step_fn || state.quit_requested) {
     lib_shutdown();
     return 0;
   }
@@ -31,7 +36,7 @@ int loop_once() {
   }
 
   begin_frame();
-  game_step(delta, &state);
+  game_step_fn(delta, &state);
   end_frame();
 
   last_time = new_time;

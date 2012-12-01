@@ -38,7 +38,7 @@ int spriteatlas_index(SpriteAtlasEntry entry) {
   return entry - entry->atlas->entries;
 }
 
-SpriteAtlasEntry spriteatlas_find(SpriteAtlas atlas, char* name) {
+SpriteAtlasEntry spriteatlas_find(SpriteAtlas atlas, const char* name) {
   int ii;
   for(ii = 0; ii < atlas->nentries; ++ii) {
     SpriteAtlasEntry entry = &atlas->entries[ii];

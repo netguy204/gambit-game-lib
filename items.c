@@ -1,6 +1,9 @@
 #include "items.h"
 #include "xmltools.h"
 #include "utils.h"
+#include "testlib.h"
+#include "spriteatlas.h"
+#include "vector.h"
 
 #include "config.h"
 
@@ -11,6 +14,7 @@
 void* ActivatableClass;
 void* ComponentClass;
 void* ComponentObject;
+void* ComponentAssemblyObject;
 
 void activate(void* _self, Activation activation) {
   const struct ActivatableClass* class = classOf(_self);
@@ -35,6 +39,20 @@ char* port_names[PORT_MAX] = {
   "top",
   "bottom"
 };
+
+PortDirection compatible_port(PortDirection port) {
+  switch(port) {
+  case PORT_NORTH: return PORT_SOUTH;
+  case PORT_SOUTH: return PORT_NORTH;
+  case PORT_EAST: return PORT_WEST;
+  case PORT_WEST: return PORT_EAST;
+  case PORT_BOTTOM: return PORT_TOP;
+  case PORT_TOP: return PORT_BOTTOM;
+  default:
+    fprintf(stderr, "no port is compatible with idx: %d\n", port);
+    exit(1);
+  }
+}
 
 struct ComponentClass* node_to_componentclass(DLLNode node) {
   return container_of(node, struct ComponentClass, node);
@@ -87,7 +105,6 @@ struct ComponentClass* componentclass_find(char *name) {
 
 void* ComponentInstance_ctor(void* _self, va_list* app) {
   ComponentInstance self = super_ctor(ComponentObject, _self, app);
-  memset(&self->connected, 0, sizeof(self->connected));
   return self;
 }
 
@@ -102,6 +119,50 @@ void ComponentInstance_update(void* _self, float dt) {
 
 void ComponentInstance_activate(void* _self, Activation activation) {
   // nothing
+}
+
+void* ComponentAssemblyObject_ctor(void* _self, va_list* app) {
+  ComponentAssembly self = super_ctor(ComponentAssemblyObject, _self, app);
+
+  self->component = va_arg(*app, ComponentInstance);
+  memset(self->children, 0, sizeof(self->children));
+  return self;
+}
+
+void* ComponentAssemblyObject_dtor(void* _self) {
+  ComponentAssembly self = _self;
+  if(self->component) delete(self->component);
+
+  int ii;
+  for(ii = 0; ii < PORT_MAX; ++ii) {
+    if(self->children[ii]) delete(self->children[ii]);
+  }
+
+  return super_dtor(ComponentAssemblyObject, _self);
+}
+
+void ComponentAssemblyObject_update(void* _self, float dt) {
+  ComponentAssembly self = _self;
+  update(self->component, dt);
+
+  int ii;
+  for(ii = 0; ii < PORT_MAX; ++ii) {
+    if(self->children[ii]) {
+      update(self->children[ii], dt);
+    }
+  }
+}
+
+void ComponentAssemblyObject_activate(void* _self, Activation activation) {
+  ComponentAssembly self = _self;
+  activate(self->component, activation);
+
+  int ii;
+  for(ii = 0; ii < PORT_MAX; ++ii) {
+    if(self->children[ii]) {
+      activate(self->children[ii], activation);
+    }
+  }
 }
 
 void laser_fire(void* _self, Activation activation) {
@@ -132,6 +193,7 @@ PortDirection string_to_portdirection(const char* str) {
 void component_add_port(struct ComponentClass* klass, xmlNode* child) {
   PortDirection port = string_to_portdirection(node_attr(child, "direction", "error"));
   assert(!klass->ports[port].valid); // make sure it isn't double specified
+  klass->ports[port].valid = 1;
   klass->ports[port].offsetx = atoi(node_attr(child, "offsetx", "0"));
   klass->ports[port].offsety = atoi(node_attr(child, "offsety", "0"));
   klass->ports[port].type = atoi(node_attr(child, "type", "error"));
@@ -181,6 +243,96 @@ void items_load_xml(char* filename) {
   xml_free(children);
 }
 
+const ComponentPort componentinstance_ports(ComponentInstance component) {
+  const struct ComponentClass* class = classOf(component);
+  // FIXME: I still don't understand array constness in C
+  // correctly. Casting it away.
+  return (const ComponentPort)class->ports;
+}
+
+const ComponentPort componentassembly_ports(ComponentAssembly assembly) {
+  return componentinstance_ports(assembly->component);
+}
+
+int assembly_count_components(ComponentAssembly assembly) {
+  int count = 1;
+  int ii;
+
+  for(ii = 0; ii < PORT_MAX; ++ii) {
+    if(assembly->children[ii]) {
+      count += assembly_count_components(assembly->children[ii]);
+    }
+  }
+
+  return count;
+}
+
+int assembly_insert(ComponentAssembly assembly, ComponentInstance component) {
+  ComponentPort assembly_ports = componentassembly_ports(assembly);
+  ComponentPort component_ports = componentinstance_ports(component);
+
+  int ii;
+
+  // first try inserting in this node
+  for(ii = 0; ii < PORT_MAX; ++ii) {
+    PortDirection compat = compatible_port(ii);
+    if(assembly_ports[ii].valid && !assembly->children[ii] && component_ports[compat].valid) {
+      // this is a valid insertion point
+      assembly->children[ii] = new(ComponentAssemblyObject, component);
+      return 1;
+    }
+  }
+
+  // then try inserting in our children. FIXME: choose the least
+  // populated subtree first.
+  for(ii = 0; ii < PORT_MAX; ++ii) {
+    if(component_ports[ii].valid && assembly->children[ii]) {
+      if(assembly_insert(assembly->children[ii], component)) return 1;
+    }
+  }
+
+  // we failed
+  return 0;
+}
+
+SpriteAtlasEntry component_image(ComponentInstance component, SpriteAtlas atlas) {
+  return spriteatlas_find(atlas, className(classOf(component)));
+}
+
+// fixme
+void component_offset(Vector offset, ComponentInstance component, PortDirection direction,
+                      SpriteAtlas atlas) {
+  SpriteAtlasEntry image = component_image(component, atlas);
+}
+
+/*
+SpriteList assembly_spritelist(SpriteAtlas atlas, ComponentAssembly assembly,
+                               SpriteList spritelist, Vector origin) {
+
+  ComponentInstance component = assembly->component;
+  SpriteAtlasEntry image = component_image(component, atlas);
+
+  if(image) {
+    Sprite sprite = frame_make_sprite();
+    sprite_fillfromentry(sprite, image);
+    sprite->originX = 0.5;
+    sprite->originY = 0.5;
+    sprite->displayX = origin->x;
+    sprite->displayY = origin->y;
+    spritelist = frame_spritelist_append(spritelist, sprite);
+  }
+
+  int ii;
+  for(ii = 0; ii < PORT_MAX; ++ii) {
+    ComponentAssembly child = assembly->children[ii];
+    if(child) {
+      struct Vector_ offset;
+      //if(child->
+    }
+  }
+}
+*/
+
 void items_init() {
   dll_zero(&classes);
   self_handle = dlopen(NULL, RTLD_LAZY);
@@ -204,4 +356,12 @@ void items_init() {
                         update, ComponentInstance_update,
                         activate, ComponentInstance_activate,
                         0);
+
+  ComponentAssemblyObject = new(ActivatableClass, "ComponentAssembly",
+                                Object, sizeof(struct ComponentAssembly_),
+                                ctor, ComponentAssemblyObject_ctor,
+                                dtor, ComponentAssemblyObject_dtor,
+                                update, ComponentAssemblyObject_update,
+                                activate, ComponentAssemblyObject_activate,
+                                0);
 }

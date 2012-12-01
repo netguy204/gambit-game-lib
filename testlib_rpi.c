@@ -38,46 +38,6 @@ void egl_assert_(int test, const char * string) {
 
 #define egl_assert(test) egl_assert_(test, "" #test)
 
-/* GLES2
-static GLbyte vShaderStr[] =
-  "attribute vec4 vPosition; \n"
-  "void main() {  \n"
-  "  gl_Position = vPosition; \n"
-  "}\n";
-
-static GLbyte fShaderStr[] =
-  "precision mediump float;\n"
-  "void main() {  \n"
-  "  gl_FragColor = vec4(1.0, 1.0, 0.0, 1.0); \n"
-  "}\n";
-
-GLuint load_shader(GLenum type, const char * src) {
-  GLuint shader;
-  GLint compiled;
-
-  shader = glCreateShader(type);
-  if(shader == 0) return 0;
-
-  glShaderSource(shader, 1, &src, NULL);
-  glCompilerShader(shader);
-  glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
-  if(!compiled) {
-    GLint info_len = 0;
-    glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &info_len);
-    if(info_len > 0) {
-      char* log = malloc(info_len);
-      glGetShaderInfoLog(shader, info_len, NULL, log);
-      fprintf(stderr, "Error compiling shader:\n%s\n", log);
-      free(log);
-    }
-
-    glDeleteShader(shader);
-    return 0;
-  }
-  return shader;
-}
-*/
-
 struct timeval start_time;
 js_state joystick_state;
 
@@ -138,7 +98,7 @@ void renderer_init(void* empty) {
       EGL_NONE
     };
 
-   static const EGLint context_attributes[] = 
+   static const EGLint context_attributes[] =
    {
       EGL_CONTEXT_CLIENT_VERSION, 2,
       EGL_NONE

@@ -51,6 +51,7 @@ SpriteAtlasEntry image_player_bullet;
 SpriteAtlasEntry image_enemy_bullet;
 SpriteAtlasEntry image_smoke;
 ImageResource image_stars;
+ImageResource image_menu;
 
 Clock main_clock;
 
@@ -648,6 +649,7 @@ void game_init() {
   image_smoke = spriteatlas_find(atlas, "smoke.png");
 
   image_stars = image_load("resources/night-sky-stars.jpg");
+  image_menu = image_load("resources/start.png");
 
   init(ParticleObject, &player.particle, NULL);
   player.particle.image = spriteatlas_find(atlas, "hero.png");
@@ -665,6 +667,9 @@ void game_init() {
                    new(EnemyCoordinatorObject, DISPATCHER_IDLE),
                    new(CollisionObject, DISPATCHER_IDLE),
                    0);
+
+  // set the initial state
+  set_game_step(menu_step);
 }
 
 void spawn_player_fire() {
@@ -695,6 +700,19 @@ void handle_input(InputState state) {
 long step_number = 0;
 
 extern StackAllocator frame_allocator;
+
+void menu_step(long delta, InputState state) {
+  if(state->action1) {
+    set_game_step(game_step);
+  }
+
+  Sprite menu = frame_resource_sprite(image_menu);
+  menu->displayX = 0;
+  menu->displayY = 0;
+  menu->w = screen_width;
+  menu->h = screen_height;
+  sprite_submit(menu);
+}
 
 void game_step(long delta, InputState state) {
   float dt = clock_update(main_clock, delta / 1000.0);
