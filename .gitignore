@@ -1,4 +1,4 @@
 *.o
-*.psd
 .gitignore
 monster/
+sprites/*.png

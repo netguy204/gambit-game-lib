@@ -20,9 +20,6 @@ all: $(BIN) resources
 $(BIN): $(EXE_OBJS)
 	$(CC) $(CFLAGS) -o $@ $(EXE_OBJS) $(LDFLAGS)
 
-clean:
-	rm -rf *.o $(BIN) buildatlas test items_bin
-
 test_bin: $(C_OBJS) testlib_test.o
 	$(CC) $(CFLAGS) -o $@ $(C_OBJS) testlib_test.o $(LDFLAGS)
 
@@ -32,8 +29,14 @@ test: test_bin
 C_TOOL_OBJS=$(C_OBJS)
 BUILD_WITH_XML=$(CC) $(CFLAGS) -o $@ $< $(C_TOOL_OBJS) $(LDFLAGS)
 
-buildatlas: buildatlas.o $(C_TOOL_OBJS)
-	$(BUILD_WITH_XML)
+SPRITE_PSDS=$(wildcard sprites/*.psd)
+SPRITE_PNGS=$(patsubst %.psd, %.png, $(SPRITE_PSDS))
+
+%.png: %.psd
+	osascript tools/psdconvert.scpt $(PWD)/$< $(PWD)/$@
+
+sprites: $(SPRITE_PNGS)
+	python tools/spritepak.py resources/images_default $(SPRITE_PNGS)
 
 items_bin: items_bin.o $(C_TOOL_OBJS)
 	$(BUILD_WITH_XML)
@@ -48,5 +51,8 @@ resources: $(IMAGE_RESOURCE)
 
 $(IMAGE_RESOURCE): buildatlas $(IMAGES_INPUT)
 	./buildatlas $(IMAGES_INPUT) $(IMAGE_RESOURCE)
+
+clean:
+	rm -rf *.o $(BIN) buildatlas test items_bin $(SPRITE_PNGS)
 
 .phony: all resources
