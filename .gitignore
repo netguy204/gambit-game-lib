@@ -1,4 +1,3 @@
 *.o
 .gitignore
 monster/
-sprites/*.png

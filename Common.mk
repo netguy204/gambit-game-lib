@@ -16,7 +16,7 @@ C_OBJS=$(patsubst %.c,%.o,$(C_SRC))
 EXE_OBJS=$(C_OBJS) gambitmain.o
 
 #testlib.o: testlib_gl.c
-all: $(BIN)
+all: $(BIN) resources
 
 $(BIN): $(EXE_OBJS)
 	$(CC) $(CFLAGS) -o $@ $(EXE_OBJS) $(LDFLAGS)
@@ -36,7 +36,9 @@ SPRITE_PNGS=$(patsubst %.psd, %.png, $(SPRITE_PSDS))
 %.png: %.psd
 	osascript tools/psdconvert.scpt $(PWD)/$< $(PWD)/$@
 
-sprites: $(SPRITE_PNGS)
+RESOURCE_FILES=resources/images_default.png resources/images_default.dat
+
+$(RESOURCE_FILES): $(SPRITE_PNGS)
 	python tools/spritepak.py resources/images_default $(SPRITE_PNGS)
 
 items_bin: items_bin.o $(C_TOOL_OBJS)
@@ -48,4 +50,4 @@ sfmt/SFMT.o: sfmt/SFMT.c
 clean:
 	rm -rf *.o $(BIN) buildatlas test items_bin $(SPRITE_PNGS)
 
-.phony: all
+.phony: all resources
