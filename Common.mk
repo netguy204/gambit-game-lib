@@ -52,6 +52,6 @@ sfmt/SFMT.o: sfmt/SFMT.c
 	$(CC) $(CFLAGS) -c $< -o $@ -DSFMT_MEXP=607
 
 clean:
-	rm -rf *.o $(BIN) buildatlas test items_bin $(SPRITE_PNGS)
+	rm -rf *.o $(BIN) buildatlas test items_bin $(RESOURCE_FILES)
 
 .phony: all resources pngs
