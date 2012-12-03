@@ -8,6 +8,59 @@ import struct
 
 packing = 'Piiffff12s0l'
 
+def find_visible_bounds(image):
+    data = list(image.getdata())
+    w, h = image.size
+
+    def getpx(x, y):
+        v = data[x + (y * w)]
+        if len(v) == 4: return v
+        return (v[0], v[1], v[2], 255)
+
+    def first_hit(gen):
+        first_value = None
+        for v in gen:
+            if not first_value: first_value = v
+            x, y = v
+            r, g, b, a = getpx(x, y)
+            if a > 0:
+                return v
+        return first_value
+
+    def top_gen():
+        for y in xrange(h):
+            for x in xrange(w):
+                yield (x, y)
+
+    def bottom_gen():
+        for ty in xrange(h):
+            for x in xrange(w):
+                yield (x, (h - 1 - ty))
+
+    def left_gen():
+        for x in xrange(w):
+            for y in xrange(h):
+                yield (x, y)
+
+    def right_gen():
+        for tx in xrange(w):
+            for y in xrange(h):
+                yield ((w - 1 - tx), y)
+
+    left, junk = first_hit(left_gen())
+    right, junk = first_hit(right_gen())
+    junk, top = first_hit(top_gen())
+    junk, bottom = first_hit(bottom_gen())
+
+    pad = 1
+    if left >= pad: left -= pad
+    if right <= (w - 1 - pad): right += pad
+    if top >= pad: top -= pad
+    if bottom <= (h - 1 - pad): bottom += pad
+
+    return (left, top, right, bottom)
+
+
 def mk_sheet(filenames, outbase, tgt_dims):
     outimagename = outbase + '.png'
     outdatname = outbase + '.dat'
@@ -24,6 +77,7 @@ def mk_sheet(filenames, outbase, tgt_dims):
 
     for fname in filenames:
         img = Image.open(fname)
+        img = img.crop(find_visible_bounds(img))
         img_w, img_h = img.size
 
         def state_str():
@@ -45,7 +99,6 @@ def mk_sheet(filenames, outbase, tgt_dims):
 
         # finally, insert the image
         tgt.paste(img, (current_x, current_y))
-        #img.close()
 
         junk, basename = os.path.split(fname)
         u0 = float(current_x) / tgt_w

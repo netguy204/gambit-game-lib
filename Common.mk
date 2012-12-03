@@ -4,7 +4,8 @@ C_SRC+= \
 	rect.c controls.c agent.c steering.c spriteatlas.c \
 	realmain.c stb_image.c tiles.c sfmt/SFMT.c random.c \
 	perlin.c items.c heapvector.c worldgen.c xmltools.c \
-	pathfinder.c utils.c matrix.c ooc.c updateable.c
+	pathfinder.c utils.c matrix.c ooc.c updateable.c \
+	game_ui.c
 
 XML_INCLUDE:=-I/usr/include/libxml2
 CFLAGS+=$(XML_INCLUDE) -Isfmt/
@@ -15,7 +16,7 @@ C_OBJS=$(patsubst %.c,%.o,$(C_SRC))
 EXE_OBJS=$(C_OBJS) gambitmain.o
 
 #testlib.o: testlib_gl.c
-all: $(BIN) resources
+all: $(BIN)
 
 $(BIN): $(EXE_OBJS)
 	$(CC) $(CFLAGS) -o $@ $(EXE_OBJS) $(LDFLAGS)
@@ -44,15 +45,7 @@ items_bin: items_bin.o $(C_TOOL_OBJS)
 sfmt/SFMT.o: sfmt/SFMT.c
 	$(CC) $(CFLAGS) -c $< -o $@ -DSFMT_MEXP=607
 
-IMAGES_INPUT=resources/images_default.xml resources/images_default.png
-IMAGE_RESOURCE=resources/images_default.dat
-
-resources: $(IMAGE_RESOURCE)
-
-$(IMAGE_RESOURCE): buildatlas $(IMAGES_INPUT)
-	./buildatlas $(IMAGES_INPUT) $(IMAGE_RESOURCE)
-
 clean:
 	rm -rf *.o $(BIN) buildatlas test items_bin $(SPRITE_PNGS)
 
-.phony: all resources
+.phony: all
