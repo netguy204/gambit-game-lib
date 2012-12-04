@@ -32,7 +32,7 @@ long timer_elapsed_msecs(Timer timer) {
   return dsecs * 1000 + (dusecs / 1000);
 }
 
-long filename_size(char* filename) {
+long filename_size(const char* filename) {
   FILE* f = fopen(filename, "r");
   if(!f) fail_exit("file %s does not exist", filename);
 
@@ -40,7 +40,7 @@ long filename_size(char* filename) {
   return ftell(f);
 }
 
-char* filename_slurp(char* filename) {
+char* filename_slurp(const char* filename) {
   long size = filename_size(filename);
   char* data = malloc(size + 1);
   data[size] = '\0';

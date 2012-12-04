@@ -109,6 +109,7 @@ typedef struct SpriteList_ {
 SpriteList frame_spritelist_append(SpriteList list, Sprite sprite);
 
 void spritelist_enqueue_for_screen(SpriteList list);
+void rect_enqueue_for_screen(Rect rect);
 
 typedef void (*CommandFunction)(void*);
 

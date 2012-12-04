@@ -67,21 +67,11 @@ int renderer_load_shader(const char* src, int kind) {
   return shader;
 }
 
-enum ProgramParameters {
+typedef enum {
   GLPARAM_VERTEX,
-  GLPARAM_TEXCOORD0
-};
-
-int renderer_link_program(int vertex, int fragment) {
-  int program = glCreateProgram();
-  glAttachShader(program, vertex);
-  glAttachShader(program, fragment);
-  glBindAttribLocation(program, GLPARAM_VERTEX, "vertex");
-  glBindAttribLocation(program, GLPARAM_TEXCOORD0, "tex_coord0");
-  glLinkProgram(program);
-
-  return program;
-}
+  GLPARAM_TEXCOORD0,
+  GLPARAM_DONE
+} ProgramParameters;
 
 GLuint standard_program;
 GLuint vertex_buffer;
@@ -90,13 +80,33 @@ struct Matrix44_ orthographic_projection;
 GLuint tex0_uniform_location;
 GLuint mvp_uniform_location;
 
-void renderer_init_standard_shader() {
-  char* vertex_source = filename_slurp("resources/standard.vert");
-  char* fragment_source = filename_slurp("resources/standard.frag");
+GLuint solid_program;
+GLuint solid_mvp_uniform_location;
+GLuint solid_color_location;
+
+int renderer_link_shader(const char* vertexname, const char* fragmentname, ...) {
+  char* vertex_source = filename_slurp(vertexname);
+  char* fragment_source = filename_slurp(fragmentname);
 
   int vertex = renderer_load_shader(vertex_source, GL_VERTEX_SHADER);
   int fragment = renderer_load_shader(fragment_source, GL_FRAGMENT_SHADER);
-  int program = renderer_link_program(vertex, fragment);
+  int program = glCreateProgram();
+
+  glAttachShader(program, vertex);
+  glAttachShader(program, fragment);
+
+  va_list ap;
+  va_start(ap, fragmentname);
+  while(1) {
+    ProgramParameters param = va_arg(ap, ProgramParameters);
+    if(param == GLPARAM_DONE) break;
+
+    const char* name = va_arg(ap, char*);
+    glBindAttribLocation(program, param, name);
+  }
+
+  glLinkProgram(program);
+
   glDeleteShader(vertex);
   glDeleteShader(fragment);
   int link_status;
@@ -108,12 +118,27 @@ void renderer_init_standard_shader() {
     fail_exit("glLinkProgram: %s\n", buffer);
   }
 
+  return program;
+}
+
+void renderer_init_standard_shader() {
+  int program = renderer_link_shader("resources/standard.vert", "resources/standard.frag",
+                                     GLPARAM_VERTEX, "vertex",
+                                     GLPARAM_TEXCOORD0, "tex_coord0",
+                                     GLPARAM_DONE);
   standard_program = program;
   tex0_uniform_location = glGetUniformLocation(program, "tex0");
   mvp_uniform_location = glGetUniformLocation(program, "mvpMatrix");
 
   glGenBuffers(1, &vertex_buffer);
   glGenBuffers(1, &texcoord_buffer);
+
+  program = renderer_link_shader("resources/standard.vert", "resources/solid.frag",
+                                 GLPARAM_VERTEX, "vertex",
+                                 GLPARAM_DONE);
+  solid_program = program;
+  solid_mvp_uniform_location = glGetUniformLocation(program, "mvpMatrix");
+  solid_color_location = glGetUniformLocation(program, "color");
 }
 
 void renderer_gl_init() {
@@ -271,4 +296,32 @@ void spritelist_render_to_screen(SpriteList list) {
   glVertexAttribPointer(GLPARAM_TEXCOORD0, 2, GL_FLOAT, GL_FALSE, 0, 0);
 
   glDrawArrays(GL_TRIANGLES, 0, nverts);
+}
+
+void rect_render_to_screen(Rect rect) {
+  GLfloat rect_lines[] = {
+    rect->minx, rect->miny, 0,
+    rect->minx, rect->maxy, 0,
+
+    rect->minx, rect->maxy, 0,
+    rect->maxx, rect->maxy, 0,
+
+    rect->maxx, rect->maxy, 0,
+    rect->maxx, rect->miny, 0,
+
+    rect->maxx, rect->miny, 0,
+    rect->minx, rect->miny, 0
+  };
+
+  glUseProgram(solid_program);
+
+  glUniformMatrix4fv(mvp_uniform_location, 1, GL_FALSE, orthographic_projection.data);
+
+  glEnableVertexAttribArray(GLPARAM_VERTEX);
+  glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(rect_lines), rect_lines, GL_DYNAMIC_DRAW);
+  glVertexAttribPointer(GLPARAM_VERTEX, 3, GL_FLOAT, GL_FALSE, 0, 0);
+
+  glUniform4f(solid_color_location, 1.0f, 0.0f, 1.0f, 1.0f);
+  glDrawArrays(GL_LINES, 0, 8);
 }

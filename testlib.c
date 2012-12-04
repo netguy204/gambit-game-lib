@@ -1,9 +1,10 @@
-#include <math.h>
-#include <stdarg.h>
-
 #include "testlib.h"
 #include "testlib_internal.h"
 #include "stb_image.h"
+
+#include <math.h>
+#include <stdarg.h>
+#include <string.h>
 
 ThreadBarrier render_barrier;
 FixedAllocator clock_allocator;
@@ -211,6 +212,15 @@ extern void spritelist_render_to_screen(SpriteList list);
 
 void spritelist_enqueue_for_screen(SpriteList list) {
   renderer_enqueue(spritelist_render_to_screen, list);
+}
+
+extern void rect_render_to_screen(Rect rect);
+
+void rect_enqueue_for_screen(Rect rect) {
+  // copy for caller convenience (this is really a debugging routine)
+  Rect new_rect = frame_alloc(sizeof(struct Rect_));
+  memcpy(new_rect, rect, sizeof(struct Rect_));
+  renderer_enqueue(rect_render_to_screen, new_rect);
 }
 
 Command command_make(CommandFunction function, void* data) {

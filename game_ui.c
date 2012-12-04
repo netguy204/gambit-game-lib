@@ -74,8 +74,8 @@ SpriteList spritelist_from_8patch(SpriteList list, SpriteAtlas atlas, Rect rect)
   ensure_cache(atlas);
 
   int major_dim = patch_cache[EP_C]->w;
-  int xsteps = rect_width(rect) / major_dim + 1;
-  int ysteps = rect_height(rect) / major_dim + 1;
+  int xsteps = (rect_width(rect) / major_dim) + 1;
+  int ysteps = (rect_height(rect) / major_dim) + 1;
   int xpos = rect->minx;
   int ypos = rect->miny;
 

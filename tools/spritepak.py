@@ -60,7 +60,7 @@ def find_visible_bounds(image, pad=1):
     return (left, top, right, bottom)
 
 
-def mk_sheet(filenames, outbase, tgt_dims):
+def mk_sheet(filenames, outbase, tgt_dims, notrimg):
     outimagename = outbase + '.png'
     outdatname = outbase + '.dat'
     outdat = open(outdatname, 'w')
@@ -75,8 +75,12 @@ def mk_sheet(filenames, outbase, tgt_dims):
     max_row_h = 0
 
     for fname in filenames:
+        junk, basename = os.path.split(fname)
         img = Image.open(fname)
-        img = img.crop(find_visible_bounds(img))
+
+        if not basename in notrim:
+            img = img.crop(find_visible_bounds(img))
+
         img_w, img_h = img.size
 
         def state_str():
@@ -99,7 +103,6 @@ def mk_sheet(filenames, outbase, tgt_dims):
         # finally, insert the image
         tgt.paste(img, (current_x, current_y))
 
-        junk, basename = os.path.split(fname)
         u0 = float(current_x) / tgt_w
         v1 = float(current_y) / tgt_h
         u1 = float(current_x + img_w) / tgt_w
@@ -116,11 +119,15 @@ def mk_sheet(filenames, outbase, tgt_dims):
     outdat.close()
 
 if __name__ == '__main__':
-    if len(sys.argv) < 3:
-        print 'usage: %s outfile [input files]' % sys.argv[0]
+    if len(sys.argv) < 4:
+        print 'usage: %s notrim outprefix [input files]' % sys.argv[0]
         exit(1)
 
-    outfile = sys.argv[1]
-    infiles = sys.argv[2:]
+    notrimfile = sys.argv[1]
+    outfile = sys.argv[2]
+    infiles = sys.argv[3:]
 
-    mk_sheet(infiles, outfile, (1024, 1024))
+    with open(notrimfile) as f:
+        notrim = [ name.rstrip() for name in f ]
+
+    mk_sheet(infiles, outfile, (1024, 1024), notrim)

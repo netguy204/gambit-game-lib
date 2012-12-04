@@ -24,7 +24,7 @@ long timer_elapsed_msecs(Timer timer);
     printf("%ld\n", msecs);                     \
   } while(0)
 
-long filename_size(char* filename);
-char* filename_slurp(char* filename);
+long filename_size(const char* filename);
+char* filename_slurp(const char* filename);
 
 #endif
