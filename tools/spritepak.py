@@ -8,7 +8,7 @@ import struct
 
 packing = 'Piiffff12s0l'
 
-def find_visible_bounds(image):
+def find_visible_bounds(image, pad=1):
     data = list(image.getdata())
     w, h = image.size
 
@@ -52,7 +52,6 @@ def find_visible_bounds(image):
     junk, top = first_hit(top_gen())
     junk, bottom = first_hit(bottom_gen())
 
-    pad = 1
     if left >= pad: left -= pad
     if right <= (w - 1 - pad): right += pad
     if top >= pad: top -= pad

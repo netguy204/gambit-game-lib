@@ -31,7 +31,7 @@ char* eight_patch_names[EP_MAX] = {
 };
 
 SpriteAtlasEntry patch_cache[EP_MAX];
-SpriteAtlasEntry font_cache[26];
+SpriteAtlasEntry font_cache[FONT_MAX][26];
 SpriteAtlas atlas_cache = NULL;
 
 void ensure_cache(SpriteAtlas atlas) {
@@ -42,10 +42,17 @@ void ensure_cache(SpriteAtlas atlas) {
       patch_cache[ii] = spriteatlas_find(atlas, eight_patch_names[ii]);
     }
 
-    for(ii = 0; ii < array_size(font_cache); ++ii) {
-      char name_buffer[64];
-      snprintf(name_buffer, sizeof(name_buffer), "%d.png", ii + 1);
-      font_cache[ii] = spriteatlas_find(atlas, name_buffer);
+    int jj;
+    for(jj = 0; jj < FONT_MAX; ++jj) {
+      for(ii = 0; ii < array_size(font_cache[FONT_SMALL]); ++ii) {
+        char name_buffer[64];
+        if(jj == FONT_SMALL) {
+          snprintf(name_buffer, sizeof(name_buffer), "s_%d.png", ii + 1);
+        } else if(jj == FONT_MEDIUM) {
+          snprintf(name_buffer, sizeof(name_buffer), "%d.png", ii + 1);
+        }
+        font_cache[jj][ii] = spriteatlas_find(atlas, name_buffer);
+      }
     }
 
     atlas_cache = atlas;
@@ -120,14 +127,14 @@ static int ui_ord(char ch) {
   int ord = toupper(ch) - 'A';
 
   // a better system would also try to resolve symbols
-  if(ord < 0 || ord >= array_size(font_cache)) {
+  if(ord < 0 || ord >= array_size(font_cache[FONT_SMALL])) {
     return -1;
   } else {
     return ord;
   }
 }
 
-SpriteList spritelist_from_string(SpriteList list, SpriteAtlas atlas,
+SpriteList spritelist_from_string(SpriteList list, SpriteAtlas atlas, FontSize size,
                                   const char* string, int bl_x, int bl_y) {
   ensure_cache(atlas);
 
@@ -136,11 +143,11 @@ SpriteList spritelist_from_string(SpriteList list, SpriteAtlas atlas,
 
     if(ord == -1) {
       // assume space
-      bl_x += font_cache[ui_ord('m')]->w;
+      bl_x += font_cache[size][ui_ord('m')]->w;
       continue;
     }
 
-    SpriteAtlasEntry entry = font_cache[ord];
+    SpriteAtlasEntry entry = font_cache[size][ord];
     Sprite sprite = ui_make_sprite(entry, bl_x, bl_y);
     list = frame_spritelist_append(list, sprite);
     bl_x += entry->w;

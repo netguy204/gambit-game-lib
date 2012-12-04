@@ -778,7 +778,7 @@ void game_step(long delta, InputState state) {
   // test 8patch
   struct Rect_ patch = { 0, 0, screen_width, 128 };
   spritelist_enqueue_for_screen(spritelist_from_8patch(NULL, atlas, &patch));
-  spritelist_enqueue_for_screen(spritelist_from_string(NULL, atlas, "hello world", 32, 32));
+  spritelist_enqueue_for_screen(spritelist_from_string(NULL, atlas, FONT_SMALL, "hello world", 32, 32));
 }
 
 void game_shutdown() {
