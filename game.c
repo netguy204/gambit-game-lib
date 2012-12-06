@@ -47,7 +47,6 @@ struct Random_ rgen;
 SpriteAtlas atlas;
 TileMap tiles;
 SpriteAtlasEntry image_enemy;
-SpriteAtlasEntry image_ally;
 SpriteAtlasEntry image_player_bullet;
 SpriteAtlasEntry image_enemy_bullet;
 SpriteAtlasEntry image_smoke;
@@ -142,7 +141,7 @@ EnemyAgent spawn_enemy() {
   EnemyAgent enemyagent = new(EnemyObject, ENEMY_IDLE, &enemies);
   VisibleAgent visible = (VisibleAgent)enemyagent;
 
-  visible->particle.image = image_ally;
+  visible->particle.image = image_enemy;
   visible->particle.scale = 1.0f;
 
   // pick a path
@@ -233,11 +232,11 @@ void enemyagent_process_inbox(Agent agent, Message message, void * udata) {
     break;
   case AGENT_FLEE:
     agent->state = ENEMY_FLEEING;
-    p->image = image_ally;
+    p->image = image_enemy;
     break;
   case AGENT_IDLE:
     agent->state = ENEMY_IDLE;
-    p->image = image_ally;
+    p->image = image_enemy;
     break;
   default:
     printf("enemyagent: unrecognized message %d\n", message->kind);
@@ -644,7 +643,6 @@ void game_init() {
 
   // pull some often used things out of the atlas
   image_enemy = spriteatlas_find(atlas, "ship-right.png");
-  image_ally = spriteatlas_find(atlas, "ship-right-good.png");
   image_player_bullet = spriteatlas_find(atlas, "plasma.png");
   image_enemy_bullet = spriteatlas_find(atlas, "enemy-bullet.png");
   image_smoke = spriteatlas_find(atlas, "smoke.png");
