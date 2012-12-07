@@ -33,7 +33,7 @@ void heapvector_grow(HeapVector hv, size_t new_alloc) {
   assert(hv->data);
 }
 
-void heapvector_push(HeapVector hv, void * data, size_t size) {
+void heapvector_push(HeapVector hv, const void * data, size_t size) {
   size_t new_size = hv->data_bytes + size;
 
   if(new_size > hv->alloc_bytes) {

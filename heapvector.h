@@ -13,7 +13,7 @@ typedef struct HeapVector_ {
 HeapVector heapvector_make();
 void heapvector_free(HeapVector hv);
 void heapvector_clear(HeapVector hv);
-void heapvector_push(HeapVector hv, void * data, size_t size);
+void heapvector_push(HeapVector hv, const void * data, size_t size);
 void * heapvector_pop(HeapVector hv, size_t size);
 
 #define HV_PUSH_VALUE(hv, type, value) (heapvector_push(hv, &value, sizeof(type)))

@@ -780,8 +780,11 @@ void game_step(long delta, InputState state) {
 
   struct Rect_ patch = { offset, 0, offset + box_width, 128 };
   spritelist_enqueue_for_screen(spritelist_from_8patch(NULL, atlas, &patch));
-  spritelist_enqueue_for_screen(spritelist_from_string(NULL, atlas, FONT_SMALL,
-                                                       "hello world", 32 + offset, 32));
+
+  const char* lipsum = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam non lacus id leo hendrerit consequat. Aliquam volutpat, nisi vitae ullamcorper tempor, mauris dui lacinia urna, eu viverra tortor magna sed risus. Mauris varius mauris et metus pretium rutrum. In sagittis pretium scelerisque. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Nam nec lorem ut orci varius congue. Nulla diam felis, dapibus sed pharetra in, aliquam in augue. Etiam mollis sagittis nibh quis commodo. Etiam elit lacus, interdum id placerat non, faucibus vel justo. Etiam placerat metus sit amet erat tempor adipiscing vestibulum neque tempor. Maecenas pharetra tortor eu purus elementum tincidunt. Donec vitae bibendum leo. Sed nisi massa, ullamcorper sit amet luctus ut, porttitor vitae turpis. Duis sit amet augue sit amet libero semper dignissim in vitae turpis.";
+
+  spritelist_enqueue_for_screen(spritelist_from_consoletext(NULL, atlas, lipsum,
+                                                            32 + offset, 256, box_width - 64));
 }
 
 void game_shutdown() {

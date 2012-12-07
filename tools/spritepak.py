@@ -108,9 +108,7 @@ def mk_sheet(filenames, outbase, tgt_dims, notrimg):
         u1 = float(current_x + img_w) / tgt_w
         v0 = float(current_y + img_h) / tgt_h
         struct_tuple = (0, img_w, img_h, u0, v0, u1, v1, basename)
-        print struct_tuple
         packed = struct.pack(packing, *struct_tuple)
-        print "size: %d" % len(packed)
         outdat.write(packed)
 
         current_x += img_w

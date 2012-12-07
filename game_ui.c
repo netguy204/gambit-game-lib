@@ -1,4 +1,5 @@
 #include "game_ui.h"
+#include "heapvector.h"
 
 #include "config.h"
 
@@ -50,6 +51,8 @@ void ensure_cache(SpriteAtlas atlas) {
           snprintf(name_buffer, sizeof(name_buffer), "s_%d.png", ii + 1);
         } else if(jj == FONT_MEDIUM) {
           snprintf(name_buffer, sizeof(name_buffer), "%d.png", ii + 1);
+        } else if(jj == FONT_FIXED) {
+          snprintf(name_buffer, sizeof(name_buffer), "f_%d.png", ii + 1);
         }
         font_cache[jj][ii] = spriteatlas_find(atlas, name_buffer);
       }
@@ -134,11 +137,66 @@ static int ui_ord(char ch) {
   }
 }
 
+int ui_string_width(SpriteAtlas atlas, FontSize size, const char* string) {
+  ensure_cache(atlas);
+  int width = 0;
+  for(; *string; ++string) {
+    int ord = ui_ord(*string);
+
+    if(ord == -1) {
+      // assume space
+      width += font_cache[size][ui_ord('m')]->w;
+    } else {
+      width += font_cache[size][ord]->w;
+    }
+  }
+
+  return width;
+}
+
+void ui_wrap_string(HeapVector output, const char* input, int max_chars) {
+  const char* ip;
+  int xpos;
+
+  while(*input) {
+    // count up next word
+    for(ip=input;*ip && *ip != ' ';++ip);
+
+    // insert newline if needed
+    if(xpos + (ip - input) > max_chars) {
+      char newline = '\n';
+      HV_PUSH_VALUE(output, char, newline);
+      xpos = 0;
+    }
+
+    // copy the word
+    for(;input != ip; ++input) {
+      HV_PUSH_VALUE(output, char, *input);
+      ++xpos;
+    }
+
+    // copy any spaces
+    while(*input == ' ') {
+      HV_PUSH_VALUE(output, char, *input);
+      ++input;
+      ++xpos;
+    }
+  }
+}
+
+
 SpriteList spritelist_from_string(SpriteList list, SpriteAtlas atlas, FontSize size,
                                   const char* string, int bl_x, int bl_y) {
   ensure_cache(atlas);
+  int xstart = bl_x;
 
   for(; *string; ++string) {
+    if(*string == '\n') {
+      bl_y -= font_cache[size][ui_ord('m')]->h;
+      bl_x = xstart;
+      continue;
+    }
+
     int ord = ui_ord(*string);
 
     if(ord == -1) {
@@ -153,6 +211,25 @@ SpriteList spritelist_from_string(SpriteList list, SpriteAtlas atlas, FontSize s
     bl_x += entry->w;
   }
 
+  return list;
+}
+
+HeapVector consoletext_hv = NULL;
+
+SpriteList spritelist_from_consoletext(SpriteList list, SpriteAtlas atlas, const char* string,
+                                       int bl_x, int bl_y, int width) {
+  ensure_cache(atlas);
+
+  int char_width = font_cache[FONT_FIXED][ui_ord('m')]->w;
+  int num_chars = width / char_width;
+
+  if(consoletext_hv == NULL) {
+    consoletext_hv = heapvector_make();
+  }
+
+  ui_wrap_string(consoletext_hv, string, num_chars);
+  list = spritelist_from_string(list, atlas, FONT_FIXED, consoletext_hv->data, bl_x, bl_y);
+  heapvector_clear(consoletext_hv);
   return list;
 }
 
