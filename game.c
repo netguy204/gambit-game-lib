@@ -195,6 +195,10 @@ void handle_input(InputState state, float dt) {
     player.jumping = 1;
     player.particle.vel.y = player_jump_speed;
   }
+
+  if(!state->action1 && player.jumping) {
+    player.particle.vel.y = MIN(player.particle.vel.y, 0);
+  }
 }
 
 void player_integrate(float dt) {

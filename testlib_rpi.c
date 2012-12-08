@@ -73,6 +73,7 @@ void inputstate_latest(InputState state) {
   state->leftright = ((float)joystick_state->values[1].value) / 32767.0;
   state->updown = -((float)joystick_state->values[3].value) / 32767.0;
   state->action1 = joystick_state->values[0].value;
+  state->action2 = joystick_state->values[1].value;
 }
 
 void renderer_init(void* empty) {
