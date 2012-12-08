@@ -29,10 +29,11 @@ float player_width = 64;
 float player_height = 64;
 float player_jump_height = 400;
 float bomb_max_height = 800;
+float bomb_dim = 32;
 float player_gravity_accel;
 float bomb_gravity_accel;
-float charge_speed = 600.0;
-float charge_max = 600;
+float charge_speed = 1200.0;
+float charge_max = 1200;
 float ground_level = 100;
 
 struct PlayerState_ player;
@@ -104,6 +105,12 @@ void BombObject_update(void* _self, float dt) {
   bomb->time_remaining -= dt;
   if(bomb->time_remaining <= 0) {
     delete(bomb);
+  } else if(bomb->time_remaining < 0.1) {
+    // contract to acheive zero at t=0
+    particle->dsdt = -particle->scale / bomb->time_remaining;
+  } else if(bomb->time_remaining < 0.3) {
+    // expand to acheive 2x at t = 0.1
+    particle->dsdt = 2.0 / (bomb->time_remaining - 0.1);
   }
 
   particle_integrate(particle, dt);
@@ -165,8 +172,12 @@ void handle_input(InputState state, float dt) {
   } else if(player.charging) {
     //fire
     if(dll_count(&bombs) < max_bombs) {
-      struct Vector_ vel;
-      vector_add(&vel, &player.particle.vel, &player.fire_charge);
+      struct Vector_ vel = player.particle.vel;
+      // never let a falling player drag the bomb down
+      if(vel.y < 0) {
+        vel.y = 0;
+      }
+      vector_add(&vel, &vel, &player.fire_charge);
       Bomb bomb = new(BombObject, &bombs, &player.particle.pos, &vel);
     }
     player.charging = 0;
@@ -221,7 +232,8 @@ void game_step(long delta, InputState state) {
   if(player.charging) {
     struct ColoredRect_ crect;
     struct Vector_ cvect;
-    vector_add(&cvect, &player.particle.pos, &player.fire_charge);
+    vector_scale(&cvect, &player.fire_charge, 0.5);
+    vector_add(&cvect, &player.particle.pos, &cvect);
     rect_centered((Rect)&crect, &cvect, player_width/2, player_height/2);
     crect.color[0] = 0.0f;
     crect.color[1] = 0.0f;
@@ -236,7 +248,9 @@ void game_step(long delta, InputState state) {
   while(node) {
     struct ColoredRect_ brect;
     Particle particle = container_of(node, struct Particle_, node);
-    rect_centered((Rect)&brect, &particle->pos, player_width/2, player_height/2);
+    rect_centered((Rect)&brect, &particle->pos,
+                  bomb_dim * particle->scale,
+                  bomb_dim * particle->scale);
     brect.color[0] = 1.0f;
     brect.color[1] = 0.0f;
     brect.color[2] = 0.0f;
