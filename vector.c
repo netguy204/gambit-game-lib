@@ -26,6 +26,11 @@ float vector_mag(Vector a) {
   return sqrtf(vector_dot(a, a));
 }
 
+void vector_zero(Vector a) {
+  a->x = 0.0f;
+  a->y = 0.0f;
+}
+
 void vector_norm(Vector dst, Vector src) {
   vector_scale(dst, src, 1.0f / vector_mag(src));
 }

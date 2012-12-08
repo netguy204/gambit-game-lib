@@ -11,6 +11,7 @@ void vector_sub(Vector dst, Vector a, Vector b);
 void vector_scale(Vector dst, Vector a, float s);
 float vector_dot(Vector a, Vector b);
 float vector_mag(Vector a);
+void vector_zero(Vector a);
 void vector_norm(Vector dst, Vector src);
 float vector_angle(Vector v);
 int vector_direction_scaled(Vector dst, Vector a, Vector b, float s);

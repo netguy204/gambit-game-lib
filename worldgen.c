@@ -123,13 +123,17 @@ void init_resources() {
   dll_zero(&civilizations);
 }
 
+TileSpec tilespec_make(int nspecs) {
+  return malloc(sizeof(struct TileSpec_) * nspecs);
+}
+
 void worldgen_init() {
   init_resources();
 
   int MAXX = 1000;
   int MAXY = 100;
 
-  TileSpec specs = malloc(sizeof(struct TileSpec_) * TILE_MAX);
+  TileSpec specs = tilespec_make(TILE_MAX);
   int standard = TILESPEC_COLLIDABLE | TILESPEC_VISIBLE;
 
   specs[TILE_BLANK].image = NULL;
