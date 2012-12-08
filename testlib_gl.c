@@ -298,7 +298,8 @@ void spritelist_render_to_screen(SpriteList list) {
   glDrawArrays(GL_TRIANGLES, 0, nverts);
 }
 
-void rect_render_to_screen(Rect rect) {
+void rect_render_to_screen(ColoredRect crect) {
+  Rect rect = (Rect)crect;
   GLfloat rect_lines[] = {
     rect->minx, rect->miny, 0,
     rect->minx, rect->maxy, 0,
@@ -322,6 +323,31 @@ void rect_render_to_screen(Rect rect) {
   glBufferData(GL_ARRAY_BUFFER, sizeof(rect_lines), rect_lines, GL_DYNAMIC_DRAW);
   glVertexAttribPointer(GLPARAM_VERTEX, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
-  glUniform4f(solid_color_location, 1.0f, 0.0f, 1.0f, 1.0f);
+  glUniform4fv(solid_color_location, 1, crect->color);
   glDrawArrays(GL_LINES, 0, 8);
+}
+
+void filledrect_render_to_screen(ColoredRect crect) {
+  Rect rect = (Rect)crect;
+  GLfloat rect_tris[] = {
+    rect->minx, rect->miny, 0,
+    rect->minx, rect->maxy, 0,
+    rect->maxx, rect->maxy, 0,
+
+    rect->maxx, rect->maxy, 0,
+    rect->maxx, rect->miny, 0,
+    rect->minx, rect->miny, 0
+  };
+
+  glUseProgram(solid_program);
+
+  glUniformMatrix4fv(mvp_uniform_location, 1, GL_FALSE, orthographic_projection.data);
+
+  glEnableVertexAttribArray(GLPARAM_VERTEX);
+  glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(rect_tris), rect_tris, GL_DYNAMIC_DRAW);
+  glVertexAttribPointer(GLPARAM_VERTEX, 3, GL_FLOAT, GL_FALSE, 0, 0);
+
+  glUniform4fv(solid_color_location, 1, crect->color);
+  glDrawArrays(GL_TRIANGLES, 0, 6);
 }
