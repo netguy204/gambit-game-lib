@@ -27,7 +27,7 @@ float player_speed = 600;
 float player_jump_speed = 1200;
 float player_width = 64;
 float player_height = 64;
-float player_jump_height = 400;
+float player_jump_height = 300;
 float bomb_max_height = 800;
 float bomb_dim = 32;
 float player_gravity_accel;
@@ -35,6 +35,7 @@ float bomb_gravity_accel;
 float charge_speed = 1200.0;
 float charge_max = 1200;
 float ground_level = 100;
+float charge_delay = 0.2;
 
 struct PlayerState_ player;
 struct Random_ rgen;
@@ -67,8 +68,14 @@ void* BombObject_ctor(void* _self, va_list* app) {
 
   // offset a bit in vel direction to get around the player
   struct Vector_ offset;
-  vector_norm(&offset, vel);
-  vector_scale(&offset, &offset, player_width / 2);
+  if(vector_mag(vel) < 0.0001) {
+    offset.y = player_width / 2;
+    offset.x = 0;
+  } else {
+    vector_norm(&offset, vel);
+    vector_scale(&offset, &offset, player_width / 2);
+  }
+
   vector_add(&particle->pos, pos, &offset);
   particle->vel = *vel;
   particle->scale = 1.0f;
@@ -127,6 +134,7 @@ void game_init() {
   player.particle.vel.y = 0.0f;
   player.jumping = 0;
   player.charging = 0;
+  player.fire_pressed = 0;
   vector_zero(&player.fire_charge);
   player_gravity_accel = (player_jump_speed * player_jump_speed) / (2 * player_jump_height);
   bomb_gravity_accel = (charge_max * charge_max) / (2 * bomb_max_height);
@@ -149,38 +157,41 @@ void game_init() {
 
 void handle_input(InputState state, float dt) {
   if(state->action2) {
-    if(!player.jumping) {
-      player.particle.vel.x = 0;
+    if(!player.fire_pressed) {
+      player.fire_pressed = 1;
+      player.fire_timeout = charge_delay;
     }
 
-    if(!player.charging) {
-      vector_zero(&player.fire_charge);
+    player.fire_timeout -= dt;
+    if(player.fire_timeout <= 0 && !player.jumping) {
       player.charging = 1;
     }
 
-    struct Vector_ addl_charge = {
-      state->leftright * charge_speed * dt,
-      state->updown * charge_speed * dt
-    };
-
-    vector_add(&player.fire_charge, &player.fire_charge, &addl_charge);
-    float mag = vector_mag(&player.fire_charge);
-    if(mag > charge_max) {
-      vector_scale(&player.fire_charge, &player.fire_charge, charge_max / mag);
-    }
-
-  } else if(player.charging) {
-    //fire
-    if(dll_count(&bombs) < max_bombs) {
-      struct Vector_ vel = player.particle.vel;
-      // never let a falling player drag the bomb down
-      if(vel.y < 0) {
-        vel.y = 0;
+    if(player.charging) {
+      if(!player.jumping) {
+	player.particle.vel.x = 0;
       }
-      vector_add(&vel, &vel, &player.fire_charge);
-      Bomb bomb = new(BombObject, &bombs, &player.particle.pos, &vel);
+      
+      struct Vector_ addl_charge = {
+	state->leftright * charge_speed * dt,
+	state->updown * charge_speed * dt
+      };
+
+      vector_add(&player.fire_charge, &player.fire_charge, &addl_charge);
+      float mag = vector_mag(&player.fire_charge);
+      if(mag > charge_max) {
+	vector_scale(&player.fire_charge, &player.fire_charge, charge_max / mag);
+      }
     }
+  } else if(player.fire_pressed) {
+    //fire
+    player.fire_pressed = 0;
     player.charging = 0;
+
+    if(dll_count(&bombs) < max_bombs) {
+      Bomb bomb = new(BombObject, &bombs, &player.particle.pos,
+		      &player.fire_charge);
+    }
   } else {
     player.particle.vel.x = state->leftright * player_speed;
   }
