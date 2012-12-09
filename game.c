@@ -291,7 +291,6 @@ void handle_input(InputState state, float dt) {
   platformer_resolve(&player.platformer, &platforms);
 
   if(state->action1 && !player.platformer.falling) {
-    player.platformer.falling = 1;
     pp->vel.y = player_jump_speed;
   }
 
