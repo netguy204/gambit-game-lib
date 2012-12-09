@@ -37,6 +37,8 @@ float charge_speed = 1200.0;
 float charge_max = 1200;
 float ground_level = 100;
 float charge_delay = 0.2;
+float bomb_explode_start = 0.3;
+float bomb_chain_factor = 5.0;
 
 struct PlayerState_ player;
 struct DLL_ platforms;
@@ -98,6 +100,7 @@ void* BombObject_ctor(void* _self, va_list* app) {
   particle->dsdt = 0.0f;
   particle->dadt = 0.0f;
   bomb->time_remaining = bomb_delay;
+  bomb->searched_neighbors = 0;
 
   return bomb;
 }
@@ -112,6 +115,12 @@ void* BombObject_dtor(void* _self) {
 
 void BombObject_dealloci(void* _self) {
   fixed_allocator_free(bomb_allocator, _self);
+}
+
+void bomb_detonate(Bomb bomb) {
+  if(bomb->time_remaining > bomb_explode_start) {
+    bomb->time_remaining = bomb_explode_start;
+  }
 }
 
 void BombObject_update(void* _self, float dt) {
@@ -133,7 +142,25 @@ void BombObject_update(void* _self, float dt) {
   } else if(bomb->time_remaining < 0.1) {
     // contract to acheive zero at t=0
     particle->dsdt = -particle->scale / bomb->time_remaining;
-  } else if(bomb->time_remaining < 0.3) {
+
+    // search our neighbors to see if we can set off a chain reaction
+    if(!bomb->searched_neighbors) {
+      bomb->searched_neighbors = 1;
+      DLLNode node = bombs.head;
+      while(node) {
+        Particle p = node_to_particle(node);
+        if(p != particle) {
+          struct Vector_ offset;
+          vector_sub(&offset, &p->pos, &particle->pos);
+          if(vector_mag(&offset) < platformer->w * bomb_chain_factor) {
+            bomb_detonate((Bomb)p);
+          }
+        }
+        node = node->next;
+      }
+    }
+
+  } else if(bomb->time_remaining < bomb_explode_start) {
     // expand to acheive 2x at t = 0.1
     particle->dsdt = 2.0 / (bomb->time_remaining - 0.1);
   }

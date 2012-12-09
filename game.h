@@ -14,6 +14,7 @@ typedef struct PlayerState_ {
 typedef struct Bomb_ {
   struct Platformer_ _;
   float time_remaining;
+  int searched_neighbors;
 } *Bomb;
 
 
