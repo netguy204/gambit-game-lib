@@ -21,8 +21,6 @@
 #include <stdarg.h>
 #include <math.h>
 
-int max_bombs = 50;
-int max_platforms = 10;
 float bomb_delay = 6.0f;
 float player_speed = 600;
 float player_jump_speed = 1200;
@@ -41,16 +39,27 @@ float bomb_explode_start = 0.3;
 float bomb_chain_factor = 5.0;
 
 struct PlayerState_ player;
+
+int max_platforms = 10;
+const void* PlatformObject;
 struct DLL_ platforms;
 FixedAllocator platform_allocator;
-Platform moving_platform;
 
 struct Random_ rgen;
 Clock main_clock;
 
+const void* ParticleObject;
+const void* PlatformerObject;
+
+int max_bombs = 50;
 const void* BombObject;
 struct DLL_ bombs;
 FixedAllocator bomb_allocator;
+
+int max_enemies = 20;
+const void* EnemyObject;
+struct DLL_ enemies;
+FixedAllocator enemy_allocator;
 
 Platform platform_make() {
   return fixed_allocator_alloc(platform_allocator);
@@ -68,25 +77,70 @@ void player_rect(Rect rect) {
   platformer_rect(rect, &player.platformer);
 }
 
-void* BombObject_alloci(const void* _class) {
-  return fixed_allocator_alloc(bomb_allocator);
-}
-
-void* BombObject_ctor(void* _self, va_list* app) {
-  Bomb bomb = super_ctor(BombObject, _self, app);
-  Particle particle = (Particle)bomb;
-
+void* ParticleObject_ctor(void* _self, va_list* app) {
+  Particle particle = super_ctor(ParticleObject, _self, app);
   DLL list = va_arg(*app, DLL);
-  Vector pos = va_arg(*app, Vector);
-  Vector vel = va_arg(*app, Vector);
-
-  platformer_init((Platformer)bomb, pos, bomb_dim, bomb_dim);
 
   particle->containing_list = list;
 
   if(particle->containing_list) {
     dll_add_head(particle->containing_list, &particle->node);
   }
+
+  particle->scale = 1.0f;
+  particle->angle = 0.0f;
+  particle->dsdt = 0.0f;
+  particle->dadt = 0.0f;
+
+  return particle;
+}
+
+void* ParticleObject_dtor(void* _self) {
+  Particle particle = _self;
+  if(particle->containing_list) {
+    dll_remove(particle->containing_list, &particle->node);
+  }
+  return super_dtor(ParticleObject, _self);
+}
+
+void ParticleObject_update(void* _self, float dt) {
+  // don't call super: we are root for this method
+  Particle particle = _self;
+  particle_integrate(particle, dt);
+}
+
+void* PlatformObject_alloci(void* _class) {
+  return fixed_allocator_alloc(platform_allocator);
+}
+
+void PlatformObject_dealloci(void* _self) {
+  fixed_allocator_free(platform_allocator, _self);
+}
+
+void PlatformObject_update(void* _self, float dt) {
+  super_update(PlatformObject, _self, dt);
+  Platform platform = _self;
+  platform_rect(&platform->rect, platform);
+}
+
+void* PlatformObject_ctor(void* _self, va_list* app) {
+  Platform platform = super_ctor(PlatformObject, _self, app);
+  Particle particle = (Particle)platform;
+
+  Vector pos = va_arg(*app, Vector);
+  particle->pos = *pos;
+  particle->vel.x = 0;
+  particle->vel.y = 0;
+
+  return platform;
+}
+
+void* PlatformerObject_ctor(void* _self, va_list* app) {
+  Platformer platformer = super_ctor(PlatformerObject, _self, app);
+  Particle particle = (Particle)platformer;
+
+  Vector pos = va_arg(*app, Vector);
+  Vector vel = va_arg(*app, Vector);
 
   // offset a bit in vel direction to get around the player
   struct Vector_ offset;
@@ -100,36 +154,15 @@ void* BombObject_ctor(void* _self, va_list* app) {
 
   vector_add(&particle->pos, pos, &offset);
   particle->vel = *vel;
-  particle->scale = 1.0f;
-  particle->angle = 0.0f;
-  particle->dsdt = 0.0f;
-  particle->dadt = 0.0f;
-  bomb->time_remaining = bomb_delay;
-  bomb->searched_neighbors = 0;
+  platformer->falling = 1;
+  platformer->parent = NULL;
 
-  return bomb;
+  return particle;
 }
 
-void* BombObject_dtor(void* _self) {
-  Particle particle = _self;
-  if(particle->containing_list) {
-    dll_remove(particle->containing_list, &particle->node);
-  }
-  return super_dtor(BombObject, _self);
-}
+void PlatformerObject_update(void* _self, float dt) {
+  super_update(PlatformerObject, _self, dt);
 
-void BombObject_dealloci(void* _self) {
-  fixed_allocator_free(bomb_allocator, _self);
-}
-
-void bomb_detonate(Bomb bomb) {
-  if(bomb->time_remaining > bomb_explode_start) {
-    bomb->time_remaining = bomb_explode_start;
-  }
-}
-
-void BombObject_update(void* _self, float dt) {
-  Bomb bomb = _self;
   Platformer platformer = _self;
   Particle particle = _self;
 
@@ -140,6 +173,35 @@ void BombObject_update(void* _self, float dt) {
   } else {
     particle->vel.x = 0;
   }
+}
+
+void* BombObject_alloci(const void* _class) {
+  return fixed_allocator_alloc(bomb_allocator);
+}
+
+void BombObject_dealloci(void* _self) {
+  fixed_allocator_free(bomb_allocator, _self);
+}
+
+void* BombObject_ctor(void* _self, va_list* app) {
+  Bomb bomb = super_ctor(BombObject, _self, app);
+  bomb->time_remaining = bomb_delay;
+  bomb->searched_neighbors = 0;
+  return bomb;
+}
+
+void bomb_detonate(Bomb bomb) {
+  if(bomb->time_remaining > bomb_explode_start) {
+    bomb->time_remaining = bomb_explode_start;
+  }
+}
+
+void BombObject_update(void* _self, float dt) {
+  super_update(BombObject, _self, dt);
+
+  Bomb bomb = _self;
+  Platformer platformer = _self;
+  Particle particle = _self;
 
   bomb->time_remaining -= dt;
   if(bomb->time_remaining <= 0) {
@@ -169,71 +231,115 @@ void BombObject_update(void* _self, float dt) {
     // expand to acheive 2x at t = 0.1
     particle->dsdt = 2.0 / (bomb->time_remaining - 0.1);
   }
+}
 
-  particle_integrate(particle, dt);
+void* EnemyObject_alloci(void* _class) {
+  return fixed_allocator_alloc(enemy_allocator);
+}
+
+void EnemyObject_dealloci(void* _self) {
+  fixed_allocator_free(enemy_allocator, _self);
+}
+
+void EnemyObject_update(void* _self, float dt) {
+  super_update(EnemyObject, _self, dt);
 }
 
 void game_step(long delta, InputState state);
 
-void platform_init(Platform platform, Vector pos, float w, float h) {
-  platform->particle.pos = *pos;
-  platform->particle.vel.x = 0;
-  platform->particle.vel.y = 0;
-  rect_centered((Rect)&platform->rect, &platform->particle.pos, w, h);
-  platform->rect.color[0] = 0.0;
-  platform->rect.color[1] = 0.8;
-  platform->rect.color[2] = 0.0;
-  platform->rect.color[3] = 1.0;
-}
+const void* SlidingPlatformObject;
+void SlidingPlatformObject_update(void* _self, float dt) {
+  super_update(SlidingPlatformObject, _self, dt);
 
-void platform_update(float dt) {
-  float x = moving_platform->particle.pos.x;
+  Platform platform = _self;
+  Particle particle = _self;
+
+  float x = particle->pos.x;
   if(x > 1024 || x < 64) {
-    moving_platform->particle.pos.x = MAX(64, MIN(1024, x));
-    moving_platform->particle.vel.x = -moving_platform->particle.vel.x;
+    particle->pos.x = MAX(64, MIN(1024, x));
+    particle->vel.x = -particle->vel.x;
   }
-
-  particle_integrate(&moving_platform->particle, dt);
-  platform_update_rect(moving_platform);
 }
 
-void game_init() {
+void game_support_init() {
   main_clock = clock_make();
   platform_allocator = fixed_allocator_make(sizeof(struct Platform_), max_platforms,
                                             "platform_allocator");
   bomb_allocator = fixed_allocator_make(sizeof(struct Bomb_), max_bombs,
                                         "bomb_allocator");
-
-
-  struct Vector_ player_start = {100.0f, 100.0f};
-  platformer_init(&player.platformer, &player_start, player_width, player_height);
-  player.charging = 0;
-  player.fire_pressed = 0;
-
-  struct Vector_ ground_platform = {screen_width / 2, 32};
-  Platform ground = platform_make();
-  platform_init(ground, &ground_platform, screen_width, 64);
-  dll_add_head(&platforms, &ground->node);
-
-  struct Vector_ test_platform = {300, 300};
-  moving_platform = platform_make();
-  platform_init(moving_platform, &test_platform, 256, 64);
-  moving_platform->particle.vel.x = 100;
-  dll_add_head(&platforms, &moving_platform->node);
-
-  vector_zero(&player.fire_charge);
-  player_gravity_accel = (player_jump_speed * player_jump_speed) / (2 * player_jump_height);
-  bomb_gravity_accel = (charge_max * charge_max) / (2 * bomb_max_height);
+  enemy_allocator = fixed_allocator_make(sizeof(struct Enemy_), max_enemies,
+                                         "enemy_allocator");
 
   updateable_init();
+
+  ParticleObject = new(UpdateableClass, "Particle",
+                       Object, sizeof(struct Particle_),
+                       ctor, ParticleObject_ctor,
+                       dtor, ParticleObject_dtor,
+                       update, ParticleObject_update,
+                       0);
+
+  PlatformObject = new(UpdateableClass, "Platform",
+                       ParticleObject, sizeof(struct Platform_),
+                       alloci, PlatformObject_alloci,
+                       dealloci, PlatformObject_dealloci,
+                       ctor, PlatformObject_ctor,
+                       update, PlatformObject_update,
+                       0);
+
+  SlidingPlatformObject = new(UpdateableClass, "SlidingPlatform",
+                              PlatformObject, sizeof(struct Platform_),
+                              update, SlidingPlatformObject_update,
+                              0);
+
+  PlatformerObject = new(UpdateableClass, "Platformer",
+                         ParticleObject, sizeof(struct Platformer_),
+                         ctor, PlatformerObject_ctor,
+                         update, PlatformerObject_update,
+                         0);
+
   BombObject = new(UpdateableClass, "Bomb",
-                   Object, sizeof(struct Bomb_),
+                   PlatformerObject, sizeof(struct Bomb_),
                    alloci, BombObject_alloci,
                    dealloci, BombObject_dealloci,
                    ctor, BombObject_ctor,
-                   dtor, BombObject_dtor,
                    update, BombObject_update,
                    0);
+
+  EnemyObject = new(UpdateableClass, "Enemy",
+                    PlatformerObject, sizeof(struct Enemy_),
+                    alloci, EnemyObject_alloci,
+                    dealloci, EnemyObject_dealloci,
+                    update, EnemyObject_update,
+                    0);
+
+  player_gravity_accel = (player_jump_speed * player_jump_speed) / (2 * player_jump_height);
+  bomb_gravity_accel = (charge_max * charge_max) / (2 * bomb_max_height);
+}
+
+void game_init() {
+  game_support_init();
+
+  struct Vector_ player_pos = {100.0f, 100.0f};
+  struct Vector_ player_vel = {0.0f, 0.0f};
+  init(PlatformerObject, &player, NULL, &player_pos, &player_vel);
+  ((Platformer)&player)->w = player_width;
+  ((Platformer)&player)->h = player_height;
+  player.charging = 0;
+  player.fire_pressed = 0;
+  vector_zero(&player.fire_charge);
+
+  struct Vector_ ground_platform = {screen_width / 2, 32};
+  Platform ground = new(PlatformObject, &platforms, &ground_platform);
+  ground->w = screen_width;
+  ground->h = 64;
+
+  struct Vector_ test_platform = {300, 300};
+  Platform platform = new(SlidingPlatformObject, &platforms, &test_platform);
+  Particle pp = (Particle)platform;
+  platform->w = 256;
+  platform->h = 64;
+  pp->vel.x = 100;
 
   set_game_step(game_step);
 }
@@ -283,6 +389,7 @@ void handle_input(InputState state, float dt) {
       }
 
       Bomb bomb = new(BombObject, &bombs, &abs_pos, &abs_vel);
+      platformer_setdims((Platformer)bomb, bomb_dim, bomb_dim);
     }
   } else {
     pp->vel.x = state->leftright * player_speed;
@@ -318,9 +425,10 @@ void update_particles(DLL list, float dt) {
 void game_step(long delta, InputState state) {
   float dt = clock_update(main_clock, delta / 1000.0);
 
-  player_integrate(dt);
-  platform_update(dt);
+  update_particles(&platforms, dt);
   update_particles(&bombs, dt);
+
+  player_integrate(dt);
 
   handle_input(state, dt);
 
@@ -376,7 +484,14 @@ void game_step(long delta, InputState state) {
   node = platforms.head;
   while(node) {
     Platform platform = node_to_platform(node);
-    filledrect_enqueue_for_screen(&platform->rect);
+    struct ColoredRect_ rect;
+    memcpy(&rect, &platform->rect, sizeof(struct Rect_));
+    rect.color[0] = 0.0f;
+    rect.color[1] = 0.8f;
+    rect.color[2] = 0.0f;
+    rect.color[3] = 1.0f;
+
+    filledrect_enqueue_for_screen(&rect);
     node = node->next;
   }
 }

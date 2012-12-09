@@ -17,6 +17,11 @@ typedef struct Bomb_ {
   int searched_neighbors;
 } *Bomb;
 
+typedef struct Enemy_ {
+  struct Platformer_ _;
+  struct Platform_ platform;
+
+} *Enemy;
 
 void game_init();
 void game_shutdown();

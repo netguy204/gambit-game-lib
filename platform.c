@@ -2,6 +2,16 @@
 
 #include <math.h>
 
+void platform_rect(Rect rect, Platform platform) {
+  Particle particle = (Particle)platform;
+  rect_centered(rect, &particle->pos, platform->w, platform->h);
+}
+
+void platformer_setdims(Platformer platformer, float w, float h) {
+  platformer->w = w;
+  platformer->h = h;
+}
+
 void platformer_init(Platformer platformer, Vector pos, float w, float h) {
   Particle particle = (Particle)platformer;
   particle->pos = *pos;
@@ -42,14 +52,14 @@ void platformer_rect(Rect rect, Platformer platformer) {
 }
 
 Platform node_to_platform(DLLNode node) {
-  return container_of(node, struct Platform_, node);
+  return (Platform)container_of(node, struct Particle_, node);
 }
 
 Platform is_platform_colliding(Rect a, DLL platforms) {
   DLLNode node = platforms->head;
   while(node) {
     Platform platform = node_to_platform(node);
-    if(rect_intersect(a, (Rect)&platform->rect)) {
+    if(rect_intersect(a, &platform->rect)) {
       return platform;
     }
     node = node->next;
@@ -97,7 +107,7 @@ void resolve_interpenetration(Vector resolution, Rect minor, Rect major) {
 
 int is_supported(Rect a, Platform platform) {
   struct Rect_ shifted = {a->minx + 0.5, a->miny - 0.5, a->maxx - 0.5, a->miny};
-  if(rect_intersect(&shifted, (Rect)&platform->rect)) {
+  if(rect_intersect(&shifted, &platform->rect)) {
     return 1;
   } else {
     return 0;
@@ -119,7 +129,7 @@ void platformer_resolve(Platformer platformer, DLL platforms) {
     Platform platform;
     if((platform = is_platform_colliding(&prect, platforms))) {
       struct Vector_ resolution;
-      resolve_interpenetration(&resolution, &prect, (Rect)&platform->rect);
+      resolve_interpenetration(&resolution, &prect, &platform->rect);
       vector_add(&platformer->particle.pos, &platformer->particle.pos, &resolution);
 
       if(fabs(resolution.x) > 0.0f) {
@@ -139,10 +149,4 @@ void platformer_resolve(Platformer platformer, DLL platforms) {
       }
     }
   }
-}
-
-void platform_update_rect(Platform p) {
-  float w = rect_width((Rect)&p->rect);
-  float h = rect_height((Rect)&p->rect);
-  rect_centered((Rect)&p->rect, &p->particle.pos, w, h);
 }
