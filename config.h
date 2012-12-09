@@ -30,6 +30,8 @@
     __typeof__ (b) _b = (b);                                    \
     _a < _b ? _a : _b; })
 
+#define SIGN(a) (a > 0 ? 1 : -1)
+
 #include <stddef.h>
 
 // from http://gitorious.org/cmus/cmus/commit/b10c26c8e65686b8e63cafd4231d4ef02079e86b/diffs

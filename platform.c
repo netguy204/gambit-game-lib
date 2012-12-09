@@ -55,6 +55,10 @@ Platform node_to_platform(DLLNode node) {
   return (Platform)container_of(node, struct Particle_, node);
 }
 
+Platformer node_to_platformer(DLLNode node) {
+  return (Platformer)container_of(node, struct Particle_, node);
+}
+
 Platform is_platform_colliding(Rect a, DLL platforms) {
   DLLNode node = platforms->head;
   while(node) {

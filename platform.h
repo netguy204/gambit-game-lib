@@ -23,6 +23,7 @@ typedef struct Platformer_ {
   int falling;
 } *Platformer;
 
+Platformer node_to_platformer(DLLNode node);
 void platformer_setdims(Platformer platformer, float w, float h);
 void platformer_init(Platformer platformer, Vector pos, float w, float h);
 void platformer_abs_pos(Vector pos, Platformer platformer);
