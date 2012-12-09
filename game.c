@@ -196,14 +196,20 @@ void bomb_detonate(Bomb bomb) {
   }
 }
 
-Particle particle_within(Particle particle, float min_dist, DLL list) {
+Platformer platformer_within(Platformer platformer, float min_dist, DLL list) {
   DLLNode node = list->head;
+  struct Vector_ mp;
+  platformer_abs_pos(&mp, platformer);
 
   while(node) {
-    Particle p = node_to_particle(node);
-    if(p != particle) {
+    Platformer p = node_to_platformer(node);
+
+    if(p != platformer) {
+      struct Vector_ tp;
       struct Vector_ offset;
-      vector_sub(&offset, &p->pos, &particle->pos);
+
+      platformer_abs_pos(&tp, p);
+      vector_sub(&offset, &mp, &tp);
       if(vector_mag(&offset) < min_dist) {
         return p;
       }
@@ -235,14 +241,14 @@ void BombObject_update(void* _self, float dt) {
     // search our neighbors to see if we can set off a chain reaction
     if(!bomb->searched_neighbors) {
       bomb->searched_neighbors = 1;
-      Particle p;
+      Platformer p;
       float dist = platformer->w * bomb_chain_factor;
-      if((p = particle_within(particle, dist, &bombs))) {
+      if((p = platformer_within(platformer, dist, &bombs))) {
         bomb_detonate((Bomb)p);
       }
 
       // kill any enemies we hit
-      while((p = particle_within(particle, dist, &enemies))) {
+      while((p = platformer_within(platformer, dist, &enemies))) {
         delete(p);
       }
     }
@@ -427,6 +433,18 @@ void game_init() {
   ground->w = screen_width;
   ground->h = 64;
 
+  /*
+  struct Vector_ left_wall = {32, screen_height/2};
+  Platform left = new(PlatformObject, &platforms, &left_wall);
+  left->w = 64;
+  left->h = screen_height;
+
+  struct Vector_ right_wall = {screen_width - 32, screen_height/2};
+  Platform right = new(PlatformObject, &platforms, &right_wall);
+  right->w = 64;
+  right->h = screen_height;
+  */
+
   struct Vector_ test_platform = {300, 300};
   Platform platform = new(SlidingPlatformObject, &platforms, &test_platform);
   Particle pp = (Particle)platform;
@@ -610,6 +628,14 @@ void game_step(long delta, InputState state) {
   }
 
   if(win_state == STATE_WIN) {
+    printf("WIN\n");
+    exit(0);
+  }
+
+  const float enemy_sep = player_width / 2 + enemy_dim / 2;
+  Platformer ep;
+  if((ep = platformer_within((Platformer)&player, enemy_sep, &enemies))) {
+    printf("LOSE: %p\n", ep);
     exit(0);
   }
 }
