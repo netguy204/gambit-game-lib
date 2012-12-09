@@ -8,15 +8,26 @@ typedef struct Platform_ {
   struct ColoredRect_ rect;
 } *Platform;
 
-typedef struct PlayerState_ {
+typedef struct Platformer_ {
   struct Particle_ particle;
-  struct Vector_ fire_charge;
   Platform parent;
+  float w;
+  float h;
+  int falling;
+} *Platformer;
+
+typedef struct PlayerState_ {
+  struct Platformer_ platformer;
+  struct Vector_ fire_charge;
   float fire_timeout;
-  int jumping;
   int fire_pressed;
   int charging;
 } *PlayerState;
+
+typedef struct Bomb_ {
+  struct Platformer_ _;
+  float time_remaining;
+} *Bomb;
 
 
 void game_init();

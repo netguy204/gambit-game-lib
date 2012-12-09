@@ -47,23 +47,35 @@ const void* BombObject;
 struct DLL_ bombs;
 FixedAllocator bomb_allocator;
 
-typedef struct Bomb_ {
-  struct Particle_ _;
-  float time_remaining;
-} *Bomb;
+void platformer_init(Platformer platformer, Vector pos, float w, float h) {
+  Particle particle = (Particle)platformer;
+  particle->pos = *pos;
+  particle->vel.x = 0.0f;
+  particle->vel.y = 0.0f;
+  particle->image = NULL;
+  particle->scale = 1.0f;
+  particle->dsdt = 0.0f;
+  particle->angle = 0.0f;
+  particle->dadt = 0.0f;
 
-void player_abs_pos(Vector pos) {
-  if(player.parent) {
-    vector_add(pos, &player.parent->particle.pos, &player.particle.pos);
+  platformer->w = w;
+  platformer->h = h;
+  platformer->parent = NULL;
+  platformer->falling = 1;
+}
+
+void platformer_abs_pos(Vector pos, Platformer platformer) {
+  if(platformer->parent) {
+    vector_add(pos, &platformer->parent->particle.pos, &platformer->particle.pos);
   } else {
-    *pos = player.particle.pos;
+    *pos = platformer->particle.pos;
   }
 }
 
-void player_rect(Rect rect) {
+void platformer_rect(Rect rect, Platformer platformer) {
   struct Vector_ pos;
-  player_abs_pos(&pos);
-  rect_centered(rect, &pos, player_width, player_height);
+  platformer_abs_pos(&pos, platformer);
+  rect_centered(rect, &pos, platformer->w, platformer->h);
 }
 
 Platform is_platform_colliding(Rect a) {
@@ -124,6 +136,51 @@ int is_supported(Rect a, Platform platform) {
   }
 }
 
+void platformer_resolve(Platformer platformer) {
+  struct Rect_ prect;
+  platformer_rect(&prect, platformer);
+
+  if(!platformer->falling && (!platformer->parent ||
+                              !is_supported(&prect, platformer->parent))) {
+    platformer->falling = 1;
+    platformer_abs_pos(&platformer->particle.pos, platformer);
+    platformer->parent = NULL;
+  }
+
+  if(platformer->falling) {
+    Platform platform;
+    if((platform = is_platform_colliding(&prect))) {
+      struct Vector_ resolution;
+      resolve_interpenetration(&resolution, &prect, (Rect)&platform->rect);
+      vector_add(&platformer->particle.pos, &platformer->particle.pos, &resolution);
+
+      if(fabs(resolution.x) > 0.0f) {
+        // bumped it, resolve the colision and remove our x component
+        platformer->particle.vel.x = 0.0f;
+      } else {
+        platformer->particle.vel.y = 0.0f;
+      }
+
+      platformer_rect(&prect, platformer);
+      if(is_supported(&prect, platform)) {
+        platformer->falling = 0;
+        struct Vector_ abs_pos;
+        platformer_abs_pos(&abs_pos, platformer);
+        vector_sub(&platformer->particle.pos, &abs_pos, &platform->particle.pos);
+        platformer->parent = platform;
+      }
+    }
+  }
+}
+
+void player_abs_pos(Vector pos) {
+  platformer_abs_pos(pos, &player.platformer);
+}
+
+void player_rect(Rect rect) {
+  platformer_rect(rect, &player.platformer);
+}
+
 void* BombObject_alloci(const void* _class) {
   return fixed_allocator_alloc(bomb_allocator);
 }
@@ -132,13 +189,17 @@ void* BombObject_ctor(void* _self, va_list* app) {
   Bomb bomb = super_ctor(BombObject, _self, app);
   Particle particle = (Particle)bomb;
 
-  particle->containing_list = va_arg(*app, DLL);
+  DLL list = va_arg(*app, DLL);
+  Vector pos = va_arg(*app, Vector);
+  Vector vel = va_arg(*app, Vector);
+
+  platformer_init((Platformer)bomb, pos, bomb_dim, bomb_dim);
+
+  particle->containing_list = list;
+
   if(particle->containing_list) {
     dll_add_head(particle->containing_list, &particle->node);
   }
-
-  Vector pos = va_arg(*app, Vector);
-  Vector vel = va_arg(*app, Vector);
 
   // offset a bit in vel direction to get around the player
   struct Vector_ offset;
@@ -158,7 +219,7 @@ void* BombObject_ctor(void* _self, va_list* app) {
   particle->dadt = 0.0f;
   bomb->time_remaining = bomb_delay;
 
-  return particle;
+  return bomb;
 }
 
 void* BombObject_dtor(void* _self) {
@@ -175,12 +236,15 @@ void BombObject_dealloci(void* _self) {
 
 void BombObject_update(void* _self, float dt) {
   Bomb bomb = _self;
+  Platformer platformer = _self;
   Particle particle = _self;
-  particle->vel.y -= (bomb_gravity_accel * dt);
-  if(particle->pos.y <= ground_level) {
-    particle->pos.y = ground_level;
-    particle->vel.y = 0.0f;
-    particle->vel.x = 0.0f;
+
+  platformer_resolve(platformer);
+
+  if(platformer->falling) {
+    particle->vel.y -= (bomb_gravity_accel * dt);
+  } else {
+    particle->vel.x = 0;
   }
 
   bomb->time_remaining -= dt;
@@ -213,14 +277,10 @@ void platform_init(Platform platform, Vector pos, float w, float h) {
 void game_init() {
   main_clock = clock_make();
 
-  player.particle.pos.x = 100.0f;
-  player.particle.pos.y = ground_level;
-  player.particle.vel.x = 0.0f;
-  player.particle.vel.y = 0.0f;
-  player.jumping = 0;
+  struct Vector_ player_start = {100.0f, 100.0f};
+  platformer_init(&player.platformer, &player_start, player_width, player_height);
   player.charging = 0;
   player.fire_pressed = 0;
-  player.parent = NULL;
 
   struct Vector_ ground_platform = {screen_width / 2, 32};
   platform_init(&platforms[0], &ground_platform, screen_width, 64);
@@ -249,6 +309,8 @@ void game_init() {
 }
 
 void handle_input(InputState state, float dt) {
+  Particle pp = (Particle)&player;
+
   if(state->action2) {
     if(!player.fire_pressed) {
       player.fire_pressed = 1;
@@ -256,13 +318,13 @@ void handle_input(InputState state, float dt) {
     }
 
     player.fire_timeout -= dt;
-    if(player.fire_timeout <= 0 && !player.jumping) {
+    if(player.fire_timeout <= 0 && !player.platformer.falling) {
       player.charging = 1;
     }
 
     if(player.charging) {
-      if(!player.jumping) {
-        player.particle.vel.x = 0;
+      if(!player.platformer.falling) {
+        pp->vel.x = 0;
       }
 
       struct Vector_ addl_charge = {
@@ -288,58 +350,27 @@ void handle_input(InputState state, float dt) {
                       &player.fire_charge);
     }
   } else {
-    player.particle.vel.x = state->leftright * player_speed;
+    pp->vel.x = state->leftright * player_speed;
   }
 
-  struct Rect_ prect;
-  player_rect(&prect);
+  platformer_resolve(&player.platformer);
 
-  if(!player.jumping && (!player.parent || !is_supported(&prect, player.parent))) {
-    player.jumping = 1;
-    player_abs_pos(&player.particle.pos);
-    player.parent = NULL;
+  if(state->action1 && !player.platformer.falling) {
+    player.platformer.falling = 1;
+    pp->vel.y = player_jump_speed;
   }
 
-  if(player.jumping) {
-    Platform platform;
-    if((platform = is_platform_colliding(&prect))) {
-      struct Vector_ resolution;
-      resolve_interpenetration(&resolution, &prect, (Rect)&platform->rect);
-      vector_add(&player.particle.pos, &player.particle.pos, &resolution);
-
-      if(fabs(resolution.x) > 0.0f) {
-        // bumped it, resolve the colision and remove our x component
-        player.particle.vel.x = 0.0f;
-      } else {
-        player.particle.vel.y = 0.0f;
-      }
-
-      player_rect(&prect);
-      if(is_supported(&prect, platform)) {
-        player.jumping = 0;
-        struct Vector_ abs_pos;
-        player_abs_pos(&abs_pos);
-        vector_sub(&player.particle.pos, &abs_pos, &platform->particle.pos);
-        player.parent = platform;
-      }
-    }
-  }
-
-  if(state->action1 && !player.jumping) {
-    player.jumping = 1;
-    player.particle.vel.y = player_jump_speed;
-  }
-
-  if(!state->action1 && player.jumping) {
-    player.particle.vel.y = MIN(player.particle.vel.y, 0);
+  if(!state->action1 && player.platformer.falling) {
+    pp->vel.y = MIN(pp->vel.y, 0);
   }
 }
 
 void player_integrate(float dt) {
-  if(player.jumping) {
-    player.particle.vel.y -= player_gravity_accel * dt;
+  Particle pp = (Particle)&player;
+  if(player.platformer.falling) {
+    pp->vel.y -= player_gravity_accel * dt;
   }
-  particle_integrate(&player.particle, dt);
+  particle_integrate(pp, dt);
 }
 
 void update_particles(DLL list, float dt) {
@@ -360,7 +391,11 @@ void game_step(long delta, InputState state) {
 
   struct ColoredRect_ prect;
   player_rect((Rect)&prect);
-  prect.color[0] = 1.0;
+
+  struct Vector_ player_abs;
+  player_abs_pos(&player_abs);
+
+  prect.color[0] = 1.0f;
   prect.color[1] = 0.0f;
   prect.color[2] = 1.0f;
   prect.color[3] = 1.0f;
@@ -371,7 +406,7 @@ void game_step(long delta, InputState state) {
     struct ColoredRect_ crect;
     struct Vector_ cvect;
     vector_scale(&cvect, &player.fire_charge, 0.5);
-    vector_add(&cvect, &player.particle.pos, &cvect);
+    vector_add(&cvect, &player_abs, &cvect);
     rect_centered((Rect)&crect, &cvect, player_width/2, player_height/2);
     crect.color[0] = 0.0f;
     crect.color[1] = 0.0f;
@@ -386,7 +421,10 @@ void game_step(long delta, InputState state) {
   while(node) {
     struct ColoredRect_ brect;
     Particle particle = container_of(node, struct Particle_, node);
-    rect_centered((Rect)&brect, &particle->pos,
+    Platformer platformer = (Platformer)particle;
+    struct Vector_ bpos;
+    platformer_abs_pos(&bpos, platformer);
+    rect_centered((Rect)&brect, &bpos,
                   bomb_dim * particle->scale,
                   bomb_dim * particle->scale);
     brect.color[0] = 1.0f;
