@@ -20,7 +20,6 @@ typedef struct Bomb_ {
 typedef struct Enemy_ {
   struct Platformer_ _;
   struct Platform_ platform;
-
 } *Enemy;
 
 void game_init();

@@ -61,10 +61,6 @@ const void* EnemyObject;
 struct DLL_ enemies;
 FixedAllocator enemy_allocator;
 
-Platform platform_make() {
-  return fixed_allocator_alloc(platform_allocator);
-}
-
 void player_abs_pos(Vector pos) {
   platformer_abs_pos(pos, &player.platformer);
 }
@@ -155,23 +151,21 @@ void* PlatformerObject_ctor(void* _self, va_list* app) {
   vector_add(&particle->pos, pos, &offset);
   particle->vel = *vel;
   platformer->falling = 1;
+  platformer->grav_accel = 0.0f;
   platformer->parent = NULL;
 
   return particle;
 }
 
 void PlatformerObject_update(void* _self, float dt) {
-  super_update(PlatformerObject, _self, dt);
-
   Platformer platformer = _self;
   Particle particle = _self;
 
+  super_update(PlatformerObject, _self, dt);
   platformer_resolve(platformer, &platforms);
 
   if(platformer->falling) {
-    particle->vel.y -= (bomb_gravity_accel * dt);
-  } else {
-    particle->vel.x = 0;
+    particle->vel.y -= (platformer->grav_accel * dt);
   }
 }
 
@@ -185,6 +179,8 @@ void BombObject_dealloci(void* _self) {
 
 void* BombObject_ctor(void* _self, va_list* app) {
   Bomb bomb = super_ctor(BombObject, _self, app);
+  Platformer platformer = (Platformer)bomb;
+  platformer->grav_accel = bomb_gravity_accel;
   bomb->time_remaining = bomb_delay;
   bomb->searched_neighbors = 0;
   return bomb;
@@ -204,6 +200,11 @@ void BombObject_update(void* _self, float dt) {
   Particle particle = _self;
 
   bomb->time_remaining -= dt;
+
+  if(!platformer->falling) {
+    particle->vel.x = 0.0f;
+  }
+
   if(bomb->time_remaining <= 0) {
     delete(bomb);
   } else if(bomb->time_remaining < 0.1) {
@@ -325,6 +326,7 @@ void game_init() {
   init(PlatformerObject, &player, NULL, &player_pos, &player_vel);
   ((Platformer)&player)->w = player_width;
   ((Platformer)&player)->h = player_height;
+  ((Platformer)&player)->grav_accel = player_gravity_accel;
   player.charging = 0;
   player.fire_pressed = 0;
   vector_zero(&player.fire_charge);
@@ -402,8 +404,6 @@ void handle_input(InputState state, float dt) {
     pp->vel.x = state->leftright * player_speed;
   }
 
-  platformer_resolve(&player.platformer, &platforms);
-
   if(state->action1 && !player.platformer.falling) {
     pp->vel.y = player_jump_speed;
   }
@@ -411,14 +411,6 @@ void handle_input(InputState state, float dt) {
   if(!state->action1 && player.platformer.falling) {
     pp->vel.y = MIN(pp->vel.y, 0);
   }
-}
-
-void player_integrate(float dt) {
-  Particle pp = (Particle)&player;
-  if(player.platformer.falling) {
-    pp->vel.y -= player_gravity_accel * dt;
-  }
-  particle_integrate(pp, dt);
 }
 
 void update_particles(DLL list, float dt) {
@@ -435,9 +427,8 @@ void game_step(long delta, InputState state) {
   update_particles(&platforms, dt);
   update_particles(&bombs, dt);
 
-  player_integrate(dt);
-
   handle_input(state, dt);
+  update(&player, dt);
 
   struct ColoredRect_ prect;
   player_rect((Rect)&prect);

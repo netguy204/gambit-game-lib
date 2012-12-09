@@ -17,6 +17,7 @@ Platform node_to_platform(DLLNode node);
 typedef struct Platformer_ {
   struct Particle_ particle;
   Platform parent;
+  float grav_accel;
   float w;
   float h;
   int falling;
