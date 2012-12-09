@@ -544,11 +544,11 @@ void platformer_enqueue(Platformer platformer, float r, float g, float b) {
   filledrect_enqueue_for_screen(&prect);
 }
 
-void platformers_enqueue(DLL list) {
+void platformers_enqueue(DLL list, float r, float g, float b) {
   DLLNode node = list->head;
   while(node) {
     Platformer platformer = node_to_platformer(node);
-    platformer_enqueue(platformer, 1.0, 0.0, 0.0);
+    platformer_enqueue(platformer, r, g, b);
     node = node->next;
   }
 }
@@ -609,8 +609,8 @@ void game_step(long delta, InputState state) {
   }
 
   // draw bombs
-  platformers_enqueue(&bombs);
-  platformers_enqueue(&enemies);
+  platformers_enqueue(&bombs, 1.0, 0.0, 0.0);
+  platformers_enqueue(&enemies, 1.0, 1.0, 0.0);
 
   // draw platforms
   DLLNode node = platforms.head;
