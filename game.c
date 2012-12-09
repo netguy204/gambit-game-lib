@@ -38,6 +38,8 @@ float ground_level = 100;
 float charge_delay = 0.2;
 
 struct PlayerState_ player;
+struct Platform_ platforms[2];
+
 struct Random_ rgen;
 Clock main_clock;
 
@@ -49,6 +51,71 @@ typedef struct Bomb_ {
   struct Particle_ _;
   float time_remaining;
 } *Bomb;
+
+void player_rect(Rect rect) {
+  rect_centered(rect, &player.particle.pos, player_width, player_height);
+}
+
+Platform is_platform_colliding(Rect a) {
+  int ii;
+  for(ii = 0; ii < array_size(platforms); ++ii) {
+    Platform platform = &platforms[ii];
+    if(rect_intersect(a, (Rect)&platform->rect)) {
+      return platform;
+    }
+  }
+  return NULL;
+}
+
+// assumes a collision has already been found
+void resolve_interpenetration(Vector resolution, Rect minor, Rect major) {
+  float xint =
+    MIN(minor->maxx, major->maxx) -
+    MAX(minor->minx, major->minx);
+
+  float yint =
+    MIN(minor->maxy, major->maxy) -
+    MAX(minor->miny, major->miny);
+
+  struct Vector_ vmajor;
+  struct Vector_ vminor;
+  rect_center(&vmajor, major);
+  rect_center(&vminor, minor);
+
+  struct Vector_ to_major;
+  vector_sub(&to_major, &vmajor, &vminor);
+
+  if(yint > xint) {
+    // resolve x penetration
+    resolution->y = 0.0f;
+    if(to_major.x > 0.0f) {
+      resolution->x = -xint;
+    } else {
+      resolution->x = xint;
+    }
+  } else {
+    // resolve y penetration
+    resolution->x = 0.0f;
+    if(to_major.y > 0.0f) {
+      resolution->y = -yint;
+    } else {
+      resolution->y = yint;
+    }
+  }
+}
+
+int is_supported(Rect a, Platform platform) {
+  struct Rect_ shifted;
+  struct Vector_ offset = {0.0f, -0.5f};
+  rect_offset(&shifted, a, &offset);
+  rect_scaled(&shifted, &shifted, 0.9, 1.0);
+
+  if(rect_intersect(a, (Rect)&platform->rect)) {
+    return 1;
+  } else {
+    return 0;
+  }
+}
 
 void* BombObject_alloci(const void* _class) {
   return fixed_allocator_alloc(bomb_allocator);
@@ -125,6 +192,17 @@ void BombObject_update(void* _self, float dt) {
 
 void game_step(long delta, InputState state);
 
+void platform_init(Platform platform, Vector pos, float w, float h) {
+  platform->particle.pos = *pos;
+  platform->particle.vel.x = 0;
+  platform->particle.vel.y = 0;
+  rect_centered((Rect)&platform->rect, &platform->particle.pos, w, h);
+  platform->rect.color[0] = 0.0;
+  platform->rect.color[1] = 0.8;
+  platform->rect.color[2] = 0.0;
+  platform->rect.color[3] = 1.0;
+}
+
 void game_init() {
   main_clock = clock_make();
 
@@ -135,6 +213,14 @@ void game_init() {
   player.jumping = 0;
   player.charging = 0;
   player.fire_pressed = 0;
+  player.parent = NULL;
+
+  struct Vector_ ground_platform = {screen_width / 2, 32};
+  platform_init(&platforms[0], &ground_platform, screen_width, 64);
+
+  struct Vector_ test_platform = {300, 300};
+  platform_init(&platforms[1], &test_platform, 256, 64);
+
   vector_zero(&player.fire_charge);
   player_gravity_accel = (player_jump_speed * player_jump_speed) / (2 * player_jump_height);
   bomb_gravity_accel = (charge_max * charge_max) / (2 * bomb_max_height);
@@ -144,7 +230,7 @@ void game_init() {
 
   updateable_init();
   BombObject = new(UpdateableClass, "Bomb",
-                   Object, sizeof(struct Particle_),
+                   Object, sizeof(struct Bomb_),
                    alloci, BombObject_alloci,
                    dealloci, BombObject_dealloci,
                    ctor, BombObject_ctor,
@@ -169,18 +255,18 @@ void handle_input(InputState state, float dt) {
 
     if(player.charging) {
       if(!player.jumping) {
-	player.particle.vel.x = 0;
+        player.particle.vel.x = 0;
       }
-      
+
       struct Vector_ addl_charge = {
-	state->leftright * charge_speed * dt,
-	state->updown * charge_speed * dt
+        state->leftright * charge_speed * dt,
+        state->updown * charge_speed * dt
       };
 
       vector_add(&player.fire_charge, &player.fire_charge, &addl_charge);
       float mag = vector_mag(&player.fire_charge);
       if(mag > charge_max) {
-	vector_scale(&player.fire_charge, &player.fire_charge, charge_max / mag);
+        vector_scale(&player.fire_charge, &player.fire_charge, charge_max / mag);
       }
     }
   } else if(player.fire_pressed) {
@@ -190,16 +276,32 @@ void handle_input(InputState state, float dt) {
 
     if(dll_count(&bombs) < max_bombs) {
       Bomb bomb = new(BombObject, &bombs, &player.particle.pos,
-		      &player.fire_charge);
+                      &player.fire_charge);
     }
   } else {
     player.particle.vel.x = state->leftright * player_speed;
   }
 
+  struct Rect_ prect;
+  player_rect(&prect);
+
+  if(player.jumping) {
+    Platform platform;
+    if((platform = is_platform_colliding(&prect))) {
+      struct Vector_ resolution;
+      resolve_interpenetration(&resolution, &prect, (Rect)&platform->rect);
+      if(fabs(resolution.x) > 0.0f) {
+        // bumped it, resolve the colision and remove our x component
+        player.particle.pos.x += resolution.x;
+        player.particle.vel.x = 0.0f;
+      }
+    }
+  }
+
   if(player.particle.pos.y <= ground_level) {
     player.particle.pos.y = ground_level;
     player.particle.vel.y = 0.0f;
-    player.jumping = 0.0;
+    player.jumping = 0;
   }
 
   if(state->action1 && !player.jumping) {
@@ -236,7 +338,7 @@ void game_step(long delta, InputState state) {
   handle_input(state, dt);
 
   struct ColoredRect_ prect;
-  rect_centered((Rect)&prect, &player.particle.pos, player_width, player_height);
+  player_rect((Rect)&prect);
   prect.color[0] = 1.0;
   prect.color[1] = 0.0f;
   prect.color[2] = 1.0f;
@@ -274,6 +376,12 @@ void game_step(long delta, InputState state) {
     filledrect_enqueue_for_screen(&brect);
 
     node = node->next;
+  }
+
+  // draw platforms
+  int ii;
+  for(ii = 0; ii < array_size(platforms); ++ii) {
+    filledrect_enqueue_for_screen(&platforms[ii].rect);
   }
 }
 
