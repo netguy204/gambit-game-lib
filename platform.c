@@ -27,6 +27,14 @@ void platformer_abs_pos(Vector pos, Platformer platformer) {
   }
 }
 
+void platformer_abs_vel(Vector vel, Platformer platformer) {
+  if(platformer->parent) {
+    vector_add(vel, &platformer->parent->particle.vel, &platformer->particle.vel);
+  } else {
+    *vel = platformer->particle.vel;
+  }
+}
+
 void platformer_rect(Rect rect, Platformer platformer) {
   struct Vector_ pos;
   platformer_abs_pos(&pos, platformer);
@@ -131,4 +139,10 @@ void platformer_resolve(Platformer platformer, DLL platforms) {
       }
     }
   }
+}
+
+void platform_update_rect(Platform p) {
+  float w = rect_width((Rect)&p->rect);
+  float h = rect_height((Rect)&p->rect);
+  rect_centered((Rect)&p->rect, &p->particle.pos, w, h);
 }

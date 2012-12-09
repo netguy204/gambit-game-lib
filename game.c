@@ -43,6 +43,7 @@ float bomb_chain_factor = 5.0;
 struct PlayerState_ player;
 struct DLL_ platforms;
 FixedAllocator platform_allocator;
+Platform moving_platform;
 
 struct Random_ rgen;
 Clock main_clock;
@@ -57,6 +58,10 @@ Platform platform_make() {
 
 void player_abs_pos(Vector pos) {
   platformer_abs_pos(pos, &player.platformer);
+}
+
+void player_abs_vel(Vector vel) {
+  platformer_abs_vel(vel, &player.platformer);
 }
 
 void player_rect(Rect rect) {
@@ -181,6 +186,17 @@ void platform_init(Platform platform, Vector pos, float w, float h) {
   platform->rect.color[3] = 1.0;
 }
 
+void platform_update(float dt) {
+  float x = moving_platform->particle.pos.x;
+  if(x > 1024 || x < 64) {
+    moving_platform->particle.pos.x = MAX(64, MIN(1024, x));
+    moving_platform->particle.vel.x = -moving_platform->particle.vel.x;
+  }
+
+  particle_integrate(&moving_platform->particle, dt);
+  platform_update_rect(moving_platform);
+}
+
 void game_init() {
   main_clock = clock_make();
   platform_allocator = fixed_allocator_make(sizeof(struct Platform_), max_platforms,
@@ -200,9 +216,10 @@ void game_init() {
   dll_add_head(&platforms, &ground->node);
 
   struct Vector_ test_platform = {300, 300};
-  Platform test = platform_make();
-  platform_init(test, &test_platform, 256, 64);
-  dll_add_head(&platforms, &test->node);
+  moving_platform = platform_make();
+  platform_init(moving_platform, &test_platform, 256, 64);
+  moving_platform->particle.vel.x = 100;
+  dll_add_head(&platforms, &moving_platform->node);
 
   vector_zero(&player.fire_charge);
   player_gravity_accel = (player_jump_speed * player_jump_speed) / (2 * player_jump_height);
@@ -259,8 +276,13 @@ void handle_input(InputState state, float dt) {
     if(dll_count(&bombs) < max_bombs) {
       struct Vector_ abs_pos;
       player_abs_pos(&abs_pos);
-      Bomb bomb = new(BombObject, &bombs, &abs_pos,
-                      &player.fire_charge);
+
+      struct Vector_ abs_vel = player.fire_charge;
+      if(player.platformer.parent) {
+        vector_add(&abs_vel, &abs_vel, &player.platformer.parent->particle.vel);
+      }
+
+      Bomb bomb = new(BombObject, &bombs, &abs_pos, &abs_vel);
     }
   } else {
     pp->vel.x = state->leftright * player_speed;
@@ -298,6 +320,7 @@ void game_step(long delta, InputState state) {
   float dt = clock_update(main_clock, delta / 1000.0);
 
   player_integrate(dt);
+  platform_update(dt);
   update_particles(&bombs, dt);
 
   handle_input(state, dt);
