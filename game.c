@@ -341,6 +341,13 @@ void game_init() {
   platform->h = 64;
   pp->vel.x = 100;
 
+  struct Vector_ test_platform2 = {600, 600};
+  Platform platform2 = new(SlidingPlatformObject, &platforms, &test_platform2);
+  Particle pp2 = (Particle)platform2;
+  platform2->w = 256;
+  platform2->h = 64;
+  pp2->vel.x = 100;
+
   set_game_step(game_step);
 }
 
