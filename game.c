@@ -22,6 +22,7 @@
 #include <math.h>
 
 int max_bombs = 50;
+int max_platforms = 10;
 float bomb_delay = 6.0f;
 float player_speed = 600;
 float player_jump_speed = 1200;
@@ -38,7 +39,8 @@ float ground_level = 100;
 float charge_delay = 0.2;
 
 struct PlayerState_ player;
-struct Platform_ platforms[2];
+struct DLL_ platforms;
+FixedAllocator platform_allocator;
 
 struct Random_ rgen;
 Clock main_clock;
@@ -47,130 +49,8 @@ const void* BombObject;
 struct DLL_ bombs;
 FixedAllocator bomb_allocator;
 
-void platformer_init(Platformer platformer, Vector pos, float w, float h) {
-  Particle particle = (Particle)platformer;
-  particle->pos = *pos;
-  particle->vel.x = 0.0f;
-  particle->vel.y = 0.0f;
-  particle->image = NULL;
-  particle->scale = 1.0f;
-  particle->dsdt = 0.0f;
-  particle->angle = 0.0f;
-  particle->dadt = 0.0f;
-
-  platformer->w = w;
-  platformer->h = h;
-  platformer->parent = NULL;
-  platformer->falling = 1;
-}
-
-void platformer_abs_pos(Vector pos, Platformer platformer) {
-  if(platformer->parent) {
-    vector_add(pos, &platformer->parent->particle.pos, &platformer->particle.pos);
-  } else {
-    *pos = platformer->particle.pos;
-  }
-}
-
-void platformer_rect(Rect rect, Platformer platformer) {
-  struct Vector_ pos;
-  platformer_abs_pos(&pos, platformer);
-  rect_centered(rect, &pos, platformer->w, platformer->h);
-}
-
-Platform is_platform_colliding(Rect a) {
-  int ii;
-  for(ii = 0; ii < array_size(platforms); ++ii) {
-    Platform platform = &platforms[ii];
-    if(rect_intersect(a, (Rect)&platform->rect)) {
-      return platform;
-    }
-  }
-  return NULL;
-}
-
-// assumes a collision has already been found
-void resolve_interpenetration(Vector resolution, Rect minor, Rect major) {
-  float xint =
-    MIN(minor->maxx, major->maxx) -
-    MAX(minor->minx, major->minx);
-
-  float yint =
-    MIN(minor->maxy, major->maxy) -
-    MAX(minor->miny, major->miny);
-
-  struct Vector_ vmajor;
-  struct Vector_ vminor;
-  rect_center(&vmajor, major);
-  rect_center(&vminor, minor);
-
-  struct Vector_ to_major;
-  vector_sub(&to_major, &vmajor, &vminor);
-  float nudge = 0.1;
-
-  if(yint > xint) {
-    // resolve x penetration
-    resolution->y = 0.0f;
-    if(to_major.x > 0.0f) {
-      resolution->x = -xint - nudge;
-    } else {
-      resolution->x = xint + nudge;
-    }
-  } else {
-    // resolve y penetration
-    resolution->x = 0.0f;
-    if(to_major.y > 0.0f) {
-      resolution->y = -yint;
-    } else {
-      resolution->y = yint;
-    }
-  }
-}
-
-int is_supported(Rect a, Platform platform) {
-  struct Rect_ shifted = {a->minx + 0.5, a->miny - 0.5, a->maxx - 0.5, a->miny};
-  if(rect_intersect(&shifted, (Rect)&platform->rect)) {
-    return 1;
-  } else {
-    return 0;
-  }
-}
-
-void platformer_resolve(Platformer platformer) {
-  struct Rect_ prect;
-  platformer_rect(&prect, platformer);
-
-  if(!platformer->falling && (!platformer->parent ||
-                              !is_supported(&prect, platformer->parent))) {
-    platformer->falling = 1;
-    platformer_abs_pos(&platformer->particle.pos, platformer);
-    platformer->parent = NULL;
-  }
-
-  if(platformer->falling) {
-    Platform platform;
-    if((platform = is_platform_colliding(&prect))) {
-      struct Vector_ resolution;
-      resolve_interpenetration(&resolution, &prect, (Rect)&platform->rect);
-      vector_add(&platformer->particle.pos, &platformer->particle.pos, &resolution);
-
-      if(fabs(resolution.x) > 0.0f) {
-        // bumped it, resolve the colision and remove our x component
-        platformer->particle.vel.x = 0.0f;
-      } else {
-        platformer->particle.vel.y = 0.0f;
-      }
-
-      platformer_rect(&prect, platformer);
-      if(is_supported(&prect, platform)) {
-        platformer->falling = 0;
-        struct Vector_ abs_pos;
-        platformer_abs_pos(&abs_pos, platformer);
-        vector_sub(&platformer->particle.pos, &abs_pos, &platform->particle.pos);
-        platformer->parent = platform;
-      }
-    }
-  }
+Platform platform_make() {
+  return fixed_allocator_alloc(platform_allocator);
 }
 
 void player_abs_pos(Vector pos) {
@@ -239,7 +119,7 @@ void BombObject_update(void* _self, float dt) {
   Platformer platformer = _self;
   Particle particle = _self;
 
-  platformer_resolve(platformer);
+  platformer_resolve(platformer, &platforms);
 
   if(platformer->falling) {
     particle->vel.y -= (bomb_gravity_accel * dt);
@@ -276,6 +156,11 @@ void platform_init(Platform platform, Vector pos, float w, float h) {
 
 void game_init() {
   main_clock = clock_make();
+  platform_allocator = fixed_allocator_make(sizeof(struct Platform_), max_platforms,
+                                            "platform_allocator");
+  bomb_allocator = fixed_allocator_make(sizeof(struct Bomb_), max_bombs,
+                                        "bomb_allocator");
+
 
   struct Vector_ player_start = {100.0f, 100.0f};
   platformer_init(&player.platformer, &player_start, player_width, player_height);
@@ -283,17 +168,18 @@ void game_init() {
   player.fire_pressed = 0;
 
   struct Vector_ ground_platform = {screen_width / 2, 32};
-  platform_init(&platforms[0], &ground_platform, screen_width, 64);
+  Platform ground = platform_make();
+  platform_init(ground, &ground_platform, screen_width, 64);
+  dll_add_head(&platforms, &ground->node);
 
   struct Vector_ test_platform = {300, 300};
-  platform_init(&platforms[1], &test_platform, 256, 64);
+  Platform test = platform_make();
+  platform_init(test, &test_platform, 256, 64);
+  dll_add_head(&platforms, &test->node);
 
   vector_zero(&player.fire_charge);
   player_gravity_accel = (player_jump_speed * player_jump_speed) / (2 * player_jump_height);
   bomb_gravity_accel = (charge_max * charge_max) / (2 * bomb_max_height);
-
-  bomb_allocator = fixed_allocator_make(sizeof(struct Bomb_), max_bombs,
-                                        "bomb_allocator");
 
   updateable_init();
   BombObject = new(UpdateableClass, "Bomb",
@@ -353,7 +239,7 @@ void handle_input(InputState state, float dt) {
     pp->vel.x = state->leftright * player_speed;
   }
 
-  platformer_resolve(&player.platformer);
+  platformer_resolve(&player.platformer, &platforms);
 
   if(state->action1 && !player.platformer.falling) {
     player.platformer.falling = 1;
@@ -438,9 +324,11 @@ void game_step(long delta, InputState state) {
   }
 
   // draw platforms
-  int ii;
-  for(ii = 0; ii < array_size(platforms); ++ii) {
-    filledrect_enqueue_for_screen(&platforms[ii].rect);
+  node = platforms.head;
+  while(node) {
+    Platform platform = node_to_platform(node);
+    filledrect_enqueue_for_screen(&platform->rect);
+    node = node->next;
   }
 }
 

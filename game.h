@@ -1,20 +1,7 @@
 #ifndef GAME_H
 #define GAME_H
 
-#include "particle.h"
-
-typedef struct Platform_ {
-  struct Particle_ particle;
-  struct ColoredRect_ rect;
-} *Platform;
-
-typedef struct Platformer_ {
-  struct Particle_ particle;
-  Platform parent;
-  float w;
-  float h;
-  int falling;
-} *Platformer;
+#include "platform.h"
 
 typedef struct PlayerState_ {
   struct Platformer_ platformer;
