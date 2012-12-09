@@ -52,8 +52,18 @@ typedef struct Bomb_ {
   float time_remaining;
 } *Bomb;
 
+void player_abs_pos(Vector pos) {
+  if(player.parent) {
+    vector_add(pos, &player.parent->particle.pos, &player.particle.pos);
+  } else {
+    *pos = player.particle.pos;
+  }
+}
+
 void player_rect(Rect rect) {
-  rect_centered(rect, &player.particle.pos, player_width, player_height);
+  struct Vector_ pos;
+  player_abs_pos(&pos);
+  rect_centered(rect, &pos, player_width, player_height);
 }
 
 Platform is_platform_colliding(Rect a) {
@@ -84,14 +94,15 @@ void resolve_interpenetration(Vector resolution, Rect minor, Rect major) {
 
   struct Vector_ to_major;
   vector_sub(&to_major, &vmajor, &vminor);
+  float nudge = 0.1;
 
   if(yint > xint) {
     // resolve x penetration
     resolution->y = 0.0f;
     if(to_major.x > 0.0f) {
-      resolution->x = -xint;
+      resolution->x = -xint - nudge;
     } else {
-      resolution->x = xint;
+      resolution->x = xint + nudge;
     }
   } else {
     // resolve y penetration
@@ -105,12 +116,8 @@ void resolve_interpenetration(Vector resolution, Rect minor, Rect major) {
 }
 
 int is_supported(Rect a, Platform platform) {
-  struct Rect_ shifted;
-  struct Vector_ offset = {0.0f, -0.5f};
-  rect_offset(&shifted, a, &offset);
-  rect_scaled(&shifted, &shifted, 0.9, 1.0);
-
-  if(rect_intersect(a, (Rect)&platform->rect)) {
+  struct Rect_ shifted = {a->minx + 0.5, a->miny - 0.5, a->maxx - 0.5, a->miny};
+  if(rect_intersect(&shifted, (Rect)&platform->rect)) {
     return 1;
   } else {
     return 0;
@@ -275,7 +282,9 @@ void handle_input(InputState state, float dt) {
     player.charging = 0;
 
     if(dll_count(&bombs) < max_bombs) {
-      Bomb bomb = new(BombObject, &bombs, &player.particle.pos,
+      struct Vector_ abs_pos;
+      player_abs_pos(&abs_pos);
+      Bomb bomb = new(BombObject, &bombs, &abs_pos,
                       &player.fire_charge);
     }
   } else {
@@ -285,23 +294,35 @@ void handle_input(InputState state, float dt) {
   struct Rect_ prect;
   player_rect(&prect);
 
+  if(!player.jumping && (!player.parent || !is_supported(&prect, player.parent))) {
+    player.jumping = 1;
+    player_abs_pos(&player.particle.pos);
+    player.parent = NULL;
+  }
+
   if(player.jumping) {
     Platform platform;
     if((platform = is_platform_colliding(&prect))) {
       struct Vector_ resolution;
       resolve_interpenetration(&resolution, &prect, (Rect)&platform->rect);
+      vector_add(&player.particle.pos, &player.particle.pos, &resolution);
+
       if(fabs(resolution.x) > 0.0f) {
         // bumped it, resolve the colision and remove our x component
-        player.particle.pos.x += resolution.x;
         player.particle.vel.x = 0.0f;
+      } else {
+        player.particle.vel.y = 0.0f;
+      }
+
+      player_rect(&prect);
+      if(is_supported(&prect, platform)) {
+        player.jumping = 0;
+        struct Vector_ abs_pos;
+        player_abs_pos(&abs_pos);
+        vector_sub(&player.particle.pos, &abs_pos, &platform->particle.pos);
+        player.parent = platform;
       }
     }
-  }
-
-  if(player.particle.pos.y <= ground_level) {
-    player.particle.pos.y = ground_level;
-    player.particle.vel.y = 0.0f;
-    player.jumping = 0;
   }
 
   if(state->action1 && !player.jumping) {
