@@ -679,7 +679,10 @@ void game_step(long delta, InputState state) {
 
   const float enemy_sep = player_width / 2 + enemy_dim / 2;
   Platformer ep;
-  if((ep = platformer_within((Platformer)&player, enemy_sep, &enemies))) {
+  Particle pp = (Particle)&player;
+  if((ep = platformer_within((Platformer)&player, enemy_sep, &enemies)) || pp->pos.y < 0) {
+    pp->pos.x = 100;
+    pp->pos.y = 100;
     endgame_timeout = endgame_delay;
     win_state = STATE_LOSE;
     set_game_step(game_end);
