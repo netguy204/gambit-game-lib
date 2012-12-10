@@ -56,6 +56,9 @@ void inputstate_latest(InputState state) {
       case SDLK_x:
         pstate.action2 = keydown * 1;
         break;
+      case SDLK_c:
+        pstate.action3 = keydown * 1;
+        break;
       default:
         break;
       }

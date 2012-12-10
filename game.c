@@ -27,12 +27,11 @@ float player_jump_speed = 1200;
 float player_width = 64;
 float player_height = 64;
 float player_jump_height = 300;
-float bomb_max_height = 800;
+float bomb_max_height = 400;
 float bomb_dim = 32;
 float player_gravity_accel;
 float bomb_gravity_accel;
-float charge_speed = 1200.0;
-float charge_max = 1200;
+float throw_speed = 1200;
 float ground_level = 100;
 float charge_delay = 0.2;
 float bomb_explode_start = 0.3;
@@ -144,17 +143,7 @@ void* PlatformerObject_ctor(void* _self, va_list* app) {
   Vector pos = va_arg(*app, Vector);
   Vector vel = va_arg(*app, Vector);
 
-  // offset a bit in vel direction to get around the player
-  struct Vector_ offset;
-  if(vector_mag(vel) < 0.0001) {
-    offset.y = player_width / 2;
-    offset.x = 0;
-  } else {
-    vector_norm(&offset, vel);
-    vector_scale(&offset, &offset, player_width / 2);
-  }
-
-  vector_add(&particle->pos, pos, &offset);
+  particle->pos = *pos;
   particle->vel = *vel;
   platformer->falling = 1;
   platformer->grav_accel = 0.0f;
@@ -417,7 +406,7 @@ void game_support_init() {
                     0);
 
   player_gravity_accel = (player_jump_speed * player_jump_speed) / (2 * player_jump_height);
-  bomb_gravity_accel = (charge_max * charge_max) / (2 * bomb_max_height);
+  bomb_gravity_accel = (throw_speed * throw_speed) / (2 * bomb_max_height);
 
   atlas = spriteatlas_load("resources/images_default.dat", "resources/images_default.png");
 }
@@ -433,6 +422,7 @@ void game_init() {
   ((Platformer)&player)->grav_accel = player_gravity_accel;
   player.charging = 0;
   player.fire_pressed = 0;
+  player.facing = 1;
   vector_zero(&player.fire_charge);
 
   struct Vector_ ground_platform = {screen_width / 2, 32};
@@ -487,17 +477,6 @@ void handle_input(InputState state, float dt) {
       if(!player.platformer.falling) {
         pp->vel.x = 0;
       }
-
-      struct Vector_ addl_charge = {
-        state->leftright * charge_speed * dt,
-        state->updown * charge_speed * dt
-      };
-
-      vector_add(&player.fire_charge, &player.fire_charge, &addl_charge);
-      float mag = vector_mag(&player.fire_charge);
-      if(mag > charge_max) {
-        vector_scale(&player.fire_charge, &player.fire_charge, charge_max / mag);
-      }
     }
   } else if(player.fire_pressed) {
     //fire
@@ -508,7 +487,8 @@ void handle_input(InputState state, float dt) {
       struct Vector_ abs_pos;
       player_abs_pos(&abs_pos);
 
-      struct Vector_ abs_vel = player.fire_charge;
+      struct Vector_ abs_vel = {player.facing * throw_speed / 3, throw_speed};
+
       if(player.platformer.parent) {
         vector_add(&abs_vel, &abs_vel, &player.platformer.parent->particle.vel);
       }
@@ -516,8 +496,11 @@ void handle_input(InputState state, float dt) {
       Bomb bomb = new(BombObject, &bombs, &abs_pos, &abs_vel);
       platformer_setdims((Platformer)bomb, bomb_dim, bomb_dim);
     }
-  } else {
-    pp->vel.x = state->leftright * player_speed;
+  }
+
+  pp->vel.x = state->leftright * player_speed;
+  if(fabs(state->leftright) > 0.01) {
+    player.facing = SIGN(state->leftright);
   }
 
   if(state->action1 && !player.platformer.falling) {

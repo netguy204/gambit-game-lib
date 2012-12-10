@@ -9,6 +9,7 @@ typedef struct PlayerState_ {
   float fire_timeout;
   int fire_pressed;
   int charging;
+  int facing;
 } *PlayerState;
 
 typedef struct Bomb_ {

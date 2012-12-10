@@ -49,6 +49,7 @@ typedef struct InputState_ {
   float leftright;
   int action1;
   int action2;
+  int action3;
 } *InputState;
 
 typedef void(*GameStep)(long delta, InputState state);
