@@ -40,6 +40,8 @@ float bomb_chain_factor = 5.0;
 float enemy_speed = 100;
 float enemy_dim = 48;
 
+SpriteAtlas atlas;
+
 struct PlayerState_ player;
 
 int max_platforms = 10;
@@ -226,6 +228,10 @@ void BombObject_update(void* _self, float dt) {
   Platformer platformer = _self;
   Particle particle = _self;
 
+  if(platformer->falling) {
+    platformer_resolve(platformer, &enemy_platforms);
+  }
+
   bomb->time_remaining -= dt;
 
   if(!platformer->falling) {
@@ -270,10 +276,9 @@ void EnemyObject_dealloci(void* _self) {
 void EnemyObject_mirrorparticle(Enemy enemy) {
   // be careful not to copy the object or node in the particle
   Platformer epl = (Platformer)enemy;
-  size_t offset = offsetof(struct Particle_, pos);
-  memcpy((char*)(&enemy->platform) + offset, (char*)enemy + offset,
-         sizeof(struct Particle_) - offset);
-
+  Particle pp = (Particle)&enemy->platform;
+  platformer_abs_pos(&pp->pos, epl);
+  platformer_abs_vel(&pp->vel, epl);
   enemy->platform.w = epl->w;
   enemy->platform.h = epl->h;
 }
@@ -413,6 +418,8 @@ void game_support_init() {
 
   player_gravity_accel = (player_jump_speed * player_jump_speed) / (2 * player_jump_height);
   bomb_gravity_accel = (charge_max * charge_max) / (2 * bomb_max_height);
+
+  atlas = spriteatlas_load("resources/images_default.dat", "resources/images_default.png");
 }
 
 void game_init() {
@@ -559,10 +566,43 @@ float enemy_timer = enemy_period;
 typedef enum {
   STATE_START,
   STATE_PLAY,
-  STATE_WIN
+  STATE_WIN,
+  STATE_LOSE
 } WinState;
 
 WinState win_state = STATE_START;
+const float endgame_delay = 3;
+float endgame_timeout;
+
+void delete_enemies() {
+  DLLNode node = enemies.head;
+  while(node) {
+    Platformer p = node_to_platformer(node);
+    DLLNode next = node->next;
+    delete(p);
+    node = next;
+  }
+}
+
+void game_end(long delta, InputState state) {
+  float dt = clock_update(main_clock, delta / 1000.0);
+  if(win_state == STATE_WIN) {
+    SpriteList text = spritelist_from_string(NULL, atlas, FONT_MEDIUM,
+                                             "WINNER", 400, screen_height/2);
+    spritelist_enqueue_for_screen(text);
+  } else if(win_state == STATE_LOSE) {
+    SpriteList text = spritelist_from_string(NULL, atlas, FONT_MEDIUM,
+                                             "LOSER", 400, screen_height/2);
+    spritelist_enqueue_for_screen(text);
+  }
+
+  endgame_timeout -= dt;
+  if(endgame_timeout <= 0) {
+    win_state = STATE_START;
+    delete_enemies();
+    set_game_step(game_step);
+  }
+}
 
 void game_step(long delta, InputState state) {
   float dt = clock_update(main_clock, delta / 1000.0);
@@ -580,6 +620,16 @@ void game_step(long delta, InputState state) {
 
   if(win_state == STATE_PLAY && dll_count(&enemies) == 0) {
     win_state = STATE_WIN;
+    endgame_timeout = endgame_delay;
+    set_game_step(game_end);
+  }
+
+  if(win_state == STATE_WIN || win_state == STATE_LOSE) {
+    if(endgame_timeout <= 0) {
+      win_state = STATE_START;
+    } else {
+      endgame_timeout -= dt;
+    }
   }
 
   update_particles(&platforms, dt);
@@ -627,16 +677,12 @@ void game_step(long delta, InputState state) {
     node = node->next;
   }
 
-  if(win_state == STATE_WIN) {
-    printf("WIN\n");
-    exit(0);
-  }
-
   const float enemy_sep = player_width / 2 + enemy_dim / 2;
   Platformer ep;
   if((ep = platformer_within((Platformer)&player, enemy_sep, &enemies))) {
-    printf("LOSE: %p\n", ep);
-    exit(0);
+    endgame_timeout = endgame_delay;
+    win_state = STATE_LOSE;
+    set_game_step(game_end);
   }
 }
 

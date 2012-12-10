@@ -11,9 +11,9 @@
 typedef struct Particle_ {
   struct Object _;
   struct DLLNode_ node;
+  DLL containing_list;
   struct Vector_ pos;
   struct Vector_ vel;
-  DLL containing_list;
   SpriteAtlasEntry image;
   float scale;
   float dsdt;
