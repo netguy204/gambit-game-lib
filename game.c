@@ -561,7 +561,7 @@ void platformers_enqueue(DLL list, float r, float g, float b) {
 }
 
 const float enemy_period = 1;
-float enemy_timer = enemy_period;
+float enemy_timer = 1;
 
 typedef enum {
   STATE_START,
