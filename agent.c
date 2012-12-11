@@ -129,9 +129,7 @@ void agent_init() {
                          MAX_NUM_AGENTS,
                          "agent_allocator");
 
-  updateable_init();
-
-  AgentObject = new(UpdateableClass, "Agent",
+  AgentObject = new(UpdateableClass(), "Agent",
                     Object, sizeof(struct Agent_),
                     alloci, AgentObject_alloci,
                     dealloci, AgentObject_dealloci,
@@ -140,13 +138,13 @@ void agent_init() {
                     update, AgentObject_update,
                     0);
 
-  DispatcherObject = new(UpdateableClass, "Dispatcher",
+  DispatcherObject = new(UpdateableClass(), "Dispatcher",
                          AgentObject, sizeof(struct Dispatcher_),
                          ctor, DispatcherObject_ctor,
                          dtor, DispatcherObject_dtor,
                          0);
 
-  CollectiveObject = new(UpdateableClass, "Collective",
+  CollectiveObject = new(UpdateableClass(), "Collective",
                          DispatcherObject, sizeof(struct Collective_),
                          ctor, CollectiveObject_ctor,
                          dtor, CollectiveObject_dtor,

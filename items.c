@@ -337,10 +337,8 @@ void items_init() {
   dll_zero(&classes);
   self_handle = dlopen(NULL, RTLD_LAZY);
 
-  updateable_init();
-
-  ActivatableClass = new(UpdateableClass, "ActivatableClass",
-                         UpdateableClass, sizeof(struct ActivatableClass),
+  ActivatableClass = new(UpdateableClass(), "ActivatableClass",
+                         UpdateableClass(), sizeof(struct ActivatableClass),
                          ctor, ActivatableClass_ctor,
                          0);
 

@@ -66,6 +66,8 @@ struct DLL_ enemies;
 struct DLL_ enemy_platforms;
 FixedAllocator enemy_allocator;
 
+const void* BossObject;
+
 void player_abs_pos(Vector pos) {
   platformer_abs_pos(pos, &player.platformer);
 }
@@ -330,6 +332,16 @@ void EnemyObject_update(void* _self, float dt) {
   update(&enemy->platform, dt);
 }
 
+void BossObject_ctor(void* _self, va_list* app) {
+  Boss boss = super_ctor(BossObject, _self, app);
+  boss->hp = 3;
+}
+
+void BossObject_update(void* _self, float dt) {
+  super_update(BossObject, _self, dt);
+
+}
+
 void game_step(long delta, InputState state);
 
 const void* SlidingPlatformObject;
@@ -355,16 +367,14 @@ void game_support_init() {
   enemy_allocator = fixed_allocator_make(sizeof(struct Enemy_), max_enemies,
                                          "enemy_allocator");
 
-  updateable_init();
-
-  ParticleObject = new(UpdateableClass, "Particle",
+  ParticleObject = new(UpdateableClass(), "Particle",
                        Object, sizeof(struct Particle_),
                        ctor, ParticleObject_ctor,
                        dtor, ParticleObject_dtor,
                        update, ParticleObject_update,
                        0);
 
-  PlatformObject = new(UpdateableClass, "Platform",
+  PlatformObject = new(UpdateableClass(), "Platform",
                        ParticleObject, sizeof(struct Platform_),
                        alloci, PlatformObject_alloci,
                        dealloci, PlatformObject_dealloci,
@@ -372,23 +382,23 @@ void game_support_init() {
                        update, PlatformObject_update,
                        0);
 
-  EnemyPlatformObject = new(UpdateableClass, "EnemyPlatform",
+  EnemyPlatformObject = new(UpdateableClass(), "EnemyPlatform",
                             PlatformObject, sizeof(struct Platform_),
                             update, EnemyPlatformObject_update,
                             0);
 
-  SlidingPlatformObject = new(UpdateableClass, "SlidingPlatform",
+  SlidingPlatformObject = new(UpdateableClass(), "SlidingPlatform",
                               PlatformObject, sizeof(struct Platform_),
                               update, SlidingPlatformObject_update,
                               0);
 
-  PlatformerObject = new(UpdateableClass, "Platformer",
+  PlatformerObject = new(UpdateableClass(), "Platformer",
                          ParticleObject, sizeof(struct Platformer_),
                          ctor, PlatformerObject_ctor,
                          update, PlatformerObject_update,
                          0);
 
-  BombObject = new(UpdateableClass, "Bomb",
+  BombObject = new(UpdateableClass(), "Bomb",
                    PlatformerObject, sizeof(struct Bomb_),
                    alloci, BombObject_alloci,
                    dealloci, BombObject_dealloci,
@@ -396,7 +406,7 @@ void game_support_init() {
                    update, BombObject_update,
                    0);
 
-  EnemyObject = new(UpdateableClass, "Enemy",
+  EnemyObject = new(UpdateableClass(), "Enemy",
                     PlatformerObject, sizeof(struct Enemy_),
                     alloci, EnemyObject_alloci,
                     dealloci, EnemyObject_dealloci,

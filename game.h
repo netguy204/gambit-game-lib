@@ -23,6 +23,11 @@ typedef struct Enemy_ {
   struct Platform_ platform;
 } *Enemy;
 
+typedef struct Boss_ {
+  struct Platform_ _;
+  int hp;
+} *Boss;
+
 void game_init();
 void game_shutdown();
 

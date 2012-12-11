@@ -5,7 +5,7 @@ C_SRC+= \
 	realmain.c stb_image.c tiles.c sfmt/SFMT.c random.c \
 	perlin.c items.c heapvector.c worldgen.c xmltools.c \
 	pathfinder.c utils.c matrix.c ooc.c updateable.c \
-	game_ui.c platform.c
+	game_ui.c platform.c interactable.c
 
 XML_INCLUDE:=-I/usr/include/libxml2
 CFLAGS+=$(XML_INCLUDE) -Isfmt/

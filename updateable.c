@@ -2,7 +2,6 @@
 
 #include <assert.h>
 #include <stdarg.h>
-void* UpdateableClass = NULL;
 
 // new selector added in AgentClass metaclass
 void update(void* _self, float dt) {
@@ -13,12 +12,12 @@ void update(void* _self, float dt) {
 
 void super_update(const void* _class, void* _self, float dt) {
   const struct UpdateableClass_* superclass = super(_class);
-  assert(_self && superclass->update);
+  assert(superclass && superclass->update);
   superclass->update(_self, dt);
 }
 
 static void* UpdateableClass_ctor(void* _self, va_list * app) {
-  struct UpdateableClass_* self = super_ctor(UpdateableClass, _self, app);
+  struct UpdateableClass_* self = super_ctor(UpdateableClass(), _self, app);
   va_list ap;
   va_copy(ap, *app);
 
@@ -35,11 +34,13 @@ static void* UpdateableClass_ctor(void* _self, va_list * app) {
   return self;
 }
 
-void updateable_init() {
-  if(UpdateableClass) return;
+const void* UpdateableClass() {
+  static void* class = NULL;
+  if(class) return class;
 
-  UpdateableClass = new(Class, "UpdateableClass",
-                        Class, sizeof(struct UpdateableClass_),
-                        ctor, UpdateableClass_ctor,
-                        0);
+  class = new(Class, "UpdateableClass",
+              Class, sizeof(struct UpdateableClass_),
+              ctor, UpdateableClass_ctor,
+              0);
+  return class;
 }

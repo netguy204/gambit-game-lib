@@ -8,10 +8,9 @@ struct UpdateableClass_ {
   void(*update)(void* self, float dt);
 };
 
-extern void* UpdateableClass;
 void update(void* self, float dt);
 void super_update(const void* _class, void* _self, float dt);
 
-void updateable_init();
+const void* UpdateableClass();
 
 #endif
