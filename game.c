@@ -41,6 +41,7 @@ float enemy_dim = 48;
 
 SpriteAtlas atlas;
 
+const void* PlayerObject;
 struct PlayerState_ player;
 
 int max_platforms = 10;
@@ -358,6 +359,78 @@ void SlidingPlatformObject_update(void* _self, float dt) {
   }
 }
 
+void* PlayerObject_ctor(void* _self, va_list *app) {
+  PlayerState ps = super_ctor(PlayerObject, _self, app);
+
+  ((Platformer)ps)->w = player_width;
+  ((Platformer)ps)->h = player_height;
+  ((Platformer)ps)->grav_accel = player_gravity_accel;
+  ps->charging = 0;
+  ps->fire_pressed = 0;
+  ps->facing = 1;
+  vector_zero(&ps->fire_charge);
+
+  return ps;
+}
+
+// lets pretend this is a dynamic variable
+InputState player_input = NULL;
+void PlayerObject_update(void* _self, float dt) {
+  super_update(PlayerObject, _self, dt);
+
+  PlayerState player = _self;
+  Particle pp = _self;
+
+  if(player_input->action2) {
+    if(!player->fire_pressed) {
+      player->fire_pressed = 1;
+      player->fire_timeout = charge_delay;
+    }
+
+    player->fire_timeout -= dt;
+    if(player->fire_timeout <= 0 && !player->platformer.falling) {
+      player->charging = 1;
+    }
+
+    if(player->charging) {
+      if(!player->platformer.falling) {
+        pp->vel.x = 0;
+      }
+    }
+  } else if(player->fire_pressed) {
+    //fire
+    player->fire_pressed = 0;
+    player->charging = 0;
+
+    if(dll_count(&bombs) < max_bombs) {
+      struct Vector_ abs_pos;
+      platformer_abs_pos(&abs_pos, _self);
+
+      struct Vector_ abs_vel = {player->facing * throw_speed / 3, throw_speed};
+
+      if(player->platformer.parent) {
+        vector_add(&abs_vel, &abs_vel, &player->platformer.parent->particle.vel);
+      }
+
+      Bomb bomb = new(BombObject, &bombs, &abs_pos, &abs_vel);
+      platformer_setdims((Platformer)bomb, bomb_dim, bomb_dim);
+    }
+  }
+
+  pp->vel.x = player_input->leftright * player_speed;
+  if(fabs(player_input->leftright) > 0.01) {
+    player->facing = SIGN(player_input->leftright);
+  }
+
+  if(player_input->action1 && !player->platformer.falling) {
+    pp->vel.y = player_jump_speed;
+  }
+
+  if(!player_input->action1 && player->platformer.falling) {
+    pp->vel.y = MIN(pp->vel.y, 0);
+  }
+}
+
 void game_support_init() {
   main_clock = clock_make();
   platform_allocator = fixed_allocator_make(sizeof(struct Platform_), max_platforms,
@@ -415,6 +488,12 @@ void game_support_init() {
                     update, EnemyObject_update,
                     0);
 
+  PlayerObject = new(UpdateableClass(), "Player",
+                     PlatformerObject, sizeof(struct PlayerState_),
+                     ctor, PlayerObject_ctor,
+                     update, PlayerObject_update,
+                     0);
+
   player_gravity_accel = (player_jump_speed * player_jump_speed) / (2 * player_jump_height);
   bomb_gravity_accel = (throw_speed * throw_speed) / (2 * bomb_max_height);
 
@@ -426,14 +505,7 @@ void game_init() {
 
   struct Vector_ player_pos = {100.0f, 100.0f};
   struct Vector_ player_vel = {0.0f, 0.0f};
-  init(PlatformerObject, &player, NULL, &player_pos, &player_vel);
-  ((Platformer)&player)->w = player_width;
-  ((Platformer)&player)->h = player_height;
-  ((Platformer)&player)->grav_accel = player_gravity_accel;
-  player.charging = 0;
-  player.fire_pressed = 0;
-  player.facing = 1;
-  vector_zero(&player.fire_charge);
+  init(PlayerObject, &player, NULL, &player_pos, &player_vel);
 
   struct Vector_ ground_platform = {screen_width / 2, 32};
   Platform ground = new(PlatformObject, &platforms, &ground_platform);
@@ -467,59 +539,6 @@ void game_init() {
   pp2->vel.x = 100;
 
   set_game_step(game_step);
-}
-
-void handle_input(InputState state, float dt) {
-  Particle pp = (Particle)&player;
-
-  if(state->action2) {
-    if(!player.fire_pressed) {
-      player.fire_pressed = 1;
-      player.fire_timeout = charge_delay;
-    }
-
-    player.fire_timeout -= dt;
-    if(player.fire_timeout <= 0 && !player.platformer.falling) {
-      player.charging = 1;
-    }
-
-    if(player.charging) {
-      if(!player.platformer.falling) {
-        pp->vel.x = 0;
-      }
-    }
-  } else if(player.fire_pressed) {
-    //fire
-    player.fire_pressed = 0;
-    player.charging = 0;
-
-    if(dll_count(&bombs) < max_bombs) {
-      struct Vector_ abs_pos;
-      player_abs_pos(&abs_pos);
-
-      struct Vector_ abs_vel = {player.facing * throw_speed / 3, throw_speed};
-
-      if(player.platformer.parent) {
-        vector_add(&abs_vel, &abs_vel, &player.platformer.parent->particle.vel);
-      }
-
-      Bomb bomb = new(BombObject, &bombs, &abs_pos, &abs_vel);
-      platformer_setdims((Platformer)bomb, bomb_dim, bomb_dim);
-    }
-  }
-
-  pp->vel.x = state->leftright * player_speed;
-  if(fabs(state->leftright) > 0.01) {
-    player.facing = SIGN(state->leftright);
-  }
-
-  if(state->action1 && !player.platformer.falling) {
-    pp->vel.y = player_jump_speed;
-  }
-
-  if(!state->action1 && player.platformer.falling) {
-    pp->vel.y = MIN(pp->vel.y, 0);
-  }
 }
 
 void update_particles(DLL list, float dt) {
@@ -617,19 +636,11 @@ void game_step(long delta, InputState state) {
     set_game_step(game_end);
   }
 
-  if(win_state == STATE_WIN || win_state == STATE_LOSE) {
-    if(endgame_timeout <= 0) {
-      win_state = STATE_START;
-    } else {
-      endgame_timeout -= dt;
-    }
-  }
-
   update_particles(&platforms, dt);
   update_particles(&bombs, dt);
   update_particles(&enemies, dt);
 
-  handle_input(state, dt);
+  player_input = state;
   update(&player, dt);
 
   platformer_enqueue((Platformer)&player, 1.0f, 0.0f, 1.0f);
