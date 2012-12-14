@@ -4,12 +4,13 @@
 
 void platform_rect(Rect rect, Platform platform) {
   Particle particle = (Particle)platform;
-  rect_centered(rect, &particle->pos, platform->w, platform->h);
+  rect_centered(rect, &particle->pos,
+                dcr_w(platform), dcr_h(platform));
 }
 
 void platformer_setdims(Platformer platformer, float w, float h) {
-  platformer->w = w;
-  platformer->h = h;
+  dcr_w(platformer) = w;
+  dcr_h(platformer) = h;
 }
 
 void platformer_init(Platformer platformer, Vector pos, float w, float h) {
@@ -23,32 +24,37 @@ void platformer_init(Platformer platformer, Vector pos, float w, float h) {
   particle->angle = 0.0f;
   particle->dadt = 0.0f;
 
-  platformer->w = w;
-  platformer->h = h;
+  dcr_w(platformer) = w;
+  dcr_h(platformer) = h;
   platformer->parent = NULL;
   platformer->falling = 1;
 }
 
 void platformer_abs_pos(Vector pos, Platformer platformer) {
+  Particle pp = (Particle)platformer;
+  Particle parp = (Particle)platformer->parent;
+
   if(platformer->parent) {
-    vector_add(pos, &platformer->parent->particle.pos, &platformer->particle.pos);
+    vector_add(pos, &parp->pos, &pp->pos);
   } else {
-    *pos = platformer->particle.pos;
+    *pos = pp->pos;
   }
 }
 
 void platformer_abs_vel(Vector vel, Platformer platformer) {
+  Particle pp = (Particle)platformer;
+  Particle parp = (Particle)platformer->parent;
   if(platformer->parent) {
-    vector_add(vel, &platformer->parent->particle.vel, &platformer->particle.vel);
+    vector_add(vel, &parp->vel, &pp->vel);
   } else {
-    *vel = platformer->particle.vel;
+    *vel = pp->vel;
   }
 }
 
 void platformer_rect(Rect rect, Platformer platformer) {
   struct Vector_ pos;
   platformer_abs_pos(&pos, platformer);
-  rect_centered(rect, &pos, platformer->w, platformer->h);
+  rect_centered(rect, &pos, dcr_w(platformer), dcr_h(platformer));
 }
 
 Platform node_to_platform(DLLNode node) {
@@ -63,7 +69,7 @@ Platform is_platform_colliding(Rect a, DLL platforms) {
   DLLNode node = platforms->head;
   while(node) {
     Platform platform = node_to_platform(node);
-    if(rect_intersect(a, &platform->rect)) {
+    if(rect_intersect(a, &dcr_rect(platform))) {
       return platform;
     }
     node = node->next;
@@ -111,7 +117,7 @@ void resolve_interpenetration(Vector resolution, Rect minor, Rect major) {
 
 int is_supported(Rect a, Platform platform) {
   struct Rect_ shifted = {a->minx + 0.5, a->miny - 0.5, a->maxx - 0.5, a->miny};
-  if(rect_intersect(&shifted, &platform->rect)) {
+  if(rect_intersect(&shifted, &dcr_rect(platform))) {
     return 1;
   } else {
     return 0;
@@ -120,27 +126,30 @@ int is_supported(Rect a, Platform platform) {
 
 void platformer_resolve(Platformer platformer, DLL platforms) {
   struct Rect_ prect;
+  Particle pp = (Particle)platformer;
   platformer_rect(&prect, platformer);
 
   if(!platformer->falling && (!platformer->parent ||
                               !is_supported(&prect, platformer->parent))) {
     platformer->falling = 1;
-    platformer_abs_pos(&platformer->particle.pos, platformer);
+    platformer_abs_pos(&pp->pos, platformer);
     platformer->parent = NULL;
   }
 
   if(platformer->falling) {
     Platform platform;
+
     if((platform = is_platform_colliding(&prect, platforms))) {
+      Particle platp = (Particle)platform;
       struct Vector_ resolution;
-      resolve_interpenetration(&resolution, &prect, &platform->rect);
-      vector_add(&platformer->particle.pos, &platformer->particle.pos, &resolution);
+      resolve_interpenetration(&resolution, &prect, &dcr_rect(platform));
+      vector_add(&pp->pos, &pp->pos, &resolution);
 
       if(fabs(resolution.x) > 0.0f) {
         // bumped it, resolve the colision and remove our x component
-        platformer->particle.vel.x = 0.0f;
+        pp->vel.x = 0.0f;
       } else {
-        platformer->particle.vel.y = 0.0f;
+        pp->vel.y = 0.0f;
       }
 
       platformer_rect(&prect, platformer);
@@ -148,7 +157,7 @@ void platformer_resolve(Platformer platformer, DLL platforms) {
         platformer->falling = 0;
         struct Vector_ abs_pos;
         platformer_abs_pos(&abs_pos, platformer);
-        vector_sub(&platformer->particle.pos, &abs_pos, &platform->particle.pos);
+        vector_sub(&pp->pos, &abs_pos, &platp->pos);
         platformer->parent = platform;
       }
     }

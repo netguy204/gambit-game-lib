@@ -124,7 +124,8 @@ void PlatformObject_dealloci(void* _self) {
 void PlatformObject_update(void* _self, float dt) {
   super_update(PlatformObject, _self, dt);
   Platform platform = _self;
-  platform_rect(&platform->rect, platform);
+  // keep our rect up-to-date
+  platform_rect(&dcr_rect(platform), platform);
 }
 
 void* PlatformObject_ctor(void* _self, va_list* app) {
@@ -161,6 +162,9 @@ void PlatformerObject_update(void* _self, float dt) {
 
   super_update(PlatformerObject, _self, dt);
   platformer_resolve(platformer, &platforms);
+
+  // keep our rect up-to-date
+  platformer_rect(&dcr_rect(platformer), platformer);
 
   if(platformer->falling) {
     particle->vel.y -= (platformer->grav_accel * dt);
@@ -226,6 +230,7 @@ void BombObject_update(void* _self, float dt) {
 
   bomb->time_remaining -= dt;
 
+  // bombs stick when they land
   if(!platformer->falling) {
     particle->vel.x = 0.0f;
   }
@@ -240,7 +245,7 @@ void BombObject_update(void* _self, float dt) {
     if(!bomb->searched_neighbors) {
       bomb->searched_neighbors = 1;
       Platformer p;
-      float dist = platformer->w * bomb_chain_factor;
+      float dist = dcr_w(platformer) * bomb_chain_factor;
       if((p = platformer_within(platformer, dist, &bombs))) {
         bomb_detonate((Bomb)p);
       }
@@ -271,8 +276,10 @@ void EnemyObject_mirrorparticle(Enemy enemy) {
   Particle pp = (Particle)&enemy->platform;
   platformer_abs_pos(&pp->pos, epl);
   platformer_abs_vel(&pp->vel, epl);
-  enemy->platform.w = epl->w;
-  enemy->platform.h = epl->h;
+
+  dcr_w(&enemy->platform) = dcr_w(epl);
+  dcr_h(&enemy->platform) = dcr_h(epl);
+  dcr_rect(&enemy->platform) = dcr_rect(epl);
 }
 
 void* EnemyObject_ctor(void* _self, va_list* app) {
@@ -282,8 +289,8 @@ void* EnemyObject_ctor(void* _self, va_list* app) {
 
   init(EnemyPlatformObject, &enemy->platform, &enemy_platforms, &particle->pos);
   platformer->grav_accel = player_gravity_accel;
-  platformer->w = enemy_dim;
-  platformer->h = enemy_dim;
+  dcr_w(platformer) = enemy_dim;
+  dcr_h(platformer) = enemy_dim;
   EnemyObject_mirrorparticle(enemy);
 
   return enemy;
@@ -303,8 +310,6 @@ void EnemyPlatformObject_update(void* _self, float dt) {
   Platformer epl = (Platformer)enemy;
 
   EnemyObject_mirrorparticle(enemy);
-
-  platform_rect(&enemy->platform.rect, platform);
 }
 
 void EnemyObject_update(void* _self, float dt) {
@@ -321,7 +326,7 @@ void EnemyObject_update(void* _self, float dt) {
 
   // if we're near the edge of a platform, turn around
   if(epl->parent) {
-    float xd = (epl->parent->w / 2.0) - fabs(epa->pos.x);
+    float xd = (dcr_w(epl->parent) / 2.0) - fabs(epa->pos.x);
     float margin = 5;
     if(xd < margin) {
       float bump = margin + 1 - xd;
@@ -362,8 +367,8 @@ void SlidingPlatformObject_update(void* _self, float dt) {
 void* PlayerObject_ctor(void* _self, va_list *app) {
   PlayerState ps = super_ctor(PlayerObject, _self, app);
 
-  ((Platformer)ps)->w = player_width;
-  ((Platformer)ps)->h = player_height;
+  dcr_w(ps) = player_width;
+  dcr_h(ps) = player_height;
   ((Platformer)ps)->grav_accel = player_gravity_accel;
   ps->charging = 0;
   ps->fire_pressed = 0;
@@ -409,7 +414,8 @@ void PlayerObject_update(void* _self, float dt) {
       struct Vector_ abs_vel = {player->facing * throw_speed / 3, throw_speed};
 
       if(player->platformer.parent) {
-        vector_add(&abs_vel, &abs_vel, &player->platformer.parent->particle.vel);
+        Particle par_part = (Particle)player->platformer.parent;
+        vector_add(&abs_vel, &abs_vel, &par_part->vel);
       }
 
       Bomb bomb = new(BombObject, &bombs, &abs_pos, &abs_vel);
@@ -509,8 +515,8 @@ void game_init() {
 
   struct Vector_ ground_platform = {screen_width / 2, 32};
   Platform ground = new(PlatformObject, &platforms, &ground_platform);
-  ground->w = screen_width;
-  ground->h = 64;
+  dcr_w(ground) = screen_width;
+  dcr_h(ground) = 64;
 
   /*
   struct Vector_ left_wall = {32, screen_height/2};
@@ -527,15 +533,15 @@ void game_init() {
   struct Vector_ test_platform = {300, 300};
   Platform platform = new(SlidingPlatformObject, &platforms, &test_platform);
   Particle pp = (Particle)platform;
-  platform->w = 256;
-  platform->h = 64;
+  dcr_w(platform) = 256;
+  dcr_h(platform) = 64;
   pp->vel.x = 100;
 
   struct Vector_ test_platform2 = {600, 600};
   Platform platform2 = new(SlidingPlatformObject, &platforms, &test_platform2);
   Particle pp2 = (Particle)platform2;
-  platform2->w = 256;
-  platform2->h = 64;
+  dcr_w(platform2) = 256;
+  dcr_h(platform2) = 64;
   pp2->vel.x = 100;
 
   set_game_step(game_step);
@@ -669,9 +675,9 @@ void game_step(long delta, InputState state) {
   // draw platforms
   DLLNode node = platforms.head;
   while(node) {
-    Platform platform = node_to_platform(node);
+    DCR dcr = (DCR)node_to_platform(node);
     struct ColoredRect_ rect;
-    memcpy(&rect, &platform->rect, sizeof(struct Rect_));
+    memcpy(&rect, &dcr->rect, sizeof(struct Rect_));
     rect.color[0] = 0.0f;
     rect.color[1] = 0.8f;
     rect.color[2] = 0.0f;

@@ -3,11 +3,21 @@
 
 #include "particle.h"
 
-typedef struct Platform_ {
-  struct Particle_ particle;
-  struct Rect_ rect; // computed by update
+// dynamic-collidable-rect
+typedef struct DCR_ {
+  struct Particle_ _;
+  struct Rect_ rect; // cached value, computed by update
+  int collision_mask;
   float w;
   float h;
+} *DCR;
+
+#define dcr_w(o) (((DCR)o)->w)
+#define dcr_h(o) (((DCR)o)->h)
+#define dcr_rect(o) (((DCR)o)->rect)
+
+typedef struct Platform_ {
+  struct DCR_ _;
 } *Platform;
 
 void platform_rect(Rect rect, Platform platform);
@@ -15,11 +25,9 @@ int is_supported(Rect a, Platform platform);
 Platform node_to_platform(DLLNode node);
 
 typedef struct Platformer_ {
-  struct Particle_ particle;
+  struct DCR_ _;
   Platform parent;
   float grav_accel;
-  float w;
-  float h;
   int falling;
 } *Platformer;
 
