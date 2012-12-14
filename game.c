@@ -39,6 +39,8 @@ float bomb_chain_factor = 5.0;
 float enemy_speed = 100;
 float enemy_dim = 48;
 
+struct World_ world;
+
 SpriteAtlas atlas;
 
 const void* PlayerObject;
@@ -46,7 +48,6 @@ struct PlayerState_ player;
 
 int max_platforms = 10;
 const void* PlatformObject;
-struct DLL_ platforms;
 FixedAllocator platform_allocator;
 
 struct Random_ rgen;
@@ -56,15 +57,14 @@ const void* ParticleObject;
 const void* PlatformerObject;
 
 int max_bombs = 50;
+int current_n_bombs = 0;
 const void* BombObject;
-struct DLL_ bombs;
 FixedAllocator bomb_allocator;
 
 int max_enemies = 20;
+int current_n_enemies = 0;
 const void* EnemyObject;
 const void* EnemyPlatformObject;
-struct DLL_ enemies;
-struct DLL_ enemy_platforms;
 FixedAllocator enemy_allocator;
 
 const void* BossObject;
@@ -136,6 +136,7 @@ void* PlatformObject_ctor(void* _self, va_list* app) {
   particle->pos = *pos;
   particle->vel.x = 0;
   particle->vel.y = 0;
+  dcr_mask(platform) = MASK_PLATFORM;
 
   return platform;
 }
@@ -152,6 +153,8 @@ void* PlatformerObject_ctor(void* _self, va_list* app) {
   platformer->falling = 1;
   platformer->grav_accel = 0.0f;
   platformer->parent = NULL;
+  dcr_mask(platformer) = MASK_PLATFORMER;
+  platformer->platform_mask = MASK_PLATFORM;
 
   return particle;
 }
@@ -161,7 +164,7 @@ void PlatformerObject_update(void* _self, float dt) {
   Particle particle = _self;
 
   super_update(PlatformerObject, _self, dt);
-  platformer_resolve(platformer, &platforms);
+  platformer_resolve(platformer, &world, platformer->platform_mask);
 
   // keep our rect up-to-date
   platformer_rect(&dcr_rect(platformer), platformer);
@@ -185,7 +188,14 @@ void* BombObject_ctor(void* _self, va_list* app) {
   platformer->grav_accel = bomb_gravity_accel;
   bomb->time_remaining = bomb_delay;
   bomb->searched_neighbors = 0;
+  platformer->platform_mask |= MASK_ENEMY_PLATFORM;
+  current_n_bombs++;
   return bomb;
+}
+
+void* BombObject_dtor(void* _self) {
+  current_n_bombs--;
+  return super_dtor(BombObject, _self);
 }
 
 void bomb_detonate(Bomb bomb) {
@@ -217,16 +227,23 @@ Platformer platformer_within(Platformer platformer, float min_dist, DLL list) {
   return NULL;
 }
 
+int delete_all_but_player(DCR dcr, void* udata) {
+  if(dcr != (DCR)&player) {
+    if(isInstanceOf(BombObject, dcr)) {
+      bomb_detonate((Bomb)dcr);
+    } else {
+      delete(dcr);
+    }
+  }
+  return 0;
+}
+
 void BombObject_update(void* _self, float dt) {
   super_update(BombObject, _self, dt);
 
   Bomb bomb = _self;
   Platformer platformer = _self;
   Particle particle = _self;
-
-  if(platformer->falling) {
-    platformer_resolve(platformer, &enemy_platforms);
-  }
 
   bomb->time_remaining -= dt;
 
@@ -244,16 +261,9 @@ void BombObject_update(void* _self, float dt) {
     // search our neighbors to see if we can set off a chain reaction
     if(!bomb->searched_neighbors) {
       bomb->searched_neighbors = 1;
-      Platformer p;
-      float dist = dcr_w(platformer) * bomb_chain_factor;
-      if((p = platformer_within(platformer, dist, &bombs))) {
-        bomb_detonate((Bomb)p);
-      }
-
-      // kill any enemies we hit
-      while((p = platformer_within(platformer, dist, &enemies))) {
-        delete(p);
-      }
+      struct Rect_ search_rect;
+      rect_scaled(&search_rect, &dcr_rect(platformer), bomb_chain_factor, bomb_chain_factor);
+      world_foreach(&world, &search_rect, MASK_PLATFORMER, delete_all_but_player, NULL);
     }
 
   } else if(bomb->time_remaining < bomb_explode_start) {
@@ -287,11 +297,13 @@ void* EnemyObject_ctor(void* _self, va_list* app) {
   Particle particle = (Particle)enemy;
   Platformer platformer = (Platformer)enemy;
 
-  init(EnemyPlatformObject, &enemy->platform, &enemy_platforms, &particle->pos);
+  init(EnemyPlatformObject, &enemy->platform, &world.game_objects, &particle->pos);
   platformer->grav_accel = player_gravity_accel;
   dcr_w(platformer) = enemy_dim;
   dcr_h(platformer) = enemy_dim;
+
   EnemyObject_mirrorparticle(enemy);
+  current_n_enemies++;
 
   return enemy;
 }
@@ -299,7 +311,14 @@ void* EnemyObject_ctor(void* _self, va_list* app) {
 void* EnemyObject_dtor(void* _self) {
   Enemy enemy = _self;
   dtor(&enemy->platform);
+  current_n_enemies--;
   return super_dtor(EnemyObject, _self);
+}
+
+void* EnemyPlatformObject_ctor(void* _self, va_list* app) {
+  Platform platform = super_ctor(EnemyPlatformObject, _self, app);
+  dcr_mask(platform) = MASK_ENEMY_PLATFORM;
+  return platform;
 }
 
 void EnemyPlatformObject_update(void* _self, float dt) {
@@ -407,7 +426,7 @@ void PlayerObject_update(void* _self, float dt) {
     player->fire_pressed = 0;
     player->charging = 0;
 
-    if(dll_count(&bombs) < max_bombs) {
+    if(current_n_bombs < max_bombs) {
       struct Vector_ abs_pos;
       platformer_abs_pos(&abs_pos, _self);
 
@@ -418,7 +437,7 @@ void PlayerObject_update(void* _self, float dt) {
         vector_add(&abs_vel, &abs_vel, &par_part->vel);
       }
 
-      Bomb bomb = new(BombObject, &bombs, &abs_pos, &abs_vel);
+      Bomb bomb = new(BombObject, &world.game_objects, &abs_pos, &abs_vel);
       platformer_setdims((Platformer)bomb, bomb_dim, bomb_dim);
     }
   }
@@ -463,6 +482,7 @@ void game_support_init() {
 
   EnemyPlatformObject = new(UpdateableClass(), "EnemyPlatform",
                             PlatformObject, sizeof(struct Platform_),
+                            ctor, EnemyPlatformObject_ctor,
                             update, EnemyPlatformObject_update,
                             0);
 
@@ -482,6 +502,7 @@ void game_support_init() {
                    alloci, BombObject_alloci,
                    dealloci, BombObject_dealloci,
                    ctor, BombObject_ctor,
+                   dtor, BombObject_dtor,
                    update, BombObject_update,
                    0);
 
@@ -514,7 +535,7 @@ void game_init() {
   init(PlayerObject, &player, NULL, &player_pos, &player_vel);
 
   struct Vector_ ground_platform = {screen_width / 2, 32};
-  Platform ground = new(PlatformObject, &platforms, &ground_platform);
+  Platform ground = new(PlatformObject, &world.game_objects, &ground_platform);
   dcr_w(ground) = screen_width;
   dcr_h(ground) = 64;
 
@@ -531,14 +552,14 @@ void game_init() {
   */
 
   struct Vector_ test_platform = {300, 300};
-  Platform platform = new(SlidingPlatformObject, &platforms, &test_platform);
+  Platform platform = new(SlidingPlatformObject, &world.game_objects, &test_platform);
   Particle pp = (Particle)platform;
   dcr_w(platform) = 256;
   dcr_h(platform) = 64;
   pp->vel.x = 100;
 
   struct Vector_ test_platform2 = {600, 600};
-  Platform platform2 = new(SlidingPlatformObject, &platforms, &test_platform2);
+  Platform platform2 = new(SlidingPlatformObject, &world.game_objects, &test_platform2);
   Particle pp2 = (Particle)platform2;
   dcr_w(platform2) = 256;
   dcr_h(platform2) = 64;
@@ -592,16 +613,6 @@ WinState win_state = STATE_START;
 const float endgame_delay = 3;
 float endgame_timeout;
 
-void delete_enemies() {
-  DLLNode node = enemies.head;
-  while(node) {
-    Platformer p = node_to_platformer(node);
-    DLLNode next = node->next;
-    delete(p);
-    node = next;
-  }
-}
-
 void game_end(long delta, InputState state) {
   float dt = clock_update(main_clock, delta / 1000.0);
   if(win_state == STATE_WIN) {
@@ -617,15 +628,30 @@ void game_end(long delta, InputState state) {
   endgame_timeout -= dt;
   if(endgame_timeout <= 0) {
     win_state = STATE_START;
-    delete_enemies();
+    struct Rect_ screen_rect = {0, 0, screen_width, screen_height};
+    world_foreach(&world, &screen_rect, MASK_PLATFORMER, delete_all_but_player, NULL);
     set_game_step(game_step);
+  }
+}
+
+int enemy_kills_player_callback(DCR dcr, void* udata) {
+  if(isInstanceOf(EnemyObject, dcr)) {
+    Particle pp = (Particle)&player;
+    pp->pos.x = 100;
+    pp->pos.y = 100;
+    endgame_timeout = endgame_delay;
+    win_state = STATE_LOSE;
+    set_game_step(game_end);
+    return 1;
+  } else {
+    return 0;
   }
 }
 
 void game_step(long delta, InputState state) {
   float dt = clock_update(main_clock, delta / 1000.0);
   enemy_timer -= dt;
-  if(enemy_timer <= 0 && dll_count(&enemies) < max_enemies) {
+  if(enemy_timer <= 0 && current_n_enemies < max_enemies) {
     if(win_state == STATE_START) {
       win_state = STATE_PLAY;
     }
@@ -633,18 +659,16 @@ void game_step(long delta, InputState state) {
     enemy_timer = enemy_period;
     struct Vector_ epos = {screen_width/2, screen_height};
     struct Vector_ evel = {0, 0};
-    Enemy enemy = new(EnemyObject, &enemies, &epos, &evel);
+    Enemy enemy = new(EnemyObject, &world.game_objects, &epos, &evel);
   }
 
-  if(win_state == STATE_PLAY && dll_count(&enemies) == 0) {
+  if(win_state == STATE_PLAY && current_n_enemies == 0) {
     win_state = STATE_WIN;
     endgame_timeout = endgame_delay;
     set_game_step(game_end);
   }
 
-  update_particles(&platforms, dt);
-  update_particles(&bombs, dt);
-  update_particles(&enemies, dt);
+  update_particles(&world.game_objects, dt);
 
   player_input = state;
   update(&player, dt);
@@ -669,33 +693,51 @@ void game_step(long delta, InputState state) {
   }
 
   // draw bombs
-  platformers_enqueue(&bombs, 1.0, 0.0, 0.0);
-  platformers_enqueue(&enemies, 1.0, 1.0, 0.0);
-
-  // draw platforms
-  DLLNode node = platforms.head;
+  DLLNode node = world.game_objects.head;
   while(node) {
-    DCR dcr = (DCR)node_to_platform(node);
     struct ColoredRect_ rect;
-    memcpy(&rect, &dcr->rect, sizeof(struct Rect_));
-    rect.color[0] = 0.0f;
-    rect.color[1] = 0.8f;
-    rect.color[2] = 0.0f;
-    rect.color[3] = 1.0f;
+    Particle particle = node_to_particle(node);
+    DCR dcr = (DCR)particle;
+    memcpy(&rect, &dcr_rect(dcr), sizeof(struct Rect_));
+    rect_scaled((Rect)&rect, (Rect)&rect, particle->scale, particle->scale);
 
-    filledrect_enqueue_for_screen(&rect);
+    rect.color[3] = 1.0f;
+    int skip = 0;
+
+    if(isInstanceOf(BombObject, dcr)) {
+      rect.color[0] = 1.0;
+      rect.color[1] = 0.0;
+      rect.color[2] = 0.0;
+    } else if(isInstanceOf(EnemyObject, dcr)) {
+      rect.color[0] = 1.0;
+      rect.color[1] = 1.0;
+      rect.color[2] = 0.0;
+    } else if(isInstanceOf(EnemyPlatformObject, dcr)) {
+      skip = 1;
+    } else if(isInstanceOf(PlatformObject, dcr)) {
+      rect.color[0] = 0.0;
+      rect.color[1] = 0.8;
+      rect.color[2] = 0.0;
+    } else {
+      skip = 1;
+    }
+
+    if(!skip) {
+      filledrect_enqueue_for_screen(&rect);
+    }
+
     node = node->next;
   }
 
-  const float enemy_sep = player_width / 2 + enemy_dim / 2;
-  Platformer ep;
-  Particle pp = (Particle)&player;
-  if((ep = platformer_within((Platformer)&player, enemy_sep, &enemies)) || pp->pos.y < 0) {
-    pp->pos.x = 100;
-    pp->pos.y = 100;
-    endgame_timeout = endgame_delay;
-    win_state = STATE_LOSE;
-    set_game_step(game_end);
+  world_foreach(&world, &dcr_rect(&player), MASK_PLATFORMER, enemy_kills_player_callback, NULL);
+}
+
+void print_names(DLL list) {
+  DLLNode node = list->head;
+  while(node) {
+    Particle particle = node_to_particle(node);
+    printf("%s\n", className(classOf(particle)));
+    node = node->next;
   }
 }
 

@@ -204,7 +204,6 @@ static void* Class_ctor(void* _self, va_list* app) {
   return self;
 }
 
-
 // initialize the braid
 
 static const struct Class object[] = {
@@ -224,3 +223,15 @@ static const struct Class object[] = {
 
 const void* Object = object;
 const void* Class = object + 1;
+
+int isInstanceOf(const void* _class, void* _self) {
+  const struct Class* cls = classOf(_self);
+  if(cls == Object) return 1;
+
+  while(cls != Object) {
+    if(cls == _class) return 1;
+    cls = cls->super;
+  }
+
+  return 0;
+}

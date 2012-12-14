@@ -3,6 +3,10 @@
 
 #include "particle.h"
 
+typedef struct World_ {
+  struct DLL_ game_objects;
+} *World;
+
 // dynamic-collidable-rect
 typedef struct DCR_ {
   struct Particle_ _;
@@ -15,6 +19,12 @@ typedef struct DCR_ {
 #define dcr_w(o) (((DCR)o)->w)
 #define dcr_h(o) (((DCR)o)->h)
 #define dcr_rect(o) (((DCR)o)->rect)
+#define dcr_mask(o) (((DCR)o)->collision_mask)
+
+typedef int(*WorldCallback)(DCR object, void* udata);
+void world_foreach(World world, Rect rect, int mask,
+                   WorldCallback callback, void* udata);
+
 
 typedef struct Platform_ {
   struct DCR_ _;
@@ -28,7 +38,12 @@ typedef struct Platformer_ {
   struct DCR_ _;
   Platform parent;
   float grav_accel;
+
+  // not supported. possibly == ~parent. FIXME
   int falling;
+
+  // the kinds of platforms that can support this platformer
+  int platform_mask;
 } *Platformer;
 
 Platformer node_to_platformer(DLLNode node);
@@ -37,8 +52,8 @@ void platformer_init(Platformer platformer, Vector pos, float w, float h);
 void platformer_abs_pos(Vector pos, Platformer platformer);
 void platformer_abs_vel(Vector vel, Platformer platformer);
 void platformer_rect(Rect rect, Platformer platformer);
-Platform is_platform_colliding(Rect a, DLL platforms);
+Platform is_platform_colliding(Rect a, World world, int mask);
 void resolve_interpenetration(Vector resolution, Rect minor, Rect major);
-void platformer_resolve(Platformer platformer, DLL platforms);
+void platformer_resolve(Platformer platformer, World world, int mask);
 
 #endif

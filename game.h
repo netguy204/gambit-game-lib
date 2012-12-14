@@ -3,6 +3,13 @@
 
 #include "platform.h"
 
+typedef enum {
+  MASK_NON_COLLIDER = 0,
+  MASK_PLATFORM = 1,
+  MASK_PLATFORMER = 2,
+  MASK_ENEMY_PLATFORM = 4
+} CollisionMask;
+
 typedef struct PlayerState_ {
   struct Platformer_ platformer;
   struct Vector_ fire_charge;

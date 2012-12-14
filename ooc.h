@@ -48,6 +48,8 @@ void dealloci(void* _self);
 void* super_ctor(const void* class, void* self, va_list* app);
 void* super_dtor(const void* class, void* self);
 
+int isInstanceOf(const void* _class, void* _object);
+
 typedef void (*voidf)();
 
 #endif

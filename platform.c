@@ -2,6 +2,20 @@
 
 #include <math.h>
 
+void world_foreach(World world, Rect rect, int mask,
+                   WorldCallback callback, void* udata) {
+  DLLNode node = world->game_objects.head;
+
+  while(node) {
+    DLLNode next = node->next;
+    DCR dcr = (DCR)node_to_particle(node);
+    if((dcr_mask(dcr) & mask) && rect_intersect(&dcr->rect, rect)) {
+      if(callback(dcr, udata)) return;
+    }
+    node = next;
+  }
+}
+
 void platform_rect(Rect rect, Platform platform) {
   Particle particle = (Particle)platform;
   rect_centered(rect, &particle->pos,
@@ -65,16 +79,16 @@ Platformer node_to_platformer(DLLNode node) {
   return (Platformer)container_of(node, struct Particle_, node);
 }
 
-Platform is_platform_colliding(Rect a, DLL platforms) {
-  DLLNode node = platforms->head;
-  while(node) {
-    Platform platform = node_to_platform(node);
-    if(rect_intersect(a, &dcr_rect(platform))) {
-      return platform;
-    }
-    node = node->next;
-  }
-  return NULL;
+int is_platform_colliding_helper(DCR dcr, void* udata) {
+  Platform* pptr = udata;
+  *pptr = (Platform)dcr;
+  return 1;
+}
+
+Platform is_platform_colliding(Rect a, World world, int mask) {
+  Platform result = NULL;
+  world_foreach(world, a, mask, is_platform_colliding_helper, &result);
+  return result;
 }
 
 // assumes a collision has already been found
@@ -124,7 +138,7 @@ int is_supported(Rect a, Platform platform) {
   }
 }
 
-void platformer_resolve(Platformer platformer, DLL platforms) {
+void platformer_resolve(Platformer platformer, World world, int mask) {
   struct Rect_ prect;
   Particle pp = (Particle)platformer;
   platformer_rect(&prect, platformer);
@@ -139,7 +153,7 @@ void platformer_resolve(Platformer platformer, DLL platforms) {
   if(platformer->falling) {
     Platform platform;
 
-    if((platform = is_platform_colliding(&prect, platforms))) {
+    if((platform = is_platform_colliding(&prect, world, mask))) {
       Particle platp = (Particle)platform;
       struct Vector_ resolution;
       resolve_interpenetration(&resolution, &prect, &dcr_rect(platform));
