@@ -190,6 +190,10 @@ void* BombObject_ctor(void* _self, va_list* app) {
   bomb->searched_neighbors = 0;
   platformer->platform_mask |= MASK_ENEMY_PLATFORM;
   current_n_bombs++;
+
+  // do an update too so that our rect is initialized
+  update(platformer, 0.0);
+
   return bomb;
 }
 
