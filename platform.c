@@ -1,94 +1,162 @@
 #include "platform.h"
+#include "updateable.h"
+#include "config.h"
 
 #include <math.h>
+#include <stdarg.h>
 
-void world_foreach(World world, Rect rect, int mask,
-                   WorldCallback callback, void* udata) {
-  DLLNode node = world->game_objects.head;
-
-  while(node) {
-    DLLNode next = node->next;
-    DCR dcr = (DCR)node_to_particle(node);
-    if((dcr_mask(dcr) & mask) && rect_intersect(&dcr->rect, rect)) {
-      if(callback(dcr, udata)) return;
-    }
-    node = next;
-  }
+CCollidable node_to_collidable(DLLNode node) {
+  return container_of(node, struct CCollidable_, node);
 }
 
-void platform_rect(Rect rect, Platform platform) {
-  Particle particle = (Particle)platform;
-  rect_centered(rect, &particle->pos,
-                dcr_w(platform), dcr_h(platform));
-}
+void collidable_rect(Rect rect, CCollidable coll) {
+  GO go = component_to_go(coll);
 
-void platformer_setdims(Platformer platformer, float w, float h) {
-  dcr_w(platformer) = w;
-  dcr_h(platformer) = h;
-}
-
-void platformer_init(Platformer platformer, Vector pos, float w, float h) {
-  Particle particle = (Particle)platformer;
-  particle->pos = *pos;
-  particle->vel.x = 0.0f;
-  particle->vel.y = 0.0f;
-  particle->image = NULL;
-  particle->scale = 1.0f;
-  particle->dsdt = 0.0f;
-  particle->angle = 0.0f;
-  particle->dadt = 0.0f;
-
-  dcr_w(platformer) = w;
-  dcr_h(platformer) = h;
-  platformer->parent = NULL;
-  platformer->falling = 1;
-}
-
-void platformer_abs_pos(Vector pos, Platformer platformer) {
-  Particle pp = (Particle)platformer;
-  Particle parp = (Particle)platformer->parent;
-
-  if(platformer->parent) {
-    vector_add(pos, &parp->pos, &pp->pos);
-  } else {
-    *pos = pp->pos;
-  }
-}
-
-void platformer_abs_vel(Vector vel, Platformer platformer) {
-  Particle pp = (Particle)platformer;
-  Particle parp = (Particle)platformer->parent;
-  if(platformer->parent) {
-    vector_add(vel, &parp->vel, &pp->vel);
-  } else {
-    *vel = pp->vel;
-  }
-}
-
-void platformer_rect(Rect rect, Platformer platformer) {
   struct Vector_ pos;
-  platformer_abs_pos(&pos, platformer);
-  rect_centered(rect, &pos, dcr_w(platformer), dcr_h(platformer));
+  go_pos(&pos, go);
+  rect_centered(rect, &pos, coll->w, coll->h);
 }
 
-Platform node_to_platform(DLLNode node) {
-  return (Platform)container_of(node, struct Particle_, node);
+int collidable_intersect(CCollidable a, CCollidable b) {
+  struct Rect_ ra, rb;
+  collidable_rect(&ra, a);
+  collidable_rect(&rb, b);
+  return rect_intersect(&ra, &rb);
 }
 
-Platformer node_to_platformer(DLLNode node) {
-  return (Platformer)container_of(node, struct Particle_, node);
+void* CCollidableObject_ctor(void* _self, va_list* app) {
+  CCollidable coll = super_ctor(CCollidableObject(), _self, app);
+  GO go = component_to_go(coll);
+
+  dll_add_head(&go_world(go)->collidables, &coll->node);
+
+  coll->w = va_arg(*app, double);
+  coll->h = va_arg(*app, double);
+  coll->mask = MASK_PLATFORMER;
+  return coll;
 }
 
-int is_platform_colliding_helper(DCR dcr, void* udata) {
-  Platform* pptr = udata;
-  *pptr = (Platform)dcr;
-  return 1;
+void* CCollidableObject_dtor(void* _self) {
+  CCollidable coll = _self;
+  GO go = component_to_go(coll);
+
+  dll_remove(&go_world(go)->collidables, &coll->node);
+  return super_dtor(CCollidableObject(), _self);
 }
 
-Platform is_platform_colliding(Rect a, World world, int mask) {
-  Platform result = NULL;
-  world_foreach(world, a, mask, is_platform_colliding_helper, &result);
-  return result;
+const void* CCollidableObject() {
+  static void* class = NULL;
+  if(class) return class;
+
+  class = new(UpdateableClass(), "CCollidable",
+              ComponentObject(), sizeof(struct CCollidable_),
+              ctor, CCollidableObject_ctor,
+              dtor, CCollidableObject_dtor,
+              0);
+  return class;
+}
+
+void world_notify_collisions(World world) {
+  DLLNode n1 = world->collidables.head;
+  while(n1) {
+    CCollidable c1 = node_to_collidable(n1);
+    GO g1 = component_to_go(c1);
+
+    DLLNode n2 = n1->next;
+    while(n2) {
+      CCollidable c2 = node_to_collidable(n2);
+
+      if((c1->mask & c2->mask) && collidable_intersect(c1, c2)) {
+        GO g2 = component_to_go(c2);
+
+        Message m1 = message_make((Agent)g2, MESSAGE_COLLIDING, c2);
+        m1->data2 = c1;
+        message_postinbox((Agent)g1, m1);
+
+        Message m2 = message_make((Agent)g1, MESSAGE_COLLIDING, c1);
+        m2->data2 = c2;
+        message_postinbox((Agent)g2, m2);
+      }
+
+      n2 = n2->next;
+    }
+    n1 = n1->next;
+  }
+}
+
+void* CPlatformerObject_ctor(void* _self, va_list* app) {
+  CPlatformer plat = super_ctor(CPlatformerObject(), _self, app);
+  plat->grav_accel = va_arg(*app, double);
+  plat->platform_mask = MASK_PLATFORM;
+  return plat;
+}
+
+void CPlatformerObject_lookforsupport(CPlatformer plat, float dt) {
+  GO go = component_to_go(plat);
+
+  // look for a collision message
+  DLLNode node = agent_inbox(go)->head;
+  while(node) {
+    Message message = node_to_message(node);
+    if(message->kind == MESSAGE_COLLIDING) {
+      // is it a kind of collidable we can stick to?
+      CCollidable cself = message->data2;
+      CCollidable cother = message->data;
+      GO other_go = component_to_go(cother);
+
+      if(cother->mask & plat->platform_mask) {
+        // resolve the collision
+        struct Vector_ resolution;
+        struct Rect_ rself, rother;
+        collidable_rect(&rself, cself);
+        collidable_rect(&rother, cother);
+        resolve_interpenetration(&resolution, &rself, &rother);
+        vector_add(&go->pos, &go->pos, &resolution);
+
+        // zero our velocity in the collision direction
+        if(fabs(resolution.x) > 0) {
+          go->vel.x = 0;
+        } else {
+          go->vel.y = 0;
+        }
+
+        // check for support
+        if(is_supported(&rself, &rother)) {
+          // parent this object to the supporter
+          go_set_parent(go, other_go);
+        }
+
+        // done
+        return;
+      }
+    }
+
+    node = node->next;
+  }
+}
+
+void CPlatformerObject_update(void* _self, float dt) {
+  super_update(CPlatformerObject(), _self, dt);
+  CPlatformer plat = _self;
+  GO go = component_to_go(plat);
+
+  // apply gravity and look for support if not supported
+  if(!go->transform_parent) {
+    go->vel.y -= plat->grav_accel * dt;
+    CPlatformerObject_lookforsupport(plat, dt);
+  }
+}
+
+const void* CPlatformerObject() {
+  static void* class = NULL;
+  if(class) return class;
+
+  class = new(UpdateableClass(), "CPlatformer",
+              ComponentObject(), sizeof(struct CPlatformer_),
+              ctor, CPlatformerObject_ctor,
+              update, CPlatformerObject_update,
+              0);
+  return class;
 }
 
 // assumes a collision has already been found
@@ -129,51 +197,11 @@ void resolve_interpenetration(Vector resolution, Rect minor, Rect major) {
   }
 }
 
-int is_supported(Rect a, Platform platform) {
+int is_supported(Rect a, Rect b) {
   struct Rect_ shifted = {a->minx + 0.5, a->miny - 0.5, a->maxx - 0.5, a->miny};
-  if(rect_intersect(&shifted, &dcr_rect(platform))) {
+  if(rect_intersect(&shifted, b)) {
     return 1;
   } else {
     return 0;
-  }
-}
-
-void platformer_resolve(Platformer platformer, World world, int mask) {
-  struct Rect_ prect;
-  Particle pp = (Particle)platformer;
-  platformer_rect(&prect, platformer);
-
-  if(!platformer->falling && (!platformer->parent ||
-                              !is_supported(&prect, platformer->parent))) {
-    platformer->falling = 1;
-    platformer_abs_pos(&pp->pos, platformer);
-    platformer->parent = NULL;
-  }
-
-  if(platformer->falling) {
-    Platform platform;
-
-    if((platform = is_platform_colliding(&prect, world, mask))) {
-      Particle platp = (Particle)platform;
-      struct Vector_ resolution;
-      resolve_interpenetration(&resolution, &prect, &dcr_rect(platform));
-      vector_add(&pp->pos, &pp->pos, &resolution);
-
-      if(fabs(resolution.x) > 0.0f) {
-        // bumped it, resolve the colision and remove our x component
-        pp->vel.x = 0.0f;
-      } else {
-        pp->vel.y = 0.0f;
-      }
-
-      platformer_rect(&prect, platformer);
-      if(is_supported(&prect, platform)) {
-        platformer->falling = 0;
-        struct Vector_ abs_pos;
-        platformer_abs_pos(&abs_pos, platformer);
-        vector_sub(&pp->pos, &abs_pos, &platp->pos);
-        platformer->parent = platform;
-      }
-    }
   }
 }

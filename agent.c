@@ -10,24 +10,15 @@
 #include <assert.h>
 #include <stdarg.h>
 
-const void* AgentObject;
-const void* DispatcherObject;
-const void* CollectiveObject;
-
 FixedAllocator message_allocator;
-FixedAllocator agent_allocator;
+
+Message node_to_message(DLLNode node) {
+  return (Message)node;
+}
 
 // agentobject methods
-static void* AgentObject_alloci(void* _self) {
-  return fixed_allocator_alloc(agent_allocator);
-}
-
-static void AgentObject_dealloci(void* _self) {
-  fixed_allocator_free(agent_allocator, _self);
-}
-
 void* AgentObject_ctor(void* _self, va_list* app) {
-  Agent agent = super_ctor(AgentObject, _self, app);
+  Agent agent = super_ctor(AgentObject(), _self, app);
 
   dll_zero(&agent->inbox);
   dll_zero(&agent->outbox);
@@ -52,14 +43,18 @@ void* AgentObject_dtor(void* _self) {
   // should we do something with the agent's mailboxes?
   SAFETY(if(agent->inbox.head != NULL) fail_exit("agent inbox not empty"));
   SAFETY(if(agent->outbox.head != NULL) fail_exit("agent outbox not empty"));
-  return super_dtor(AgentObject, _self);
+  return super_dtor(AgentObject(), _self);
 }
 
+DLL agent_inbox(void* _agent) {
+  Agent agent = _agent;
+  return &agent->inbox;
+}
 
 // dispatcher methods
 
 void* DispatcherObject_ctor(void* _self, va_list* app) {
-  Dispatcher dispatcher = super_ctor(DispatcherObject, _self, app);
+  Dispatcher dispatcher = super_ctor(DispatcherObject(), _self, app);
   dispatcher->dispatchees = NULL;
   return dispatcher;
 }
@@ -77,7 +72,7 @@ void* DispatcherObject_dtor(void* _self) {
   }
   dispatcher->dispatchees = NULL;
 
-  return super_dtor(DispatcherObject, _self);
+  return super_dtor(DispatcherObject(), _self);
 }
 
 // collective
@@ -85,7 +80,7 @@ void* DispatcherObject_dtor(void* _self) {
 void collective_add(Collective collective, Agent agent);
 
 void* CollectiveObject_ctor(void* _self, va_list* app) {
-  Collective collective = super_ctor(CollectiveObject, _self, app);
+  Collective collective = super_ctor(CollectiveObject(), _self, app);
   dll_zero(&collective->children);
   collective->sub_dispatchers = heapvector_make();
 
@@ -112,46 +107,61 @@ void* CollectiveObject_dtor(void* _self) {
 
   heapvector_free(collective->sub_dispatchers);
 
-  return super_dtor(CollectiveObject, _self);
+  return super_dtor(CollectiveObject(), _self);
 }
 
 void CollectiveObject_update(void* _self, float dt);
 
 void agent_init() {
-  message_allocator =
-    fixed_allocator_make(sizeof(struct Message_),
-                         MAX_NUM_MESSAGES,
-                         "message_allocator");
+  static int initialized = 0;
+  if(initialized) return;
 
-  agent_allocator =
-    fixed_allocator_make(MAX(sizeof(struct Dispatcher_),
-                             sizeof(struct Collective_)),
-                         MAX_NUM_AGENTS,
-                         "agent_allocator");
-
-  AgentObject = new(UpdateableClass(), "Agent",
-                    Object, sizeof(struct Agent_),
-                    alloci, AgentObject_alloci,
-                    dealloci, AgentObject_dealloci,
-                    ctor, AgentObject_ctor,
-                    dtor, AgentObject_dtor,
-                    update, AgentObject_update,
-                    0);
-
-  DispatcherObject = new(UpdateableClass(), "Dispatcher",
-                         AgentObject, sizeof(struct Dispatcher_),
-                         ctor, DispatcherObject_ctor,
-                         dtor, DispatcherObject_dtor,
-                         0);
-
-  CollectiveObject = new(UpdateableClass(), "Collective",
-                         DispatcherObject, sizeof(struct Collective_),
-                         ctor, CollectiveObject_ctor,
-                         dtor, CollectiveObject_dtor,
-                         update, CollectiveObject_update,
-                         0);
+  message_allocator = fixed_allocator_make(sizeof(struct Message_),
+                                           MAX_NUM_MESSAGES,
+                                           "message_allocator");
+  initialized = 1;
 }
 
+const void* AgentObject() {
+  static void* class = NULL;
+  if(class) return class;
+
+  agent_init();
+  class = new(UpdateableClass(), "Agent",
+              Object, sizeof(struct Agent_),
+              ctor, AgentObject_ctor,
+              dtor, AgentObject_dtor,
+              update, AgentObject_update,
+              0);
+  return class;
+}
+
+const void* DispatcherObject() {
+  static void* class = NULL;
+  if(class) return class;
+
+  agent_init();
+  class = new(UpdateableClass(), "Dispatcher",
+              AgentObject(), sizeof(struct Dispatcher_),
+              ctor, DispatcherObject_ctor,
+              dtor, DispatcherObject_dtor,
+              0);
+  return class;
+}
+
+const void* CollectiveObject() {
+  static void* class = NULL;
+  if(class) return class;
+
+  agent_init();
+  class = new(UpdateableClass(), "Collective",
+              DispatcherObject(), sizeof(struct Collective_),
+              ctor, CollectiveObject_ctor,
+              dtor, CollectiveObject_dtor,
+              update, CollectiveObject_update,
+              0);
+  return class;
+}
 
 Message message_make(Agent source, int kind, void* data) {
   Message message = fixed_allocator_alloc(message_allocator);
@@ -337,7 +347,7 @@ void collective_handle_inbox(Agent agent, Message message, void * udata) {
 }
 
 void CollectiveObject_update(void* _self, float dt) {
-  super_update(CollectiveObject, _self, dt);
+  super_update(CollectiveObject(), _self, dt);
   Collective collective = _self;
 
   // drain inbox

@@ -5,12 +5,9 @@
 #include "heapvector.h"
 #include "ooc.h"
 
-extern const void* AgentClass;
-extern const void* AgentObject;
-extern const void* DispatcherObject;
-extern const void* CollectiveObject;
-
-void agent_init();
+const void* AgentObject();
+const void* DispatcherObject();
+const void* CollectiveObject();
 
 struct Message_;
 struct Agent_;
@@ -25,9 +22,12 @@ typedef struct Message_ {
   ReportCompleted report_completed; // called if this is a report
   struct Agent_* source;
   void* data;
+  void* data2;
   int kind;
   int read_count;
 } *Message;
+
+Message node_to_message(DLLNode node);
 
 struct Agent_;
 
@@ -41,6 +41,9 @@ typedef struct Agent_ {
   int subscribers;
   int state;
 } *Agent;
+
+DLL agent_inbox(void* _agent);
+DLL agent_outbox(void* _agent);
 
 typedef struct Dispatcher_ {
   struct Agent_ _;
@@ -58,17 +61,19 @@ enum MessageKind {
   MESSAGE_MAX0,
   MESSAGE_TERMINATE,      // command agent to terminate
   MESSAGE_TERMINATING,    // agent is terminating
+  MESSAGE_COLLIDING,      // agent is colliding with other (cother, cself)
+  MESSAGE_TIMER_EXPIRED,  // args (payload)
   MESSAGE_MAX1,
   AGENT_TAKE_DAMAGE,      // command agent to take damage
   AGENT_START_ATTACK,
   AGENT_FLEE,
-  AGENT_IDLE,
   MESSAGE_MAX2
 };
 
 enum State {
   COLLECTIVE_IDLE,
   DISPATCHER_IDLE,
+  AGENT_IDLE,
   DISPATCHER_ATTACKING,
   ENEMY_FLEEING,
   ENEMY_IDLE,

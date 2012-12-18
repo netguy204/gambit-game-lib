@@ -2,40 +2,45 @@
 #define GAME_H
 
 #include "platform.h"
+#include "testlib.h"
 
-typedef enum {
-  MASK_NON_COLLIDER = 0,
-  MASK_PLATFORM = 1,
-  MASK_PLATFORMER = 2,
-  MASK_ENEMY_PLATFORM = 4
-} CollisionMask;
-
-typedef struct PlayerState_ {
-  struct Platformer_ platformer;
-  struct Vector_ fire_charge;
-  float fire_timeout;
+typedef struct CInput_ {
+  struct Component_ _;
+  InputState state;
   int fire_pressed;
-  int charging;
   int facing;
-} *PlayerState;
+} *CInput;
 
-typedef struct Bomb_ {
-  struct Platformer_ _;
+const void* CInputObject();
+
+typedef struct CLeftAndRight_ {
+  struct Component_ _;
+  float minx, maxx;
+} *CLeftAndRight;
+
+const void* CLeftAndRightObject();
+
+typedef struct CTimer_ {
+  struct Component_ _;
+  void* expire_payload;
   float time_remaining;
-  int searched_neighbors;
-} *Bomb;
+} *CTimer;
 
-typedef struct Enemy_ {
-  struct Platformer_ _;
-  struct Platform_ platform;
-} *Enemy;
+const void* CTimerObject();
 
-typedef struct Boss_ {
-  struct Platform_ _;
-  int hp;
-} *Boss;
+typedef struct CBombBehavior_ {
+  struct Component_ _;
+  int state;
+} *CBombBehavior;
+
+const void* CBombBehaviorObject();
 
 void game_init();
 void game_shutdown();
+
+GO platform_make(float x, float y, float w, float h);
+GO slidingplatform_make(float x, float y, float w, float h, float speed,
+                        float minx, float maxx);
+GO bomb_make(Vector pos, Vector vel);
 
 #endif

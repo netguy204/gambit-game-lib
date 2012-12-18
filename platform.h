@@ -1,59 +1,47 @@
 #ifndef PLATFORM_H
 #define PLATFORM_H
 
-#include "particle.h"
+#include "gameobject.h"
+#include "rect.h"
 
-typedef struct World_ {
-  struct DLL_ game_objects;
-} *World;
+typedef enum {
+  MASK_NON_COLLIDER = 0,
+  MASK_PLATFORM = 1,
+  MASK_PLATFORMER = 2,
+  MASK_ENEMY_PLATFORM = 4
+} CollisionMask;
 
-// dynamic-collidable-rect
-typedef struct DCR_ {
-  struct Particle_ _;
-  struct Rect_ rect; // cached value, computed by update
-  int collision_mask;
+
+// registers a GO with the collidables section of the world. GO
+// components will get COLLIDED messages letting them known when they
+// hit other GOs that have a collidable component
+typedef struct CCollidable_ {
+  struct Component_ _;
+  struct DLLNode_ node;
   float w;
   float h;
-} *DCR;
+  int mask;
+} *CCollidable;
 
-#define dcr_w(o) (((DCR)o)->w)
-#define dcr_h(o) (((DCR)o)->h)
-#define dcr_rect(o) (((DCR)o)->rect)
-#define dcr_mask(o) (((DCR)o)->collision_mask)
+// args: GO, w, h
+const void* CCollidableObject();
 
-typedef int(*WorldCallback)(DCR object, void* udata);
-void world_foreach(World world, Rect rect, int mask,
-                   WorldCallback callback, void* udata);
+CCollidable node_to_collidable(DLLNode node);
+void collidable_rect(Rect rect, CCollidable coll);
+int collidable_intersect(CCollidable a, CCollidable b);
 
-
-typedef struct Platform_ {
-  struct DCR_ _;
-} *Platform;
-
-void platform_rect(Rect rect, Platform platform);
-int is_supported(Rect a, Platform platform);
-Platform node_to_platform(DLLNode node);
-
-typedef struct Platformer_ {
-  struct DCR_ _;
-  Platform parent;
+typedef struct CPlatformer_ {
+  struct Component_ _;
   float grav_accel;
-
-  // not supported. possibly == ~parent. FIXME
-  int falling;
-
-  // the kinds of platforms that can support this platformer
   int platform_mask;
-} *Platformer;
+} *CPlatformer;
 
-Platformer node_to_platformer(DLLNode node);
-void platformer_setdims(Platformer platformer, float w, float h);
-void platformer_init(Platformer platformer, Vector pos, float w, float h);
-void platformer_abs_pos(Vector pos, Platformer platformer);
-void platformer_abs_vel(Vector vel, Platformer platformer);
-void platformer_rect(Rect rect, Platformer platformer);
-Platform is_platform_colliding(Rect a, World world, int mask);
+// args: GO, accel
+const void* CPlatformerObject();
+
+void world_notify_collisions(World world);
+
+int is_supported(Rect supportee, Rect supporter);
 void resolve_interpenetration(Vector resolution, Rect minor, Rect major);
-void platformer_resolve(Platformer platformer, World world, int mask);
 
 #endif
