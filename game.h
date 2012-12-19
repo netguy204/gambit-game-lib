@@ -35,6 +35,8 @@ typedef struct CBombBehavior_ {
 
 const void* CBombBehaviorObject();
 
+const void* CTestDisplayObject();
+
 void game_init();
 void game_shutdown();
 

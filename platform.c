@@ -87,8 +87,26 @@ void world_notify_collisions(World world) {
 void* CPlatformerObject_ctor(void* _self, va_list* app) {
   CPlatformer plat = super_ctor(CPlatformerObject(), _self, app);
   plat->grav_accel = va_arg(*app, double);
-  plat->platform_mask = MASK_PLATFORM;
+  plat->max_speed = 64 / .1;
+  plat->platform_mask = MASK_PLATFORMER;
   return plat;
+}
+
+int CPlatformerObject_issupported(CPlatformer plat) {
+  GO go1 = component_to_go(plat);
+  GO go2 = go1->transform_parent;
+  if(!go2) return 0;
+
+  CCollidable c1 = go_find_component(go1, CCollidableObject());
+  if(!c1) return 0;
+
+  CCollidable c2 = go_find_component(go2, CCollidableObject());
+
+  struct Rect_ r1, r2;
+  collidable_rect(&r1, c1);
+  collidable_rect(&r2, c2);
+
+  return is_supported(&r1, &r2);
 }
 
 void CPlatformerObject_lookforsupport(CPlatformer plat, float dt) {
@@ -142,8 +160,10 @@ void CPlatformerObject_update(void* _self, float dt) {
 
   // apply gravity and look for support if not supported
   if(!go->transform_parent) {
-    go->vel.y -= plat->grav_accel * dt;
+    go->vel.y = MAX(-plat->max_speed, go->vel.y - plat->grav_accel * dt);
     CPlatformerObject_lookforsupport(plat, dt);
+  } else if(!CPlatformerObject_issupported(plat)) {
+    go_set_parent(go, NULL);
   }
 }
 
@@ -190,9 +210,9 @@ void resolve_interpenetration(Vector resolution, Rect minor, Rect major) {
     // resolve y penetration
     resolution->x = 0.0f;
     if(to_major.y > 0.0f) {
-      resolution->y = -yint;
+      resolution->y = -yint - nudge;
     } else {
-      resolution->y = yint;
+      resolution->y = yint + nudge;
     }
   }
 }

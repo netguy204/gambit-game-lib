@@ -33,6 +33,7 @@ int collidable_intersect(CCollidable a, CCollidable b);
 typedef struct CPlatformer_ {
   struct Component_ _;
   float grav_accel;
+  float max_speed;
   int platform_mask;
 } *CPlatformer;
 

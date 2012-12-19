@@ -86,10 +86,15 @@ void GameObject_update(void* _self, float dt) {
   // we're the root of the update heirarchy
   GO go = _self;
 
+  // do an integration step
+  struct Vector_ dx;
+  vector_scale(&dx, &go->vel, dt);
+  vector_add(&go->pos, &go->pos, &dx);
+
   DLLNode node = go->components.head;
   while(node) {
     DLLNode next = node->next;
-    Component comp = node_to_component(next);
+    Component comp = node_to_component(node);
     update(comp, dt);
     node = next;
   }
@@ -143,6 +148,7 @@ World go_world(GO go) {
 void* ComponentObject_ctor(void* _self, va_list* app) {
   Component comp = super_ctor(ComponentObject(), _self, app);
   comp->parent_go = va_arg(*app, GO);
+  dll_add_head(&comp->parent_go->components, &comp->node);
   return comp;
 }
 
@@ -198,6 +204,7 @@ const void* GameObject() {
               dealloci, GameObject_dealloci,
               ctor, GameObject_ctor,
               dtor, GameObject_dtor,
+              update, GameObject_update,
               0);
   return class;
 }

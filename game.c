@@ -288,6 +288,35 @@ const void* CInputObject() {
   return class;
 }
 
+const void CTestDisplayObject_update(void* _self, float dt) {
+  Component c = _self;
+  GO go = component_to_go(c);
+  CCollidable coll = go_find_component(go, CCollidableObject());
+
+  assert(coll);
+
+  struct ColoredRect_ rect;
+  collidable_rect((Rect)&rect, coll);
+  rect.color[0] = 1.0f;
+  rect.color[1] = 0.0f;
+  rect.color[2] = 0.0f;
+  rect.color[3] = 1.0f;
+
+  filledrect_enqueue_for_screen(&rect);
+}
+
+
+const void* CTestDisplayObject() {
+  static void* class = NULL;
+  if(class) return class;
+
+  class = new(UpdateableClass(), "CTestDisplay",
+              ComponentObject(), sizeof(struct Component_),
+              update, CTestDisplayObject_update,
+              0);
+  return class;
+}
+
 GO platform_make(float x, float y, float w, float h) {
   GO go = new(GameObject(), AGENT_IDLE, world);
   go->pos.x = x;
@@ -296,6 +325,7 @@ GO platform_make(float x, float y, float w, float h) {
   go->vel.y = 0;
   go->ttag = TAG_PLATFORM;
 
+  new(CTestDisplayObject(), go);
   new(CCollidableObject(), go, w, h);
   return go;
 }
@@ -315,6 +345,7 @@ void player_setup() {
   player_go->pos.y = 100;
   player_go->ttag = TAG_PLAYER;
 
+  new(CTestDisplayObject(), player_go);
   new(CCollidableObject(), player_go, player_width, player_height);
   new(CPlatformerObject(), player_go, player_gravity_accel);
   player_input = new(CInputObject(), player_go);
@@ -326,6 +357,8 @@ GO bomb_make(Vector pos, Vector vel) {
 
   go->pos = *pos;
   go->vel = *vel;
+
+  new(CTestDisplayObject(), go);
   new(CCollidableObject(), go, bomb_dim, bomb_dim);
   new(CPlatformerObject(), go, bomb_gravity_accel);
   new(CBombBehaviorObject(), go);
