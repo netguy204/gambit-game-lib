@@ -101,10 +101,12 @@ void llnode_remove(DLLNode node) {
   DLLNode before = node->prev;
 
   if(after) {
+    assert(after->prev == node);
     after->prev = before;
   }
 
   if(before) {
+    assert(before->next == node);
     before->next = after;
   }
 }

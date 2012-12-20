@@ -101,6 +101,7 @@ int CPlatformerObject_issupported(CPlatformer plat) {
   if(!c1) return 0;
 
   CCollidable c2 = go_find_component(go2, CCollidableObject());
+  if(!c2) return 0; // why could this happen?
 
   struct Rect_ r1, r2;
   collidable_rect(&r1, c1);

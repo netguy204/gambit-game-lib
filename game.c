@@ -119,17 +119,12 @@ void bomb_detonate(GO bomb) {
 }
 
 int delete_all_but_player(GO go, void* udata) {
+  if(go == udata) return 0;
   if(go->ttag == TAG_PLAYER) return 0;
 
   // ignore non-collidables
   CCollidable coll = go_find_component(go, CCollidableObject());
   if(!coll) return 0;
-
-  // check collision
-  struct Rect_ orect;
-  collidable_rect(&orect, coll);
-  Rect mrect = udata;
-  if(!rect_intersect(&orect, mrect)) return 0;
 
   // destroy what we hit
   if(go->ttag == TAG_BOMB) {
@@ -142,8 +137,8 @@ int delete_all_but_player(GO go, void* udata) {
 
 void* CBombBehaviorObject_ctor(void* _self, va_list* app) {
   CBombBehavior bomb = super_ctor(CBombBehaviorObject(), _self, app);
-
-  new(CTimerObject(), bomb, bomb_delay - bomb_explode_start, NULL);
+  GO go = component_to_go(bomb);
+  new(CTimerObject(), go, bomb_delay - bomb_explode_start, NULL);
   bomb->state = 0;
   return bomb;
 }
@@ -166,7 +161,7 @@ void CBombBehaviorObject_update(void* _self, float dt) {
     new(CTimerObject(), bomb, bomb_explode_start, NULL);
     bb->state = BOMB_EXPLODING;
     world_foreach(go_world(bomb), &bomb->pos, bomb_dim * bomb_chain_factor,
-                  delete_all_but_player, NULL);
+                  delete_all_but_player, bomb);
   } else if(bb->state == BOMB_EXPLODING) {
     // destroy the bomb
     bb->state = BOMB_DONE;
@@ -248,6 +243,7 @@ void CInputObject_update(void* _self, float dt) {
     if(current_n_bombs < max_bombs) {
       struct Vector_ abs_pos;
       go_pos(&abs_pos, go);
+      abs_pos.y += player_height;
 
       struct Vector_ abs_vel = {ci->facing * throw_speed / 3, throw_speed};
 
