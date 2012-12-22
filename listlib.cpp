@@ -22,7 +22,7 @@ int ll_count(LLNode node) {
 }
 
 LLEntry llentry_make() {
-  return fixed_allocator_alloc(llentry_allocator);
+  return (LLEntry)fixed_allocator_alloc(llentry_allocator);
 }
 
 void llentry_free(LLEntry entry) {

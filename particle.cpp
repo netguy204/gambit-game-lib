@@ -2,28 +2,39 @@
 #include "testlib.h"
 #include "vector.h"
 
-void* ParticleObject = NULL;
+OBJECT_IMPL(Particle);
 
-void particle_integrate(Particle particle, float dt) {
-  vector_integrate(&particle->pos, &particle->pos, &particle->vel, dt);
-  particle->scale += (particle->dsdt * dt);
-  particle->angle += (particle->dadt * dt);
+Particle::Particle() {
+  containing_list = NULL;
+  vector_zero(&this->pos);
+  vector_zero(&this->vel);
+  this->image = NULL;
+  this->scale = 1.0f;
+  this->dsdt = 0.0f;
+  this->angle = 0.0f;
+  this->dadt = 0.0f;
 }
 
-float particle_width(Particle particle) {
+void Particle::update(float dt) {
+  vector_integrate(&this->pos, &this->pos, &this->vel, dt);
+  this->scale += (this->dsdt * dt);
+  this->angle += (this->dadt * dt);
+}
+
+float particle_width(Particle* particle) {
   return particle->image->w * particle->scale;
 }
 
-float particle_height(Particle particle) {
+float particle_height(Particle* particle) {
   return particle->image->h * particle->scale;
 }
 
-void particle_center(Particle particle, Vector v) {
+void particle_center(Particle* particle, Vector v) {
   v->x = particle->pos.x + particle_width(particle) / 2;
   v->y = particle->pos.y + particle_height(particle) / 2;
 }
 
-Sprite particle_sprite(Particle particle) {
+Sprite particle_sprite(Particle* particle) {
   Sprite sprite = frame_make_sprite();
   sprite_fillfromentry(sprite, particle->image);
 
@@ -46,15 +57,15 @@ Sprite particle_sprite(Particle particle) {
   return sprite;
 }
 
-Particle node_to_particle(DLLNode node) {
-  return container_of(node, struct Particle_, node);
+Particle* node_to_particle(DLLNode node) {
+  return container_of(node, Particle, node);
 }
 
 SpriteList particles_spritelist(DLL list) {
   SpriteList result = NULL;
   DLLNode node = list->head;
   while(node) {
-    Particle p = node_to_particle(node);
+    Particle* p = node_to_particle(node);
     Sprite sprite = particle_sprite(p);
     if(sprite) {
       result = frame_spritelist_append(result, sprite);
@@ -64,7 +75,7 @@ SpriteList particles_spritelist(DLL list) {
   return result;
 }
 
-void rect_for_particle(Rect rect, Particle particle, float scale) {
+void rect_for_particle(Rect rect, Particle* particle, float scale) {
   float hw = particle_width(particle) / 2.0f;
   float hh = particle_height(particle) / 2.0f;
 

@@ -89,7 +89,7 @@ void native_audio_init() {
   // channel per sample)
   int buffer_size = NUM_SAMPLES * 2 * 2 * 2;
   audio_buffer = circularbuffer_make(buffer_size);
-  audio_pre_buffer = malloc(buffer_size);
+  audio_pre_buffer = (char*)malloc(buffer_size);
 
   pthread_mutex_init(&audio_mutex, NULL);
   pthread_create(&audio_thread, NULL, audio_exec, NULL);

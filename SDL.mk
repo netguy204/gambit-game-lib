@@ -1,4 +1,4 @@
-C_SRC=testlib_sdl.c audio_sdl.c
+CPP_SRC=testlib_sdl.cpp audio_sdl.cpp
 BIN=sdlmain
 
 SDL_LIBS:=`sdl-config --libs`
@@ -10,15 +10,15 @@ else
 	LDFLAGS+= -lGL -lm -ldl -lutil
 endif
 
-CFLAGS+=-std=c99 `sdl-config --cflags`
-LDFLAGS+=$(SDL_LIBS) $(OPENGL) 
+CFLAGS+=`sdl-config --cflags`
+LDFLAGS+=$(SDL_LIBS) $(OPENGL)
 
 include Common.mk
 
 # force include of SDL header so that it can do it's main redirection
 # magic
-gambitmain.o: gambitmain.c
-	$(CC) $(CFLAGS) -c $< -include "SDL/SDL.h"
+gambitmain.o: gambitmain.cpp
+	$(CXX) $(CFLAGS) -c $< -include "SDL/SDL.h"
 
-audio_test: audio_test.c sampler.c
-	gcc -g -o audio_test sampler.c audio_test.c `sdl-config --libs` `sdl-config --cflags`
+audio_test: audio_test.cpp sampler.cpp
+	gcc -g -o audio_test sampler.cpp audio_test.cpp `sdl-config --libs` `sdl-config --cflags`

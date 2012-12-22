@@ -8,10 +8,17 @@
 #include "spriteatlas.h"
 #include "ooc.h"
 
-typedef struct Particle_ {
-  struct Object _;
+class Particle : public Object {
+ public:
+  OBJECT_PROTO(Particle);
+
+  Particle();
+
+  virtual void update(float dt);
+
   struct DLLNode_ node;
   DLL containing_list;
+
   struct Vector_ pos;
   struct Vector_ vel;
   SpriteAtlasEntry image;
@@ -19,15 +26,15 @@ typedef struct Particle_ {
   float dsdt;
   float angle;
   float dadt;
-} *Particle;
+};
 
-float particle_width(Particle particle);
-float particle_height(Particle particle);
-void particle_center(Particle particle, Vector v);
-Sprite particle_sprite(Particle particle);
-void particle_integrate(Particle particle, float dt);
-Particle node_to_particle(DLLNode node);
+float particle_width(Particle* particle);
+float particle_height(Particle* particle);
+void particle_center(Particle* particle, Vector v);
+Sprite particle_sprite(Particle* particle);
+
+Particle* node_to_particle(DLLNode node);
 SpriteList particles_spritelist(DLL list);
-void rect_for_particle(Rect rect, Particle particle, float scale);
+void rect_for_particle(Rect rect, Particle* particle, float scale);
 
 #endif

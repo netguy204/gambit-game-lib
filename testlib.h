@@ -84,7 +84,7 @@ typedef struct ImageResource_ {
   unsigned char* data; /* shortlived, internal */
 } *ImageResource;
 
-ImageResource image_load(char * file);
+ImageResource image_load(const char * file);
 int image_width(ImageResource resource);
 int image_height(ImageResource resource);
 void images_free();

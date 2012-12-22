@@ -25,7 +25,7 @@ typedef struct SteeringObstacle_ {
 } *SteeringObstacle;
 
 void steeringresult_complete(SteeringResult result, SteeringParams params);
-void particle_applysteering(Particle p, SteeringResult r, SteeringParams params, float dt);
+void particle_applysteering(Particle* p, SteeringResult r, SteeringParams params, float dt);
 void steering_apply_desired_velocity(SteeringResult r, Vector desired_vel, Vector src_vel);
 
 void steering_seek(SteeringResult r, Vector tgt, Vector src, Vector src_vel,

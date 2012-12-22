@@ -9,7 +9,7 @@
 // include common code that is dependant on the platform variable
 // location/name of the opengl headers
 #define glOrthof glOrtho
-#include "testlib_gl.c"
+#include "testlib_gl.cpp"
 
 static struct InputState_ pstate;
 

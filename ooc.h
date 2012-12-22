@@ -3,53 +3,40 @@
 
 #include <stdio.h>
 
-struct Class;
+class Object;
 
-struct Object {
-  const struct Class * class;
+typedef Object*(*CtorFn)();
+
+class TypeInfo {
+public:
+  TypeInfo(const char* name, CtorFn ctor);
+  const char* name() const;
+  Object* makeInstance() const;
+  bool isInstanceOf(const TypeInfo* other) const;
+
+private:
+  const char* m_name;
+  CtorFn m_ctor;
 };
 
-struct Class;
+#define OBJECT_PROTO(name)                            \
+  virtual const TypeInfo* typeinfo();                 \
+  static TypeInfo Type;                               \
+  static Object* CreateInstance()
 
-struct Class {
-  const struct Object _;
-  const char * name;
-  const struct Class * super;
-  size_t size;
-  void*(*alloci)(const void* class);
-  void(*dealloci)(void* self);
-  void*(*ctor)(void* self, va_list * args);
-  void*(*dtor)(void* self);
-  int(*differ)(const void* self, const void* b);
-  int(*tofile)(const void* self, FILE* fp);
+
+#define OBJECT_IMPL(name)                               \
+  TypeInfo name::Type(#name, name::CreateInstance);     \
+  Object* name::CreateInstance() {                      \
+    return new name();                                  \
+  }                                                     \
+  const TypeInfo* name::typeinfo() {                    \
+    return &(name::Type);                               \
+  }
+
+class Object {
+public:
+  OBJECT_PROTO(Object);
 };
-
-extern const void* Object;
-extern const void* Class;
-
-void* new(const void* class, ...);
-void* vinit(const void* class, void* self, va_list *app);
-void* init(const void * class, void* self, ...);
-void delete(void* self);
-
-int differ(const void* self, const void * b);
-int tofile(const void* self, FILE * fp);
-
-const void* classOf(const void* self);
-const char* className(const void* class);
-size_t sizeOf(const void* self);
-const void* super(const void* self);
-
-void* alloci(const void* class);
-void* ctor(void* _self, va_list* app);
-void* dtor(void* _self);
-void dealloci(void* _self);
-
-void* super_ctor(const void* class, void* self, va_list* app);
-void* super_dtor(const void* class, void* self);
-
-int isInstanceOf(const void* _class, void* _object);
-
-typedef void (*voidf)();
 
 #endif

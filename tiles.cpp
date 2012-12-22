@@ -8,7 +8,7 @@
 
 TileMap tilemap_make(int width, int height, int tw, int th) {
   int num_tiles = width * height;
-  TileMap map = malloc(sizeof(struct TileMap_) + num_tiles);
+  TileMap map = (TileMap)malloc(sizeof(struct TileMap_) + num_tiles);
   map->width_IT = width;
   map->height_IT = height;
   map->tile_width_IP = tw;
@@ -210,7 +210,7 @@ void charimage_from_tilemap(CharImage img, TileMap map) {
 void charimage_init_sizeof_tilemap(CharImage img, TileMap map) {
   img->w = map->width_IT;
   img->h = map->height_IT;
-  img->data = malloc(img->w * img->h);
+  img->data = (int8_t*)malloc(img->w * img->h);
 }
 
 void charimage_crosscorrelate(CharImage out, CharImage big, CharImage small) {

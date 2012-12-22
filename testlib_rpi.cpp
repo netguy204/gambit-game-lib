@@ -26,7 +26,7 @@ extern StackAllocator frame_allocator;
 
 // include common code that is dependant on the platform variable
 // location/name of the opengl headers
-#include "testlib_gl.c"
+#include "testlib_gl.cpp"
 
 void egl_assert_(int test, const char * string) {
   if(!test) {

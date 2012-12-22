@@ -1,34 +1,39 @@
+CPP_SRC+= \
+	threadlib.cpp memory.cpp listlib.cpp testlib.cpp \
+	sampler.cpp audio.cpp game.cpp vector.cpp particle.cpp \
+	rect.cpp controls.cpp agent.cpp steering.cpp spriteatlas.cpp \
+	realmain.cpp stb_image.cpp tiles.cpp random.cpp \
+	perlin.cpp heapvector.cpp xmltools.cpp \
+	pathfinder.cpp utils.cpp matrix.cpp ooc.cpp \
+	game_ui.cpp platform.cpp gameobject.cpp
+
 C_SRC+= \
-	threadlib.c memory.c listlib.c testlib.c \
-	sampler.c audio.c game.c vector.c particle.c \
-	rect.c controls.c agent.c steering.c spriteatlas.c \
-	realmain.c stb_image.c tiles.c sfmt/SFMT.c random.c \
-	perlin.c items.c heapvector.c worldgen.c xmltools.c \
-	pathfinder.c utils.c matrix.c ooc.c updateable.c \
-	game_ui.c platform.c interactable.c gameobject.c
+	sfmt/SFMT.c
 
 XML_INCLUDE:=-I/usr/include/libxml2
-CFLAGS+=$(XML_INCLUDE) -Isfmt/
+CXXFLAGS+=$(XML_INCLUDE) -Isfmt/ -std=c++11
 
 LDFLAGS+=-lpthread -ldl -lxml2
-C_OBJS=$(patsubst %.c,%.o,$(C_SRC))
+C_OBJS=\
+	$(patsubst %.cpp,%.o,$(CPP_SRC)) \
+	$(patsubst %.c,%.o,$(C_SRC))
 
 EXE_OBJS=$(C_OBJS) gambitmain.o
 
-#testlib.o: testlib_gl.c
+#testlib.o: testlib_gl.cpp
 all: $(BIN) resources
 
 $(BIN): $(EXE_OBJS)
-	$(CC) $(CFLAGS) -o $@ $(EXE_OBJS) $(LDFLAGS)
+	$(CXX) $(CFLAGS) -o $@ $(EXE_OBJS) $(LDFLAGS)
 
 test_bin: $(C_OBJS) testlib_test.o
-	$(CC) $(CFLAGS) -o $@ $(C_OBJS) testlib_test.o $(LDFLAGS)
+	$(CXX) $(CFLAGS) -o $@ $(C_OBJS) testlib_test.o $(LDFLAGS)
 
 test: test_bin
 	./test_bin
 
 C_TOOL_OBJS=$(C_OBJS)
-BUILD_WITH_XML=$(CC) $(CFLAGS) -o $@ $< $(C_TOOL_OBJS) $(LDFLAGS)
+BUILD_WITH_XML=$(CXX) $(CFLAGS) -o $@ $< $(C_TOOL_OBJS) $(LDFLAGS)
 
 SPRITE_PSDS=$(wildcard sprites/*.psd)
 SPRITE_PNGS=$(patsubst %.psd, %.png, $(SPRITE_PSDS))
@@ -49,7 +54,7 @@ items_bin: items_bin.o $(C_TOOL_OBJS)
 	$(BUILD_WITH_XML)
 
 sfmt/SFMT.o: sfmt/SFMT.c
-	$(CC) $(CFLAGS) -c $< -o $@ -DSFMT_MEXP=607
+	$(CXX) $(CFLAGS) -c $< -o $@ -DSFMT_MEXP=607
 
 clean:
 	rm -rf *.o $(BIN) buildatlas test items_bin $(RESOURCE_FILES)

@@ -42,7 +42,7 @@ long filename_size(const char* filename) {
 
 char* filename_slurp(const char* filename) {
   long size = filename_size(filename);
-  char* data = malloc(size + 1);
+  char* data = (char*)malloc(size + 1);
   data[size] = '\0';
 
   FILE* f = fopen(filename, "r");

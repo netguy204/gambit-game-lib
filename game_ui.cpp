@@ -19,7 +19,7 @@ typedef enum {
   EP_MAX
 } EightPatchElement;
 
-char* eight_patch_names[EP_MAX] = {
+const char* eight_patch_names[EP_MAX] = {
   "8patch_0.png",
   "8patch_1.png",
   "8patch_2.png",

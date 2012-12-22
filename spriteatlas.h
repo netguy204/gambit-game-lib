@@ -21,7 +21,7 @@ typedef struct SpriteAtlas_ {
   struct SpriteAtlasEntry_ entries[0];
 } *SpriteAtlas;
 
-SpriteAtlas spriteatlas_load(char* datafile, char* imgfile);
+SpriteAtlas spriteatlas_load(const char* datafile, const char* imgfile);
 void spriteatlas_free(SpriteAtlas atlas);
 int spriteatlas_index(SpriteAtlasEntry entry);
 SpriteAtlasEntry spriteatlas_find(SpriteAtlas atlas, const char* name);

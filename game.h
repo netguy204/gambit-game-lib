@@ -4,45 +4,73 @@
 #include "platform.h"
 #include "testlib.h"
 
-typedef struct CInput_ {
-  struct Component_ _;
+class CInput : public Component {
+ public:
+  OBJECT_PROTO(CInput);
+
+  CInput();
+  CInput(GO* go);
+
+  virtual void update(float dt);
+
   InputState state;
   int fire_pressed;
   int facing;
-} *CInput;
+};
 
-const void* CInputObject();
+class CLeftAndRight : public Component {
+ public:
+  OBJECT_PROTO(CLeftAndRight);
 
-typedef struct CLeftAndRight_ {
-  struct Component_ _;
+  CLeftAndRight();
+  CLeftAndRight(GO* go, float minx, float maxx);
+
+  virtual void update(float dt);
+
   float minx, maxx;
-} *CLeftAndRight;
+};
 
-const void* CLeftAndRightObject();
+class CTimer : public Component {
+ public:
+  OBJECT_PROTO(CTimer);
 
-typedef struct CTimer_ {
-  struct Component_ _;
+  CTimer();
+  CTimer(GO* go, float time_remaining, void* payload);
+
+  virtual void update(float dt);
+
   void* expire_payload;
   float time_remaining;
-} *CTimer;
+};
 
-const void* CTimerObject();
+class CBombBehavior : public Component {
+ public:
+  OBJECT_PROTO(CBombBehavior);
 
-typedef struct CBombBehavior_ {
-  struct Component_ _;
+  CBombBehavior();
+  CBombBehavior(GO* go);
+
+  virtual void update(float dt);
+
   int state;
-} *CBombBehavior;
+};
 
-const void* CBombBehaviorObject();
+class CTestDisplay : public Component {
+ public:
+  OBJECT_PROTO(CTestDisplay);
 
-const void* CTestDisplayObject();
+  CTestDisplay();
+  CTestDisplay(GO* go);
+
+  virtual void update(float dt);
+};
 
 void game_init();
 void game_shutdown();
 
-GO platform_make(float x, float y, float w, float h);
-GO slidingplatform_make(float x, float y, float w, float h, float speed,
-                        float minx, float maxx);
-GO bomb_make(Vector pos, Vector vel);
+GO* platform_make(float x, float y, float w, float h);
+GO* slidingplatform_make(float x, float y, float w, float h, float speed,
+                         float minx, float maxx);
+GO* bomb_make(Vector pos, Vector vel);
 
 #endif

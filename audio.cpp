@@ -19,7 +19,7 @@ void playlistsample_free(PlayListSample pls) {
 }
 
 PlayList playlist_make() {
-  PlayList pl = malloc(sizeof(struct PlayList_));
+  PlayList pl = (PlayList)malloc(sizeof(struct PlayList_));
   pl->head = NULL;
   pl->next_sample = 0;
   return pl;

@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 
-SpriteAtlas spriteatlas_load(char* datafilename, char* imgfilename) {
+SpriteAtlas spriteatlas_load(const char* datafilename, const char* imgfilename) {
   FILE* datafile = fopen(datafilename, "r");
   if(datafile == NULL) fail_exit("failed to open %s", datafilename);
 
@@ -13,7 +13,7 @@ SpriteAtlas spriteatlas_load(char* datafilename, char* imgfilename) {
   int length = ftell(datafile);
   fseek(datafile, 0L, SEEK_SET);
 
-  SpriteAtlas atlas = malloc(sizeof(struct SpriteAtlas_) + length);
+  SpriteAtlas atlas = (SpriteAtlas)malloc(sizeof(struct SpriteAtlas_) + length);
   atlas->nentries = length / sizeof(struct SpriteAtlasEntry_);
 
   // slurp in the data

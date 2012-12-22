@@ -17,7 +17,7 @@ void gl_check_(const char * msg) {
   GLenum error = glGetError();
   if(error == GL_NO_ERROR) return;
 
-  char* e_msg;
+  const char* e_msg;
   switch(error) {
   case GL_INVALID_ENUM:
     e_msg = "GL_INVALID_ENUM";
@@ -98,7 +98,7 @@ int renderer_link_shader(const char* vertexname, const char* fragmentname, ...) 
   va_list ap;
   va_start(ap, fragmentname);
   while(1) {
-    ProgramParameters param = va_arg(ap, ProgramParameters);
+    ProgramParameters param = (ProgramParameters)va_arg(ap, int);
     if(param == GLPARAM_DONE) break;
 
     const char* name = va_arg(ap, char*);
@@ -194,7 +194,8 @@ void renderer_finish_image_load(ImageResource resource) {
 }
 
 void renderer_finish_image_free(void* texturep) {
-  GLuint texture = (GLuint)texturep;
+  intptr_t big = (intptr_t)texturep;
+  GLuint texture = (GLuint)big;
   glDeleteTextures(1, &texture);
 }
 
@@ -207,8 +208,8 @@ void spritelist_render_to_screen(SpriteList list) {
   int ntris = nquads * 2;
   int nverts = 3 * ntris;
 
-  GLfloat* verts = stack_allocator_alloc(gldata_allocator, sizeof(float) * nverts * 3);
-  GLfloat* texs = stack_allocator_alloc(gldata_allocator, sizeof(float) * nverts * 2);
+  GLfloat* verts = (GLfloat*)stack_allocator_alloc(gldata_allocator, sizeof(float) * nverts * 3);
+  GLfloat* texs = (GLfloat*)stack_allocator_alloc(gldata_allocator, sizeof(float) * nverts * 2);
 
   int vert_idx = 0;
   int tex_idx = 0;

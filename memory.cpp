@@ -39,7 +39,7 @@ FixedAllocator fixed_allocator_make(size_t obj_size, unsigned int n,
   for(ii = 0; ii < n; ++ii) {
     *(void**)mem = allocator->first_free;
     allocator->first_free = mem;
-    mem += obj_size;
+    mem = (char*)mem + obj_size;
   }
 
   return allocator;
@@ -112,12 +112,12 @@ void stack_allocator_release(StackAllocator allocator) {
 }
 
 CircularBuffer circularbuffer_make(size_t bytes) {
-  CircularBuffer buffer = malloc(sizeof(struct CircularBuffer_));
+  CircularBuffer buffer = (CircularBuffer)malloc(sizeof(struct CircularBuffer_));
   buffer->read_index = 0;
   buffer->write_index = 0;
   buffer->size = bytes;
   buffer->filled = 0;
-  buffer->data = malloc(bytes);
+  buffer->data = (char*)malloc(bytes);
   return buffer;
 }
 

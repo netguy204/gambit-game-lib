@@ -1,4 +1,4 @@
-C_SRC=testlib_rpi.c audio_rpi.c joystick.c
+CPP_SRC=testlib_rpi.cpp audio_rpi.cpp joystick.cpp
 BIN=pimain
 
 # from https://github.com/raspberrypi/firmware/blob/master/opt/vc/src/hello_pi/Makefile.include
@@ -9,10 +9,10 @@ LDFLAGS+=-L$(SDKSTAGE)/opt/vc/lib/ -lGLESv2 -lEGL -lbcm_host -lvcos -lutil -L/op
 include Common.mk
 
 %.o: %.c
-	@rm -f $@ 
+	@rm -f $@
 	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@ -Wno-deprecated-declarations
 
 # testlib needs c99 enabled for the FOREACH macro to be implementable
 testlib.o: testlib.c
-	@rm -f $@ 
+	@rm -f $@
 	$(CC) -std=c99 $(CFLAGS) $(INCLUDES) -c $< -o $@ -Wno-deprecated-declarations

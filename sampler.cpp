@@ -21,7 +21,7 @@ float *sin_table;
 void sampler_init() {
 #ifdef SIN_TABLE
   int ii;
-  sin_table = malloc(sizeof(float) * TABLE_SIZE);
+  sin_table = (float*)malloc(sizeof(float) * TABLE_SIZE);
 
   for(ii = 0; ii < TABLE_SIZE; ++ii) {
     float factor = (float)ii/TABLE_SIZE;
@@ -140,10 +140,10 @@ Filter filter_make(float* as, int na, float* bs, int nb) {
   filter->nb = nb;
   filter->xi = 0;
   filter->yi = 0;
-  filter->as = malloc(na * sizeof(float));
-  filter->xs = malloc(na * sizeof(int16_t));
-  filter->bs = malloc(nb * sizeof(float));
-  filter->ys = malloc(nb * sizeof(int16_t));
+  filter->as = (float*)malloc(na * sizeof(float));
+  filter->xs = (int16_t*)malloc(na * sizeof(int16_t));
+  filter->bs = (float*)malloc(nb * sizeof(float));
+  filter->ys = (int16_t*)malloc(nb * sizeof(int16_t));
 
   memcpy(filter->as, as, na * sizeof(float));
   memcpy(filter->bs, bs, nb * sizeof(float));

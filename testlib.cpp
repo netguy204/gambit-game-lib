@@ -106,7 +106,7 @@ int image_height(ImageResource resource) {
   return resource->h;
 }
 
-ImageResource image_load(char * file) {
+ImageResource image_load(const char * file) {
   int w, h, channels;
   unsigned char *data = stbi_load(file, &w, &h, &channels, 0);
 
@@ -179,7 +179,7 @@ long clock_seconds_to_cycles(float seconds) {
 }
 
 Sprite frame_make_sprite() {
-  Sprite sprite = frame_alloc(sizeof(struct Sprite_));
+  Sprite sprite = (Sprite)frame_alloc(sizeof(struct Sprite_));
   sprite->angle = 0.0f;
   sprite->originX = 0.0f;
   sprite->originY = 0.0f;
@@ -195,7 +195,7 @@ Sprite frame_make_sprite() {
 }
 
 SpriteList frame_spritelist_append(SpriteList rest, Sprite sprite) {
-  SpriteList list = frame_alloc(sizeof(struct SpriteList_));
+  SpriteList list = (SpriteList)frame_alloc(sizeof(struct SpriteList_));
   list->node.next = (LLNode)rest;
   list->sprite = sprite;
 
@@ -218,7 +218,7 @@ extern void rect_render_to_screen(ColoredRect rect);
 
 void rect_enqueue_for_screen(ColoredRect rect) {
   // copy for caller convenience (this is really a debugging routine)
-  ColoredRect new_rect = frame_alloc(sizeof(struct ColoredRect_));
+  ColoredRect new_rect = (ColoredRect)frame_alloc(sizeof(struct ColoredRect_));
   memcpy(new_rect, rect, sizeof(struct ColoredRect_));
   renderer_enqueue(rect_render_to_screen, new_rect);
 }
@@ -227,7 +227,7 @@ extern void filledrect_render_to_screen(ColoredRect rect);
 
 void filledrect_enqueue_for_screen(ColoredRect rect) {
   // copy for caller convenience (this is really a debugging routine)
-  ColoredRect new_rect = frame_alloc(sizeof(struct ColoredRect_));
+  ColoredRect new_rect = (ColoredRect)frame_alloc(sizeof(struct ColoredRect_));
   memcpy(new_rect, rect, sizeof(struct ColoredRect_));
   renderer_enqueue(filledrect_render_to_screen, new_rect);
 }

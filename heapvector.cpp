@@ -8,11 +8,11 @@ void heapvector_init(HeapVector hv) {
   size_t init_alloc = 4096;
   hv->data_bytes = 0;
   hv->alloc_bytes = init_alloc;
-  hv->data = malloc(init_alloc);
+  hv->data = (char*)malloc(init_alloc);
 }
 
 HeapVector heapvector_make() {
-  HeapVector result = malloc(sizeof(struct HeapVector_));
+  HeapVector result = (HeapVector)malloc(sizeof(struct HeapVector_));
   heapvector_init(result);
 
   return result;
@@ -29,7 +29,7 @@ void heapvector_free(HeapVector hv) {
 
 void heapvector_grow(HeapVector hv, size_t new_alloc) {
   hv->alloc_bytes = new_alloc;
-  hv->data = realloc(hv->data, new_alloc);
+  hv->data = (char*)realloc(hv->data, new_alloc);
   assert(hv->data);
 }
 
@@ -52,11 +52,11 @@ void * heapvector_pop(HeapVector hv, size_t size) {
 }
 
 BinaryHeap binaryheap_make(size_t elem_size, BinaryHeapComparison comparison) {
-  BinaryHeap result = malloc(sizeof(struct BinaryHeap_));
+  BinaryHeap result = (BinaryHeap)malloc(sizeof(struct BinaryHeap_));
   heapvector_init(&result->vector);
   result->comparison = comparison;
   result->element_size = elem_size;
-  result->tmp_swap = malloc(elem_size);
+  result->tmp_swap = (char*)malloc(elem_size);
   return result;
 }
 

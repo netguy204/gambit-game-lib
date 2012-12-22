@@ -8,7 +8,7 @@
 #include <math.h>
 
 PathElement pathelement_make(StackAllocator allocator) {
-  return stack_allocator_alloc(allocator, sizeof(struct PathElement_));
+  return (PathElement)stack_allocator_alloc(allocator, sizeof(struct PathElement_));
 }
 
 void vector_path_direction(Vector dir, TileMap map, Path path, int test0, int pathdir) {
@@ -253,7 +253,7 @@ void pathfinder_simplifypath(TileMap map, int* steps, int *nsteps) {
 
 int* pathfinder_findpath(TileMap map, int p1, int p2, int* count) {
   int sz = tilemap_size(map);
-  int8_t* visited = malloc(sz);
+  int8_t* visited = (int8_t*)malloc(sz);
   memset(visited, 0, sz);
 
   StackAllocator allocator = stack_allocator_make(sizeof(struct PathElement_) * sz,
@@ -264,7 +264,7 @@ int* pathfinder_findpath(TileMap map, int p1, int p2, int* count) {
 
   int* path = NULL;
   if(result) {
-    path = malloc(sizeof(int) * (result->distance + 1));
+    path = (int*)malloc(sizeof(int) * (result->distance + 1));
     int ii = 0;
     while(result) {
       path[ii++] = result->index;
@@ -284,12 +284,12 @@ int* pathfinder_findpath(TileMap map, int p1, int p2, int* count) {
 
 PairwisePaths pathfinder_findpairwise(TileMap map, TilePosition positions, int npositions) {
   int npairwise = (npositions * (npositions - 1)) / 2;
-  PairwisePaths result = malloc(sizeof(struct PairwisePaths_) + npairwise * sizeof(struct Path_));
+  PairwisePaths result = (PairwisePaths)malloc(sizeof(struct PairwisePaths_) + npairwise * sizeof(struct Path_));
   result->npaths = npairwise;
-  result->lengths = malloc(sizeof(int) * npairwise);
+  result->lengths = (int*)malloc(sizeof(int) * npairwise);
 
   int sz = tilemap_size(map);
-  int8_t* visited = malloc(sz);
+  int8_t* visited = (int8_t*)malloc(sz);
   memset(visited, 0, sz);
 
   StackAllocator allocator = stack_allocator_make(sizeof(struct PathElement_) * sz,
@@ -324,7 +324,7 @@ PairwisePaths pathfinder_findpairwise(TileMap map, TilePosition positions, int n
       PathElement element = pathfinder_findpath2(map, idx1, idx2, visited, key, candidates, allocator);
 
       int length = element->distance + 1;
-      int* path = malloc(sizeof(int) * length);
+      int* path = (int*)malloc(sizeof(int) * length);
 
       int kk = 0;
       while(element) {

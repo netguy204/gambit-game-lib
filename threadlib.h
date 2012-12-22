@@ -26,7 +26,7 @@ typedef struct ThreadBarrier_ {
   int seq_no; // number of times we've waited at this barrier, overflow ok
 } *ThreadBarrier;
 
-ThreadBarrier threadbarrier_make();
+ThreadBarrier threadbarrier_make(int nthreads);
 void threadbarrier_free(ThreadBarrier barrier);
 
 void threadbarrier_wait(ThreadBarrier barrier);
