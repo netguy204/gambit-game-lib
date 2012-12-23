@@ -24,7 +24,6 @@ int CPlatformerObject_issupported(CPlatformer* plat) {
   if(!c1) return 0;
 
   CCollidable* c2 = (CCollidable*)go2->find_component(&CCollidable::Type);
-  if(!c2) return 0; // why could this happen?
 
   struct Rect_ r1, r2;
   c1->rect(&r1);

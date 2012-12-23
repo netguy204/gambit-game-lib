@@ -9,20 +9,6 @@ OBJECT_IMPL(World);
 World::World() {
 }
 
-void world_foreach(World* world, Vector pos, float rad, WorldCallback callback, void* udata) {
-  DLLNode node = world->children.head;
-  float rad2 = rad * rad;
-  while(node) {
-    GO* go = (GO*)container_of(node, Agent, node);
-    Vector_ p;
-    go->pos(&p);
-    if(vector_dist2(&p, pos) < rad2 &&  callback(go, udata)) {
-      return;
-    }
-    node = node->next;
-  }
-}
-
 void world_add_go(World* world, GO* go) {
   Message* message = message_make(NULL, COLLECTIVE_ADD_AGENT, go);
   message_postinbox(world, message);

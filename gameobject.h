@@ -60,10 +60,6 @@ class World : public Collective {
   DLL_DECLARE(CCollidable, collidable_node) collidables;
 };
 
-typedef int(*WorldCallback)(GO* go, void* udata);
-void world_foreach(World* world, Vector pos, float rad,
-                   WorldCallback callback, void* udata);
-
 void world_notify_collisions(World* world);
 
 
@@ -109,5 +105,20 @@ class GO : public Agent {
 };
 
 void go_set_parent(GO* child, GO* parent);
+
+template<typename Func>
+void world_foreach(World* world, Vector pos, float rad, Func func) {
+  DLLNode node = world->children.head;
+  float rad2 = rad * rad;
+  while(node) {
+    GO* go = (GO*)world->children.to_element(node);
+    Vector_ p;
+    go->pos(&p);
+    if(vector_dist2(&p, pos) < rad2 &&  func(go)) {
+      return;
+    }
+    node = node->next;
+  }
+}
 
 #endif

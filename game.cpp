@@ -147,8 +147,17 @@ void CBombBehavior::update(float dt) {
     this->state = BOMB_EXPLODING;
     Vector_ pos;
     bomb->pos(&pos);
-    world_foreach(bomb->world, &pos, bomb_dim * bomb_chain_factor,
-                  delete_all_but_player, bomb);
+    world_foreach(bomb->world, &pos, bomb_dim * bomb_chain_factor, [&](GO* item) -> int {
+        if(item == bomb) return 0;
+        if(item->ttag == TAG_PLAYER) return 0;
+        if(!item->find_component(&CCollidable::Type)) return 0;
+        if(item->ttag == TAG_BOMB) {
+          bomb_detonate(item);
+        } else if(item->ttag != TAG_PLATFORM) {
+          agent_send_terminate(item, world);
+        }
+        return 0;
+      });
   } else if(this->state == BOMB_EXPLODING) {
     // destroy the bomb
     this->state = BOMB_DONE;
@@ -366,7 +375,12 @@ void game_end(long delta, InputState state) {
   if(endgame_timeout <= 0) {
     win_state = STATE_START;
     struct Vector_ center = {screen_width / 2.0f, screen_height / 2.0f};
-    world_foreach(world, &center, INFINITY, delete_all_but_player, NULL);
+    world_foreach(world, &center, INFINITY, [] (GO* go) -> int {
+        if(go->ttag != TAG_PLAYER && go->ttag != TAG_PLATFORM) {
+          agent_send_terminate(go, world);
+        }
+        return 0;
+      });
     set_game_step(game_step);
   }
 }
