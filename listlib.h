@@ -48,6 +48,16 @@ class SimpleDLL {
   int is_empty();
   void insert_after(DLLNode target, DLLNode addition);
   void insert_before(DLLNode target, DLLNode addition);
+
+  template<typename Func>
+  void foreach_node(Func func) {
+    DLLNode node = this->head;
+    while(node) {
+      DLLNode next = node->next;
+      if(func(node)) return;
+      node = next;
+    }
+  }
 };
 
 template<typename E, int OFFSET>

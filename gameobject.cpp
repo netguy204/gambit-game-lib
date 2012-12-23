@@ -34,21 +34,16 @@ GO::GO(World* world) {
 }
 
 GO::~GO() {
-  DLLNode node = this->components.head;
-  while(node) {
-    DLLNode next = node->next;
-    Component* comp = this->components.to_element(node);
-    delete comp;
-    node = next;
-  }
+  this->components.foreach([](Component* comp) -> int {
+      delete comp;
+      return 0;
+    });
 
-  node = this->transform_children.head;
-  while(node) {
-    DLLNode next = node->next;
-    GO* child = container_of(node, GO, transform_siblings);
-    go_set_parent(child, NULL);
-    node = next;
-  }
+  this->transform_children.foreach_node([](DLLNode node) -> int {
+      GO* child = container_of(node, GO, transform_siblings);
+      go_set_parent(child, NULL);
+      return 0;
+    });
 
   go_set_parent(this, NULL);
 }
@@ -59,13 +54,10 @@ void GO::update(float dt) {
   vector_scale(&dx, &this->_vel, dt);
   vector_add(&this->_pos, &this->_pos, &dx);
 
-  DLLNode node = this->components.head;
-  while(node) {
-    DLLNode next = node->next;
-    Component* comp = this->components.to_element(node);
-    comp->update(dt);
-    node = next;
-  }
+  this->components.foreach([=](Component* comp) -> int {
+      comp->update(dt);
+      return 0;
+    });
 
   // clear the inbox and handle terminate messages
   foreach_inboxmessage(this, NULL, NULL);
@@ -90,15 +82,15 @@ void GO::vel(Vector vel) {
 }
 
 Component* GO::find_component(const TypeInfo* info) {
-  DLLNode node = this->components.head;
-  while(node) {
-    Component* comp = this->components.to_element(node);
-    if(comp->typeinfo()->isInstanceOf(info)) {
-      return comp;
-    }
-    node = node->next;
-  }
-  return NULL;
+  Component* result = NULL;
+  this->components.foreach([&](Component* comp) -> int {
+      if(comp->typeinfo()->isInstanceOf(info)) {
+        result = comp;
+        return 1;
+      }
+      return 0;
+    });
+  return result;
 }
 
 void go_set_parent(GO* child, GO* parent) {
@@ -128,10 +120,6 @@ void go_set_parent(GO* child, GO* parent) {
     child->_vel = cvel;
     child->transform_parent = NULL;
   }
-}
-
-World* go_world(GO* go) {
-  return go->world;
 }
 
 OBJECT_IMPL(Component);

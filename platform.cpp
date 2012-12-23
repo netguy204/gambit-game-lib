@@ -36,44 +36,41 @@ void CPlatformerObject_lookforsupport(CPlatformer* plat, float dt) {
   GO* go = plat->go;
 
   // look for a collision message
-  DLLNode node = go->inbox.head;
-  while(node) {
-    Message* message = go->inbox.to_element(node);
-    if(message->kind == MESSAGE_COLLIDING) {
-      // is it a kind of collidable we can stick to?
-      CCollidable* cself = (CCollidable*)message->data2;
-      CCollidable* cother = (CCollidable*)message->data;
-      GO* other_go = cother->go;
+  go->inbox.foreach([&](Message* message) -> int {
+      if(message->kind == MESSAGE_COLLIDING) {
+        // is it a kind of collidable we can stick to?
+        CCollidable* cself = (CCollidable*)message->data2;
+        CCollidable* cother = (CCollidable*)message->data;
+        GO* other_go = cother->go;
 
-      if(cother->mask & plat->platform_mask) {
-        // resolve the collision
-        struct Vector_ resolution;
-        struct Rect_ rself, rother;
-        cself->rect(&rself);
-        cother->rect(&rother);
-        resolve_interpenetration(&resolution, &rself, &rother);
-        vector_add(&go->_pos, &go->_pos, &resolution);
+        if(cother->mask & plat->platform_mask) {
+          // resolve the collision
+          struct Vector_ resolution;
+          struct Rect_ rself, rother;
+          cself->rect(&rself);
+          cother->rect(&rother);
+          resolve_interpenetration(&resolution, &rself, &rother);
+          vector_add(&go->_pos, &go->_pos, &resolution);
 
-        // zero our velocity in the collision direction
-        if(fabs(resolution.x) > 0) {
-          go->_vel.x = 0;
-        } else {
-          go->_vel.y = 0;
+          // zero our velocity in the collision direction
+          if(fabs(resolution.x) > 0) {
+            go->_vel.x = 0;
+          } else {
+            go->_vel.y = 0;
+          }
+
+          // check for support
+          if(is_supported(&rself, &rother)) {
+            // parent this object to the supporter
+            go_set_parent(go, other_go);
+          }
+
+          // done
+          return 1;
         }
-
-        // check for support
-        if(is_supported(&rself, &rother)) {
-          // parent this object to the supporter
-          go_set_parent(go, other_go);
-        }
-
-        // done
-        return;
       }
-    }
-
-    node = node->next;
-  }
+      return 0;
+    });
 }
 
 void CPlatformer::update(float dt) {

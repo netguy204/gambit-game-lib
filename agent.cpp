@@ -68,13 +68,10 @@ Collective::Collective() {
 
 Collective::~Collective() {
   // we own the lifetimes of our agents so we destroy them too
-  DLLNode node = this->children.head;
-  while(node) {
-    DLLNode next = node->next;
-    Agent* agent = container_of(node, Agent, node);
-    delete agent;
-    node = next;
-  }
+  this->children.foreach([](Agent* agent) -> int {
+      delete agent;
+      return 0;
+    });
 
   heapvector_free(this->sub_dispatchers);
 }
@@ -138,28 +135,24 @@ void agent_send_terminate(Agent* agent, Agent* source) {
 void foreach_outboxmessage(Dispatcher* dispatcher, Agent* agent,
                            OutboxMessageCallback callback, void * udata) {
 
-  DLLNode node = agent->outbox.head;
   int agent_terminating = 0;
 
-  while(node) {
-    DLLNode next = node->next;
-    Message* message = agent->outbox.to_element(node);
+  agent->outbox.foreach([=,&agent_terminating](Message* message) -> int {
+      if(message->kind == MESSAGE_TERMINATING) {
+        if(!callback) {
+          dispatcher_remove_agent(dispatcher, message->source);
+        } else {
+          callback(dispatcher, message, udata);
+        }
 
-    if(message->kind == MESSAGE_TERMINATING) {
-      if(!callback) {
-        dispatcher_remove_agent(dispatcher, message->source);
-      } else {
+        agent_terminating = 1;
+      } else if(!agent_terminating && callback) {
         callback(dispatcher, message, udata);
       }
 
-      agent_terminating = 1;
-    } else if(!agent_terminating && callback) {
-      callback(dispatcher, message, udata);
-    }
-
-    message_report_read(message);
-    node = next;
-  }
+      message_report_read(message);
+      return 0;
+    });
 }
 
 void foreach_dispatcheemessage(Dispatcher* dispatcher, OutboxMessageCallback callback,
@@ -275,12 +268,10 @@ void Collective::update(float dt) {
   }
 
   // update all of our sub-agents
-  DLLNode child = this->children.head;
-  while(child) {
-    Agent* agent = container_of(child, Agent, node);
-    agent->update(dt);
-    child = child->next;
-  }
+  this->children.foreach([=](Agent* agent) -> int {
+      agent->update(dt);
+      return 0;
+    });
 
   // drain the outboxes of our dispatchees
   foreach_dispatcheemessage(this, collective_handle_outboxes, NULL);
