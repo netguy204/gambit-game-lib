@@ -1,6 +1,7 @@
 #include "gameobject.h"
 #include "memory.h"
 #include "config.h"
+#include "testlib.h"
 
 #include <stdarg.h>
 
@@ -203,30 +204,41 @@ int CCollidable::intersect(CCollidable* b) {
   return rect_intersect(&ra, &rb);
 }
 
+struct CollisionRecord {
+  Rect_ rect;
+  CCollidable* collidable;
+};
+
 void world_notify_collisions(World* world) {
-  DLLNode n1 = world->collidables.head;
-  while(n1) {
-    CCollidable* c1 = world->collidables.to_element(n1);
-    GO* g1 = c1->go;
+  const int N = world->collidables.count();
+  CollisionRecord* records = (CollisionRecord*)frame_alloc(sizeof(CollisionRecord) * N);
+  int ii = 0;
+  world->collidables.foreach([&] (CCollidable* collidable) -> int {
+      collidable->rect(&records[ii].rect);
+      records[ii].collidable = collidable;
+      ++ii;
+      return 0;
+    });
 
-    DLLNode n2 = n1->next;
-    while(n2) {
-      CCollidable* c2 = world->collidables.to_element(n2);
+  for(ii = 0; ii < N; ++ii) {
+    for(int jj = ii + 1; jj < N; ++jj) {
+      if(rect_intersect(&records[ii].rect, &records[jj].rect)) {
+        CCollidable* c1 = records[ii].collidable;
+        CCollidable* c2 = records[jj].collidable;
 
-      if((c1->mask & c2->mask) && c1->intersect(c2)) {
-        GO* g2 = c2->go;
+        if((c1->mask & c2->mask) && c1->intersect(c2)) {
+          GO* g1 = c1->go;
+          GO* g2 = c2->go;
 
-        Message* m1 = message_make(g2, MESSAGE_COLLIDING, c2);
-        m1->data2 = c1;
-        message_postinbox(g1, m1);
+          Message* m1 = message_make(g2, MESSAGE_COLLIDING, c2);
+          m1->data2 = c1;
+          message_postinbox(g1, m1);
 
-        Message* m2 = message_make(g1, MESSAGE_COLLIDING, c1);
-        m2->data2 = c2;
-        message_postinbox(g2, m2);
+          Message* m2 = message_make(g1, MESSAGE_COLLIDING, c1);
+          m2->data2 = c2;
+          message_postinbox(g2, m2);
+        }
       }
-
-      n2 = n2->next;
     }
-    n1 = n1->next;
   }
 }
