@@ -1,8 +1,9 @@
 #ifndef SAMPLER_H
 #define SAMPLER
 
-#include <stdint.h>
 #include "config.h"
+
+#include <stdint.h>
 
 #define N_(n,b) (n*b)
 

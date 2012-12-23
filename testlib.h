@@ -12,15 +12,15 @@
  * Functions that deal with objects are prefixed with objectname_
  */
 
-#include <pthread.h>
-#include <stdint.h>
-
 #include "threadlib.h"
 #include "memory.h"
 #include "listlib.h"
 #include "rect.h"
 #include "audio.h"
 #include "config.h"
+
+#include <pthread.h>
+#include <stdint.h>
 
 extern uint32_t screen_width;
 extern uint32_t screen_height;

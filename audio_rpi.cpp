@@ -70,7 +70,7 @@ void native_audio_init() {
   error = OMX_Init();
   assert(error == OMX_ErrorNone);
   
-  ilclient_create_component(client, &audio_render, "audio_render", ILCLIENT_ENABLE_INPUT_BUFFERS | ILCLIENT_DISABLE_ALL_PORTS);
+  ilclient_create_component(client, &audio_render, (char*)"audio_render", (ILCLIENT_CREATE_FLAGS_T)(ILCLIENT_ENABLE_INPUT_BUFFERS | ILCLIENT_DISABLE_ALL_PORTS));
   assert(audio_render != NULL);
   
   // set up the number/size of buffers

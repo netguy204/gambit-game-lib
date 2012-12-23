@@ -2,6 +2,11 @@
 #include "audio.h"
 #include "memory.h"
 
+#include <limits>
+
+const int int16_min = std::numeric_limits<int16_t>::min();
+const int int16_max = std::numeric_limits<int16_t>::max();
+
 PlayList playlist;
 Queue audio_queue;
 Filter global_filter;
@@ -75,11 +80,11 @@ void playlist_fill_buffer(PlayList list, int16_t* buffer, int nsamples) {
         node = (PlayListSample)node->node.next) {
       if(START(node->sampler) > sample) break;
       int16_t sampled = SAMPLE(node->sampler, sample);
-      float normalized = (float)sampled / INT16_MAX;
+      float normalized = (float)sampled / int16_max;
       value = value + normalized - (value * normalized);
     }
 
-    buffer[ii] = INT16_MAX * value; //filter_value(global_filter, value);
+    buffer[ii] = int16_max * value; //filter_value(global_filter, value);
     buffer[ii+1] = buffer[ii];
   }
 

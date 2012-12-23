@@ -2,6 +2,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <memory.h>
+#include <unistd.h>
 
 #include "joystick.h"
 
@@ -44,11 +45,11 @@ js_state joystick_open(const char* device) {
   int fd = open ("/dev/input/js0", O_RDONLY|O_NONBLOCK);
 
   int capacity = 32;
-  js_state state = malloc(sizeof(struct js_state_));
+  js_state state = (js_state)malloc(sizeof(struct js_state_));
   state->num_values = 0;
   state->capacity = capacity;
   state->fileno = fd;
-  state->values = malloc(capacity * sizeof(struct js_event));
+  state->values = (js_event*)malloc(capacity * sizeof(struct js_event));
   memset(state->values, 0, capacity * sizeof(struct js_event));
 
   joystick_update_state(state);
@@ -69,7 +70,7 @@ void joystick_update_state(js_state state) {
     if(slot >= state->num_values) {
       if(slot >= state->capacity) {
 	int new_cap = slot + 1;
-	state->values = realloc(state->values, new_cap * sizeof(struct js_event));
+	state->values = (js_event*)realloc(state->values, new_cap * sizeof(struct js_event));
 	state->capacity = new_cap;
       }
 
