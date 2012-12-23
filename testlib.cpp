@@ -10,7 +10,6 @@ ThreadBarrier render_barrier;
 FixedAllocator clock_allocator;
 FixedAllocator image_resource_allocator;
 StackAllocator frame_allocator;
-FixedAllocator command_allocator;
 CommandQueue* render_queue;
 
 uint32_t screen_width;
@@ -31,7 +30,6 @@ static pthread_t renderer_thread;
 void process_render_command() {
   Command command = render_queue->dequeue();
   command->function(command->data);
-  command_free(command);
 }
 
 static int renderer_running = 0;
@@ -51,7 +49,7 @@ void testlib_init() {
   clock_allocator = fixed_allocator_make(sizeof(struct Clock_), MAX_NUM_CLOCKS, "clock_allocator");
   image_resource_allocator = fixed_allocator_make(sizeof(struct ImageResource_), MAX_NUM_IMAGES, "image_resource_allocator");
   frame_allocator = stack_allocator_make(1024 * 1024, "frame_allocator");
-  command_allocator = fixed_allocator_make(sizeof(struct Command_), MAX_NUM_COMMANDS, "command_allocator");
+
   render_queue = new CommandQueue();
   render_barrier = threadbarrier_make(2);
 }
@@ -233,16 +231,12 @@ void filledrect_enqueue_for_screen(ColoredRect rect) {
 }
 
 Command command_make(CommandFunction function, void* data) {
-  Command command = (Command)fixed_allocator_alloc(command_allocator);
+  Command command = (Command)frame_alloc(sizeof(Command_));
   command->node.next = NULL;
   command->node.prev = NULL;
   command->function = function;
   command->data = data;
   return command;
-}
-
-void command_free(Command command) {
-  fixed_allocator_free(command_allocator, command);
 }
 
 void command_async(CommandQueue* queue, CommandFunction function, void* data) {

@@ -55,14 +55,41 @@ class CBombBehavior : public Component {
   int state;
 };
 
+class CEnemyBehavior : public Component {
+ public:
+  OBJECT_PROTO(CEnemyBehavior);
+
+  CEnemyBehavior();
+  CEnemyBehavior(GO* go);
+
+  virtual void update(float dt);
+
+  int state;
+};
+
 class CTestDisplay : public Component {
  public:
   OBJECT_PROTO(CTestDisplay);
 
   CTestDisplay();
-  CTestDisplay(GO* go);
+  CTestDisplay(GO* go, float r, float g, float b);
 
   virtual void update(float dt);
+
+  float r, g, b;
+};
+
+// probably want all renders to happen after this has done its update
+class CCameraFocus : public Component {
+ public:
+  OBJECT_PROTO(CCameraFocus);
+
+  CCameraFocus();
+  CCameraFocus(GO* go, GO* camera);
+
+  virtual void update(float dt);
+
+  GO* camera;
 };
 
 void game_init();

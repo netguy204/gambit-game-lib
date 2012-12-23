@@ -22,8 +22,7 @@ Agent::Agent() {
 
 Agent::~Agent() {
   // should we do something with the agent's mailboxes?
-  SAFETY(if(this->inbox.head != NULL) fail_exit("agent inbox not empty"));
-  SAFETY(if(this->outbox.head != NULL) fail_exit("agent outbox not empty"));
+  messages_dropall(this);
 }
 
 void Agent::update(float dt) {

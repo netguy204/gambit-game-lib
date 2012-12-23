@@ -38,8 +38,11 @@ float enemy_dim = 48;
 
 World* world;
 struct Random_ rgen;
+
 GO* player_go;
 CInput* player_input;
+
+GO* camera;
 
 SpriteAtlas atlas;
 Clock main_clock;
@@ -51,10 +54,21 @@ int max_enemies = 20;
 int current_n_enemies = 0;
 
 enum Tags {
-  TAG_PLAYER,
-  TAG_BOMB,
-  TAG_PLATFORM
+  TAG_NONE,
+  TAG_PERMANENT
 };
+
+void camera_relative_enqueue(ColoredRect rect) {
+  float dx = floorf(camera->_pos.x);
+  float dy = floorf(camera->_pos.y);
+
+  rect->minx -= dx;
+  rect->maxx -= dx;
+  rect->miny -= dy;
+  rect->maxy -= dy;
+
+  filledrect_enqueue_for_screen(rect);
+}
 
 OBJECT_IMPL(CTimer);
 
@@ -133,6 +147,47 @@ void CBombBehavior::update(float dt) {
     this->state = BOMB_DONE;
     agent_send_terminate(bomb, bomb->world);
   }
+}
+
+OBJECT_IMPL(CEnemyBehavior);
+
+enum EnemyState {
+  ENEMY_FALLING,
+  ENEMY_LANDED
+};
+
+CEnemyBehavior::CEnemyBehavior()
+  : Component(NULL, PRIORITY_ACT), state(ENEMY_FALLING) {
+}
+
+CEnemyBehavior::CEnemyBehavior(GO* go)
+  : Component(go, PRIORITY_ACT), state(ENEMY_FALLING) {
+}
+
+void CEnemyBehavior::update(float dt) {
+  if(this->state == ENEMY_FALLING && this->go->transform_parent) {
+    // when we land, add the left and right behavior
+    this->state = ENEMY_LANDED;
+
+    CCollidable* coll = (CCollidable*)go->transform_parent->find_component(&CCollidable::Type);
+    this->go->_vel.x = enemy_speed;
+    new CLeftAndRight(this->go, -coll->w / 2, coll->w / 2);
+  } else if(this->state == ENEMY_LANDED && !this->go->transform_parent) {
+    // when our platform disappears, go back to falling
+    this->state = ENEMY_FALLING;
+    this->go->_vel.x = 0;
+    CLeftAndRight* lnr = (CLeftAndRight*)go->find_component(&CLeftAndRight::Type);
+    delete lnr;
+  }
+
+  // see if a bomb went off
+  go->inbox.foreach([this](Message* message) -> int {
+      if(message->kind == MESSAGE_EXPLOSION_NEARBY) {
+        agent_send_terminate(go, message->source);
+        return 1;
+      }
+      return 0;
+    });
 }
 
 OBJECT_IMPL(CLeftAndRight);
@@ -219,11 +274,11 @@ void CInput::update(float dt) {
 OBJECT_IMPL(CTestDisplay);
 
 CTestDisplay::CTestDisplay()
-  : Component(NULL, PRIORITY_SHOW) {
+  : Component(NULL, PRIORITY_SHOW), r(1.0), g(0.0), b(1.0) {
 }
 
-CTestDisplay::CTestDisplay(GO* go)
-  : Component(go, PRIORITY_SHOW) {
+CTestDisplay::CTestDisplay(GO* go, float r, float g, float b)
+  : Component(go, PRIORITY_SHOW), r(r), g(g), b(b) {
 }
 
 void CTestDisplay::update(float dt) {
@@ -234,23 +289,86 @@ void CTestDisplay::update(float dt) {
   struct ColoredRect_ rect;
   coll->rect(&rect);
 
-  rect.color[0] = 1.0f;
-  rect.color[1] = 0.0f;
-  rect.color[2] = 0.0f;
+  rect.color[0] = r;
+  rect.color[1] = g;
+  rect.color[2] = b;
   rect.color[3] = 1.0f;
 
-  filledrect_enqueue_for_screen(&rect);
+  camera_relative_enqueue(&rect);
+}
+
+OBJECT_IMPL(CCameraFocus);
+
+CCameraFocus::CCameraFocus()
+  : Component(NULL, PRIORITY_SHOW) {
+}
+
+CCameraFocus::CCameraFocus(GO* go, GO* camera)
+  : Component(go, PRIORITY_SHOW), camera(camera)  {
+}
+
+void CCameraFocus::update(float dt) {
+  CInput* input = (CInput*)go->find_component(&CInput::Type);
+  float facing_offset = screen_width / 4.0f * input->facing;
+  float supported_offset = 0;
+
+  if(input->state->updown) {
+    supported_offset = screen_height / 2.0 * input->state->updown;
+  } else {
+    supported_offset = screen_height / 4.0;
+  }
+
+  if(input->state->leftright) {
+    facing_offset = screen_width / 3.0f * input->state->leftright;
+  }
+
+  Vector_ offset = {screen_width / 2.0f - facing_offset, screen_height / 2.0f - supported_offset};
+  Vector_ desired;
+  go->pos(&desired);
+  vector_sub(&desired, &desired, &offset);
+
+  const float max_v = 600;
+  const float max_dx = max_v * dt;
+
+  Vector_ delta;
+  vector_sub(&delta, &desired, &camera->_pos);
+  float mag = vector_mag(&delta);
+  if(mag < max_dx) {
+    // snap
+    camera->_pos = desired;
+    return;
+  }
+
+  vector_scale(&delta, &delta, max_dx / mag);
+  vector_add(&camera->_pos, &camera->_pos, &delta);
+
+  /*
+  Vector_ xv;
+  vector_sub(&xv, &desired, &camera->_pos);
+  float x = vector_mag(&xv);
+
+  const float mass = 1;
+  Vector_ spring_dv;
+  const float kfactor = 10;
+  vector_scale(&spring_dv, &xv, kfactor / mass * dt);
+
+  Vector_ drag_dv;
+  const float dfactor = 9;
+  float speed = vector_mag(&camera->_vel);
+  vector_scale(&drag_dv, &camera->_vel, -dfactor / mass * dt);
+
+  vector_add(&camera->_vel, &camera->_vel, &spring_dv);
+  vector_add(&camera->_vel, &camera->_vel, &drag_dv);
+  */
 }
 
 GO* platform_make(float x, float y, float w, float h) {
   GO* go = new GO(world);
   go->_pos.x = x;
   go->_pos.y = y;
-  go->_vel.x = 0;
-  go->_vel.y = 0;
-  go->ttag = TAG_PLATFORM;
+  go->ttag = TAG_PERMANENT;
 
-  new CTestDisplay(go);
+  new CTestDisplay(go, 0.0, 0.7, 0.0);
   new CCollidable(go, w, h);
   return go;
 }
@@ -264,26 +382,45 @@ GO* slidingplatform_make(float x, float y, float w, float h, float speed,
   return go;
 }
 
+GO* enemy_make(float x, float y) {
+  GO* go = new GO(world);
+  go->_pos.x = x;
+  go->_pos.y = y;
+
+  new CTestDisplay(go, 0.7, 0.0, 0.5);
+  new CCollidable(go, enemy_dim, enemy_dim);
+  new CPlatformer(go, player_gravity_accel);
+  new CEnemyBehavior(go);
+
+  return go;
+}
+
 void player_setup() {
+  camera = new GO(world);
+  camera->_pos.x = 100;
+  camera->_pos.y = 100;
+  vector_zero(&camera->_vel);
+
   player_go = new GO(world);
   player_go->_pos.x = 100;
   player_go->_pos.y = 100;
-  player_go->ttag = TAG_PLAYER;
+  player_go->ttag = TAG_PERMANENT;
 
-  new CTestDisplay(player_go);
+  new CTestDisplay(player_go, 0.0, 0.0, 1.0);
   new CCollidable(player_go, player_width, player_height);
   new CPlatformer(player_go, player_gravity_accel);
+  new CCameraFocus(player_go, camera);
+
   player_input = new CInput(player_go);
 }
 
 GO* bomb_make(Vector pos, Vector vel) {
   GO* go = new GO(world);
 
-  go->ttag = TAG_BOMB;
   go->_pos = *pos;
   go->_vel = *vel;
 
-  new CTestDisplay(go);
+  new CTestDisplay(go, 1.0, 0.0, 0.0);
   new CCollidable(go, bomb_dim, bomb_dim);
   new CPlatformer(go, bomb_gravity_accel);
   new CBombBehavior(go);
@@ -311,6 +448,12 @@ void game_init() {
   platform_make(screen_width / 2, 32, screen_width, 64);
   slidingplatform_make(300, 300, 256, 64, 100, 128, 1024);
   slidingplatform_make(600, 600, 256, 64, 100, 128, 1024);
+  slidingplatform_make(300, 900, 256, 64, 100, 128, 1024);
+  slidingplatform_make(600, 1200, 256, 64, 100, 128, 1024);
+  slidingplatform_make(300, 1500, 256, 64, 100, 128, 1024);
+  slidingplatform_make(600, 1800, 256, 64, 100, 128, 1024);
+  slidingplatform_make(300, 2100, 256, 64, 100, 128, 1024);
+  slidingplatform_make(600, 2400, 256, 64, 100, 128, 1024);
 
   set_game_step(game_step);
 }
@@ -346,7 +489,7 @@ void game_end(long delta, InputState state) {
     win_state = STATE_START;
     struct Vector_ center = {screen_width / 2.0f, screen_height / 2.0f};
     world_foreach(world, &center, INFINITY, [] (GO* go) -> int {
-        if(go->ttag != TAG_PLAYER && go->ttag != TAG_PLATFORM) {
+        if(go->ttag != TAG_PERMANENT) {
           agent_send_terminate(go, world);
         }
         return 0;
@@ -360,6 +503,8 @@ void game_step(long delta, InputState state) {
   enemy_timer -= dt;
   if(enemy_timer <= 0 && current_n_enemies < max_enemies) {
     enemy_timer = enemy_period;
+
+    enemy_make(screen_width / 2, screen_height * 4);
     // add enemy
   }
 
