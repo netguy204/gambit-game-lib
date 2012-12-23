@@ -102,6 +102,18 @@ void GO::vel(Vector vel) {
   }
 }
 
+Component* GO::find_component(const TypeInfo* info) {
+  DLLNode node = this->components.head;
+  while(node) {
+    Component* comp = this->components.to_element(node);
+    if(comp->typeinfo()->isInstanceOf(info)) {
+      return comp;
+    }
+    node = node->next;
+  }
+  return NULL;
+}
+
 void go_set_parent(GO* child, GO* parent) {
   struct Vector_ cpos, ppos;
   struct Vector_ cvel, pvel;
@@ -138,11 +150,11 @@ World* go_world(GO* go) {
 OBJECT_IMPL(Component);
 
 Component::Component()
-  : parent_go(NULL) {
+  : go(NULL) {
 }
 
 Component::Component(GO* go)
-  : parent_go(NULL) {
+  : go(NULL) {
 
   if(go) {
     set_parent(go);
@@ -150,8 +162,8 @@ Component::Component(GO* go)
 }
 
 Component::~Component() {
-  if(this->parent_go) {
-    this->parent_go->components.remove(this);
+  if(this->go) {
+    this->go->components.remove(this);
   }
 }
 
@@ -159,31 +171,15 @@ void Component::update(float dt) {
 }
 
 void Component::set_parent(GO* go) {
-  if(this->parent_go) {
-    this->parent_go->components.remove(this);
+  if(this->go) {
+    this->go->components.remove(this);
   }
 
-  this->parent_go = go;
+  this->go = go;
 
   if(go) {
-    this->parent_go->components.add_head(this);
+    this->go->components.add_head(this);
   }
-}
-
-GO* component_to_go(Component* comp) {
-  return comp->parent_go;
-}
-
-Component* go_find_component(GO* go, const TypeInfo* info) {
-  DLLNode node = go->components.head;
-  while(node) {
-    Component* comp = go->components.to_element(node);
-    if(comp->typeinfo()->isInstanceOf(info)) {
-      return comp;
-    }
-    node = node->next;
-  }
-  return NULL;
 }
 
 OBJECT_IMPL(CCollidable);
@@ -200,14 +196,14 @@ CCollidable::CCollidable(GO* go, float w, float h)
 }
 
 CCollidable::~CCollidable() {
-  GO* go = this->parent_go;
+  GO* go = this->go;
   if(go) {
     go->world->collidables.remove(this);
   }
 }
 
 void CCollidable::rect(Rect rect) {
-  GO* go = this->parent_go;
+  GO* go = this->go;
 
   struct Vector_ pos;
   go->pos(&pos);
@@ -225,14 +221,14 @@ void world_notify_collisions(World* world) {
   DLLNode n1 = world->collidables.head;
   while(n1) {
     CCollidable* c1 = world->collidables.to_element(n1);
-    GO* g1 = component_to_go(c1);
+    GO* g1 = c1->go;
 
     DLLNode n2 = n1->next;
     while(n2) {
       CCollidable* c2 = world->collidables.to_element(n2);
 
       if((c1->mask & c2->mask) && c1->intersect(c2)) {
-        GO* g2 = component_to_go(c2);
+        GO* g2 = c2->go;
 
         Message* m1 = message_make(g2, MESSAGE_COLLIDING, c2);
         m1->data2 = c1;

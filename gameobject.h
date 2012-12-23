@@ -28,11 +28,8 @@ class Component : public Object {
   void set_parent(GO* go);
 
   struct DLLNode_ node;
-  GO* parent_go;
+  GO* go;
 };
-
-GO* component_to_go(Component* comp);
-Component* go_find_component(GO* go, const TypeInfo* info);
 
 // registers a GO with the collidables section of the world. GO
 // components will get COLLIDED messages letting them known when they
@@ -101,6 +98,8 @@ class GO : public Agent {
 
   void pos(Vector p);
   void vel(Vector v);
+  Component* find_component(const TypeInfo* info);
+
 
   // the world we're a part of
   World* world;

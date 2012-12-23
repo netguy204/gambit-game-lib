@@ -70,7 +70,6 @@ void CTimer::update(float dt) {
   this->time_remaining -= dt;
 
   if(this->time_remaining <= 0) {
-    GO* go = component_to_go(this);
     Message* message = message_make(go, MESSAGE_TIMER_EXPIRED, this->expire_payload);
     // need to add component priorities for this to be effective
     message_postinbox(go, message);
@@ -96,7 +95,7 @@ enum BombStates {
 };
 
 void bomb_detonate(GO* bomb) {
-  CTimer* timer = (CTimer*)go_find_component(bomb, &CTimer::Type);
+  CTimer* timer = (CTimer*)bomb->find_component(&CTimer::Type);
   if(timer && timer->time_remaining > bomb_explode_start) {
     timer->time_remaining = bomb_explode_start;
   }
@@ -107,7 +106,7 @@ int delete_all_but_player(GO* go, void* udata) {
   if(go->ttag == TAG_PLAYER) return 0;
 
   // ignore non-collidables
-  CCollidable* coll = (CCollidable*)go_find_component(go, &CCollidable::Type);
+  CCollidable* coll = (CCollidable*)go->find_component(&CCollidable::Type);
   if(!coll) return 0;
 
   // destroy what we hit
@@ -132,7 +131,7 @@ CBombBehavior::CBombBehavior(GO* go)
 }
 
 void CBombBehavior::update(float dt) {
-  GO* bomb = this->parent_go;
+  GO* bomb = this->go;
 
   // if we're supported then zero our x so that we're sticky
   if(bomb->transform_parent) {
@@ -168,8 +167,6 @@ CLeftAndRight::CLeftAndRight(GO* go, float minx, float maxx)
 }
 
 void CLeftAndRight::update(float dt) {
-  GO* go = component_to_go(this);
-
   if(go->_vel.x > 0) {
     if(go->_pos.x > this->maxx) {
       go->_pos.x = this->maxx;
@@ -198,7 +195,6 @@ CInput::CInput(GO* go)
 }
 
 void CInput::update(float dt) {
-  GO* go = component_to_go(this);
   InputState input = this->state;
 
   if(input->action2) {
@@ -252,8 +248,7 @@ CTestDisplay::CTestDisplay(GO* go)
 }
 
 void CTestDisplay::update(float dt) {
-  GO* go = component_to_go(this);
-  CCollidable* coll = (CCollidable*)go_find_component(go, &CCollidable::Type);
+  CCollidable* coll = (CCollidable*)go->find_component(&CCollidable::Type);
 
   assert(coll);
 

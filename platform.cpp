@@ -16,14 +16,14 @@ CPlatformer::CPlatformer(GO* go, float grav_accel)
 }
 
 int CPlatformerObject_issupported(CPlatformer* plat) {
-  GO* go1 = component_to_go(plat);
+  GO* go1 = plat->go;
   GO* go2 = go1->transform_parent;
   if(!go2) return 0;
 
-  CCollidable* c1 = (CCollidable*)go_find_component(go1, &CCollidable::Type);
+  CCollidable* c1 = (CCollidable*)go1->find_component(&CCollidable::Type);
   if(!c1) return 0;
 
-  CCollidable* c2 = (CCollidable*)go_find_component(go2, &CCollidable::Type);
+  CCollidable* c2 = (CCollidable*)go2->find_component(&CCollidable::Type);
   if(!c2) return 0; // why could this happen?
 
   struct Rect_ r1, r2;
@@ -34,7 +34,7 @@ int CPlatformerObject_issupported(CPlatformer* plat) {
 }
 
 void CPlatformerObject_lookforsupport(CPlatformer* plat, float dt) {
-  GO* go = component_to_go(plat);
+  GO* go = plat->go;
 
   // look for a collision message
   DLLNode node = go->inbox.head;
@@ -44,7 +44,7 @@ void CPlatformerObject_lookforsupport(CPlatformer* plat, float dt) {
       // is it a kind of collidable we can stick to?
       CCollidable* cself = (CCollidable*)message->data2;
       CCollidable* cother = (CCollidable*)message->data;
-      GO* other_go = component_to_go(cother);
+      GO* other_go = cother->go;
 
       if(cother->mask & plat->platform_mask) {
         // resolve the collision
@@ -78,8 +78,6 @@ void CPlatformerObject_lookforsupport(CPlatformer* plat, float dt) {
 }
 
 void CPlatformer::update(float dt) {
-  GO* go = this->parent_go;
-
   // apply gravity and look for support if not supported
   if(!go->transform_parent) {
     go->_vel.y = MAX(-this->max_speed, go->_vel.y - this->grav_accel * dt);
