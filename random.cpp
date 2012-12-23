@@ -1,6 +1,9 @@
 #include "random.h"
 
 #include <math.h>
+#include <limits>
+
+const int uint32_max = std::numeric_limits<uint32_t>::max();
 
 int rand_in_range(Random random, int lower, int upper) {
   int range = upper - lower;
@@ -19,8 +22,8 @@ float random_next_gaussian(Random random) {
   float z;
 
   if(random->phase == 0) {
-    random->u = (random_next_uint32(random) + 1.0f) / (UINT32_MAX + 2.0f);
-    random->v = random_next_uint32(random) / (UINT32_MAX + 1.0f);
+    random->u = (random_next_uint32(random) + 1.0f) / (uint32_max + 2.0f);
+    random->v = random_next_uint32(random) / (uint32_max + 1.0f);
     z = sqrt(-2.0f * logf(random->u)) * sinf(2.0f * M_PI * random->v);
   } else {
     z = sqrt(-2.0f * logf(random->u)) * cosf(2.0f * M_PI * random->v);

@@ -1,9 +1,13 @@
 #include <stdio.h>
 #include <assert.h>
 #include "audio.h"
+#include "threadlib.h"
+
+extern "C" {
 #include "bcm_host.h"
 #include "ilclient.h"
-#include "threadlib.h"
+}
+
 
 #define NUM_SAMPLES 1024
 

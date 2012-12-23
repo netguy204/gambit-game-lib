@@ -26,7 +26,7 @@ int collidable_intersect(CCollidable* a, CCollidable* b) {
 OBJECT_IMPL(CCollidable);
 
 CCollidable::CCollidable()
-  : CCollidable(NULL, 1, 1) {
+  : Component(NULL), w(0), h(0) {
 }
 
 CCollidable::CCollidable(GO* go, float w, float h)
@@ -74,7 +74,7 @@ void world_notify_collisions(World* world) {
 OBJECT_IMPL(CPlatformer);
 
 CPlatformer::CPlatformer()
-  : CPlatformer(NULL, 9.81) {
+  : Component(NULL), grav_accel(9.81), platform_mask(0) {
 }
 
 CPlatformer::CPlatformer(GO* go, float grav_accel)

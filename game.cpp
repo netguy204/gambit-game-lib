@@ -59,7 +59,7 @@ enum Tags {
 OBJECT_IMPL(CTimer);
 
 CTimer::CTimer()
-  : CTimer(NULL, 1, NULL)
+  : Component(NULL), time_remaining(0), expire_payload(NULL)
 {}
 
 CTimer::CTimer(GO* go, float time_remaining, void* payload)
@@ -124,11 +124,11 @@ int delete_all_but_player(GO* go, void* udata) {
 OBJECT_IMPL(CBombBehavior);
 
 CBombBehavior::CBombBehavior()
-  : CBombBehavior(NULL) {
+  : Component(NULL), state(BOMB_IDLE) {
 }
 
 CBombBehavior::CBombBehavior(GO* go)
-  : Component(go) {
+  : Component(go), state(BOMB_IDLE) {
   new CTimer(go, bomb_delay - bomb_explode_start, NULL);
   this->state = BOMB_IDLE;
 }
@@ -160,7 +160,7 @@ void CBombBehavior::update(float dt) {
 OBJECT_IMPL(CLeftAndRight);
 
 CLeftAndRight::CLeftAndRight()
-  : CLeftAndRight(NULL, 0, screen_width) {
+  : Component(NULL), minx(0), maxx(screen_width) {
 }
 
 CLeftAndRight::CLeftAndRight(GO* go, float minx, float maxx)
@@ -186,7 +186,7 @@ void CLeftAndRight::update(float dt) {
 OBJECT_IMPL(CInput);
 
 CInput::CInput()
-  : CInput(NULL) {
+  : Component(NULL), state(NULL), fire_pressed(0), facing(1) {
 }
 
 CInput::CInput(GO* go)
@@ -244,7 +244,7 @@ void CInput::update(float dt) {
 OBJECT_IMPL(CTestDisplay);
 
 CTestDisplay::CTestDisplay()
-  : CTestDisplay(NULL) {
+  : Component(NULL) {
 }
 
 CTestDisplay::CTestDisplay(GO* go)

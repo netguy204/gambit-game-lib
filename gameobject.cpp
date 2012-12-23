@@ -42,8 +42,12 @@ GO::GO() {
   this->ttag = 0;
 }
 
-GO::GO(World* world)
-  : GO() {
+GO::GO(World* world) {
+  this->transform_parent = NULL;
+  vector_zero(&this->pos);
+  vector_zero(&this->vel);
+  dll_zero(&this->components);
+  this->ttag = 0;
   world_add_go(world, this);
 }
 
@@ -120,8 +124,8 @@ World* go_world(GO* go) {
 OBJECT_IMPL(Component);
 
 Component::Component()
-  : Component(NULL)
-{}
+  : parent_go(NULL) {
+}
 
 Component::Component(GO* go)
   : parent_go(NULL) {
