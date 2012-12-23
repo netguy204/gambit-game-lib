@@ -53,13 +53,13 @@ void CPlatformerObject_lookforsupport(CPlatformer* plat, float dt) {
         cself->rect(&rself);
         cother->rect(&rother);
         resolve_interpenetration(&resolution, &rself, &rother);
-        vector_add(&go->pos, &go->pos, &resolution);
+        vector_add(&go->_pos, &go->_pos, &resolution);
 
         // zero our velocity in the collision direction
         if(fabs(resolution.x) > 0) {
-          go->vel.x = 0;
+          go->_vel.x = 0;
         } else {
-          go->vel.y = 0;
+          go->_vel.y = 0;
         }
 
         // check for support
@@ -82,7 +82,7 @@ void CPlatformer::update(float dt) {
 
   // apply gravity and look for support if not supported
   if(!go->transform_parent) {
-    go->vel.y = MAX(-this->max_speed, go->vel.y - this->grav_accel * dt);
+    go->_vel.y = MAX(-this->max_speed, go->_vel.y - this->grav_accel * dt);
     CPlatformerObject_lookforsupport(this, dt);
   } else if(!CPlatformerObject_issupported(this)) {
     go_set_parent(go, NULL);

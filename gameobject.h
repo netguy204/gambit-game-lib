@@ -89,16 +89,18 @@ class GO : public Agent {
 
   virtual void update(float dt);
 
-  // beware: death of parent is not handled
   struct DLLNode_ transform_siblings;
   struct GO* transform_parent;
   SimpleDLL transform_children;
 
-  // pos and vel are always relative to the parent if there is one
-  struct Vector_ pos;
-  struct Vector_ vel;
-
   DLL_DECLARE(Component, node) components;
+
+  // pos and vel are always relative to the parent if there is one
+  struct Vector_ _pos;
+  struct Vector_ _vel;
+
+  void pos(Vector p);
+  void vel(Vector v);
 
   // the world we're a part of
   World* world;
@@ -107,10 +109,6 @@ class GO : public Agent {
   int ttag;
 };
 
-// get the absolute position of a GO
-void go_pos(Vector pos, GO* go);
-void go_vel(Vector vel, GO* go);
 void go_set_parent(GO* child, GO* parent);
-World* go_world(GO* go);
 
 #endif

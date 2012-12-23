@@ -136,7 +136,7 @@ void CBombBehavior::update(float dt) {
 
   // if we're supported then zero our x so that we're sticky
   if(bomb->transform_parent) {
-    bomb->vel.x = 0;
+    bomb->_vel.x = 0;
   }
 
   // nothing to do if a timer hasn't gone off
@@ -146,12 +146,14 @@ void CBombBehavior::update(float dt) {
     // set the next timer and change state
     new CTimer(bomb, bomb_explode_start, NULL);
     this->state = BOMB_EXPLODING;
-    world_foreach(go_world(bomb), &bomb->pos, bomb_dim * bomb_chain_factor,
+    Vector_ pos;
+    bomb->pos(&pos);
+    world_foreach(bomb->world, &pos, bomb_dim * bomb_chain_factor,
                   delete_all_but_player, bomb);
   } else if(this->state == BOMB_EXPLODING) {
     // destroy the bomb
     this->state = BOMB_DONE;
-    agent_send_terminate(bomb, go_world(bomb));
+    agent_send_terminate(bomb, bomb->world);
   }
 }
 
@@ -168,15 +170,15 @@ CLeftAndRight::CLeftAndRight(GO* go, float minx, float maxx)
 void CLeftAndRight::update(float dt) {
   GO* go = component_to_go(this);
 
-  if(go->vel.x > 0) {
-    if(go->pos.x > this->maxx) {
-      go->pos.x = this->maxx;
-      go->vel.x = -go->vel.x;
+  if(go->_vel.x > 0) {
+    if(go->_pos.x > this->maxx) {
+      go->_pos.x = this->maxx;
+      go->_vel.x = -go->_vel.x;
     }
   } else {
-    if(go->pos.x < this->minx) {
-      go->pos.x = this->minx;
-      go->vel.x = -go->vel.x;
+    if(go->_pos.x < this->minx) {
+      go->_pos.x = this->minx;
+      go->_vel.x = -go->_vel.x;
     }
   }
 }
@@ -209,14 +211,14 @@ void CInput::update(float dt) {
 
     if(current_n_bombs < max_bombs) {
       struct Vector_ abs_pos;
-      go_pos(&abs_pos, go);
+      go->pos(&abs_pos);
       abs_pos.y += player_height;
 
       struct Vector_ abs_vel = {this->facing * throw_speed / 3, throw_speed};
 
       if(go->transform_parent) {
         struct Vector_ par_vel;
-        go_vel(&par_vel, go->transform_parent);
+        go->transform_parent->vel(&par_vel);
         vector_add(&abs_vel, &abs_vel, &par_vel);
       }
 
@@ -224,18 +226,18 @@ void CInput::update(float dt) {
     }
   }
 
-  go->vel.x = input->leftright * player_speed;
+  go->_vel.x = input->leftright * player_speed;
   if(fabs(input->leftright) > 0.01) {
     this->facing = SIGN(input->leftright);
   }
 
   // dangerous conflation? we assume unparented means falling
   if(input->action1 && go->transform_parent) {
-    go->vel.y = player_jump_speed;
+    go->_vel.y = player_jump_speed;
   }
 
   if(!input->action1 && !go->transform_parent) {
-    go->vel.y = MIN(go->vel.y, 0);
+    go->_vel.y = MIN(go->_vel.y, 0);
   }
 }
 
@@ -268,10 +270,10 @@ void CTestDisplay::update(float dt) {
 
 GO* platform_make(float x, float y, float w, float h) {
   GO* go = new GO(world);
-  go->pos.x = x;
-  go->pos.y = y;
-  go->vel.x = 0;
-  go->vel.y = 0;
+  go->_pos.x = x;
+  go->_pos.y = y;
+  go->_vel.x = 0;
+  go->_vel.y = 0;
   go->ttag = TAG_PLATFORM;
 
   new CTestDisplay(go);
@@ -282,7 +284,7 @@ GO* platform_make(float x, float y, float w, float h) {
 GO* slidingplatform_make(float x, float y, float w, float h, float speed,
                          float minx, float maxx) {
   GO* go = platform_make(x, y, w, h);
-  go->vel.x = speed;
+  go->_vel.x = speed;
 
   new CLeftAndRight(go, minx, maxx);
   return go;
@@ -290,8 +292,8 @@ GO* slidingplatform_make(float x, float y, float w, float h, float speed,
 
 void player_setup() {
   player_go = new GO(world);
-  player_go->pos.x = 100;
-  player_go->pos.y = 100;
+  player_go->_pos.x = 100;
+  player_go->_pos.y = 100;
   player_go->ttag = TAG_PLAYER;
 
   new CTestDisplay(player_go);
@@ -304,8 +306,8 @@ GO* bomb_make(Vector pos, Vector vel) {
   GO* go = new GO(world);
 
   go->ttag = TAG_BOMB;
-  go->pos = *pos;
-  go->vel = *vel;
+  go->_pos = *pos;
+  go->_vel = *vel;
 
   new CTestDisplay(go);
   new CCollidable(go, bomb_dim, bomb_dim);

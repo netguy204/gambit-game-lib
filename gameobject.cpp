@@ -14,7 +14,9 @@ void world_foreach(World* world, Vector pos, float rad, WorldCallback callback, 
   float rad2 = rad * rad;
   while(node) {
     GO* go = (GO*)container_of(node, Agent, node);
-    if(vector_dist2(&go->pos, pos) < rad2 &&  callback(go, udata)) {
+    Vector_ p;
+    go->pos(&p);
+    if(vector_dist2(&p, pos) < rad2 &&  callback(go, udata)) {
       return;
     }
     node = node->next;
@@ -31,15 +33,15 @@ OBJECT_IMPL(GO);
 
 GO::GO() {
   this->transform_parent = NULL;
-  vector_zero(&this->pos);
-  vector_zero(&this->vel);
+  vector_zero(&this->_pos);
+  vector_zero(&this->_vel);
   this->ttag = 0;
 }
 
 GO::GO(World* world) {
   this->transform_parent = NULL;
-  vector_zero(&this->pos);
-  vector_zero(&this->vel);
+  vector_zero(&this->_pos);
+  vector_zero(&this->_vel);
   this->ttag = 0;
   world_add_go(world, this);
 }
@@ -67,8 +69,8 @@ GO::~GO() {
 void GO::update(float dt) {
   // do an integration step
   struct Vector_ dx;
-  vector_scale(&dx, &this->vel, dt);
-  vector_add(&this->pos, &this->pos, &dx);
+  vector_scale(&dx, &this->_vel, dt);
+  vector_add(&this->_pos, &this->_pos, &dx);
 
   DLLNode node = this->components.head;
   while(node) {
@@ -82,19 +84,21 @@ void GO::update(float dt) {
   foreach_inboxmessage(this, NULL, NULL);
 }
 
-void go_pos(Vector pos, GO* go) {
-  *pos = go->pos;
+void GO::pos(Vector pos) {
+  GO* go = this;
+  *pos = go->_pos;
   while(go->transform_parent) {
     go = go->transform_parent;
-    vector_add(pos, pos, &go->pos);
+    vector_add(pos, pos, &go->_pos);
   }
 }
 
-void go_vel(Vector vel, GO* go) {
-  *vel = go->vel;
+void GO::vel(Vector vel) {
+  GO* go = this;
+  *vel = go->_vel;
   while(go->transform_parent) {
     go = go->transform_parent;
-    vector_add(vel, vel, &go->vel);
+    vector_add(vel, vel, &go->_vel);
   }
 }
 
@@ -108,21 +112,21 @@ void go_set_parent(GO* child, GO* parent) {
   }
 
   if(parent) {
-    go_pos(&cpos, child);
-    go_pos(&ppos, parent);
-    vector_sub(&child->pos, &cpos, &ppos);
+    child->pos(&cpos);
+    parent->pos(&ppos);
+    vector_sub(&child->_pos, &cpos, &ppos);
 
-    go_vel(&cvel, child);
-    go_vel(&pvel, parent);
-    vector_sub(&child->vel, &cvel, &pvel);
+    child->vel(&cvel);
+    parent->vel(&pvel);
+    vector_sub(&child->_vel, &cvel, &pvel);
     child->transform_parent = parent;
     parent->transform_children.add_head_node(&child->transform_siblings);
 
   } else if(!parent && child->transform_parent) {
-    go_pos(&cpos, child);
-    go_vel(&cvel, child);
-    child->pos = cpos;
-    child->vel = cvel;
+    child->pos(&cpos);
+    child->vel(&cvel);
+    child->_pos = cpos;
+    child->_vel = cvel;
     child->transform_parent = NULL;
   }
 }
@@ -206,7 +210,7 @@ void CCollidable::rect(Rect rect) {
   GO* go = this->parent_go;
 
   struct Vector_ pos;
-  go_pos(&pos, go);
+  go->pos(&pos);
   rect_centered(rect, &pos, this->w, this->h);
 }
 
