@@ -11,7 +11,7 @@ FixedAllocator clock_allocator;
 FixedAllocator image_resource_allocator;
 StackAllocator frame_allocator;
 FixedAllocator command_allocator;
-Queue render_queue;
+CommandQueue* render_queue;
 
 uint32_t screen_width;
 uint32_t screen_height;
@@ -29,7 +29,7 @@ void screen_rect(Rect rect) {
 static pthread_t renderer_thread;
 
 void process_render_command() {
-  Command command = command_dequeue(render_queue);
+  Command command = render_queue->dequeue();
   command->function(command->data);
   command_free(command);
 }
@@ -52,7 +52,7 @@ void testlib_init() {
   image_resource_allocator = fixed_allocator_make(sizeof(struct ImageResource_), MAX_NUM_IMAGES, "image_resource_allocator");
   frame_allocator = stack_allocator_make(1024 * 1024, "frame_allocator");
   command_allocator = fixed_allocator_make(sizeof(struct Command_), MAX_NUM_COMMANDS, "command_allocator");
-  render_queue = queue_make();
+  render_queue = new CommandQueue();
   render_barrier = threadbarrier_make(2);
 }
 
@@ -245,16 +245,16 @@ void command_free(Command command) {
   fixed_allocator_free(command_allocator, command);
 }
 
-void command_async(Queue queue, CommandFunction function, void* data) {
+void command_async(CommandQueue* queue, CommandFunction function, void* data) {
   Command command = command_make(function, data);
-  enqueue(queue, (DLLNode)command);
+  queue->enqueue(command);
 }
 
 static void command_sync_function(ThreadBarrier b) {
   threadbarrier_wait(b);
 }
 
-void command_sync(Queue queue, ThreadBarrier b,
+void command_sync(CommandQueue* queue, ThreadBarrier b,
                   CommandFunction function, void* data) {
   command_async(queue, function, data);
   command_async(queue, (CommandFunction)command_sync_function, b);

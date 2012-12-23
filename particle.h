@@ -17,7 +17,7 @@ class Particle : public Object {
   virtual void update(float dt);
 
   struct DLLNode_ node;
-  DLL containing_list;
+  SimpleDLL* containing_list;
 
   struct Vector_ pos;
   struct Vector_ vel;
@@ -28,13 +28,14 @@ class Particle : public Object {
   float dadt;
 };
 
+typedef DLL_DECLARE(Particle, node) ParticleDLL;
+
 float particle_width(Particle* particle);
 float particle_height(Particle* particle);
 void particle_center(Particle* particle, Vector v);
 Sprite particle_sprite(Particle* particle);
 
-Particle* node_to_particle(DLLNode node);
-SpriteList particles_spritelist(DLL list);
+SpriteList particles_spritelist(ParticleDLL* list);
 void rect_for_particle(Rect rect, Particle* particle, float scale);
 
 #endif

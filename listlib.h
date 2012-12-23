@@ -1,6 +1,9 @@
 #ifndef LISTLIB_H
 #define LISTLIB_H
 
+#include <assert.h>
+#include <stddef.h>
+
 void listlib_init();
 
 typedef struct LLNode_* LLNode;
@@ -26,32 +29,88 @@ typedef struct DLLNode_ *DLLNode;
 struct DLLNode_ {
   DLLNode next;
   DLLNode prev;
+
+  DLLNode_();
 };
 
-typedef struct DLL_ {
+class SimpleDLL {
+ public:
+  SimpleDLL();
+
   DLLNode head;
   DLLNode tail;
-} *DLL;
 
-void llnode_insert_after(DLLNode target, DLLNode addition);
-void llnode_insert_before(DLLNode target, DLLNode addition);
-void llnode_remove(DLLNode node);
+  void add_head_node(DLLNode node);
+  void remove_node(DLLNode node);
+  DLLNode remove_tail_node();
 
-void dll_add_head(DLL list, DLLNode addition);
-DLLNode dll_remove_tail(DLL list);
-void dll_remove(DLL list, DLLNode node);
-int dll_count(DLL list);
-void dll_zero(DLL list);
+  int count();
+  void zero();
+  int is_empty();
+  void insert_after(DLLNode target, DLLNode addition);
+  void insert_before(DLLNode target, DLLNode addition);
+};
 
-#define INSERT_AFTER(target, addition) \
-  llnode_insert_after((DLLNode)target, (DLLNode)addition)
+template<typename E, int OFFSET>
+class DLL : public SimpleDLL {
+ public:
 
-#define INSERT_BEFORE(target, addition) \
-  llnode_insert_before((DLLNode)target, (DLLNode)addition)
+  void add_head(E* element) {
+    DLLNode addition = to_node(element);
+    add_head_node(addition);
+  }
 
-#define REMOVE(node) \
-  llnode_remove((DLLNode)node)
+  void remove(E* element) {
+    DLLNode node = to_node(element);
+    remove_node(node);
+  }
 
+  E* remove_tail() {
+    DLLNode node = remove_tail_node();
+    return to_element(node);
+  }
 
+  /*
+  void insert_after(E* _target, E* _addition) {
+    DLLNode target = to_node(_target);
+    DLLNode addition = to_node(_addition);
+    insert_after(target, addition);
+  }
+
+  void insert_before(E* _target, E* _addition) {
+    DLLNode target = to_node(_target);
+    DLLNode addition = to_node(_addition);
+    insert_before(target, addition);
+  }
+  */
+
+  int next(E** element) {
+    if(*element == NULL) {
+      *element = to_element(this->head);
+      return *element != NULL;
+    }
+
+    DLLNode node = to_node(*element);
+    DLLNode next = node->next;
+    if(next) {
+      *element = to_element(next);
+      return 1;
+    } else {
+      *element = NULL;
+      return 0;
+    }
+  }
+
+  DLLNode to_node(E* element) {
+    return (DLLNode)((char*)element + OFFSET);
+  }
+
+  E* to_element(DLLNode node) {
+    return (E*)((char*)node - OFFSET);
+  }
+
+};
+
+#define DLL_DECLARE(TYPE, LINKNAME) DLL<TYPE, offsetof(TYPE, LINKNAME)>
 
 #endif

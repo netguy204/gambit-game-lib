@@ -3,6 +3,56 @@
 
 #include "agent.h"
 #include "vector.h"
+#include "rect.h"
+
+typedef enum {
+  MASK_NON_COLLIDER = 0,
+  MASK_PLATFORM = 1,
+  MASK_PLATFORMER = 2,
+  MASK_ENEMY_PLATFORM = 4
+} CollisionMask;
+
+
+class GO;
+
+class Component : public Object {
+ public:
+  OBJECT_PROTO(Component);
+
+  Component();
+  Component(GO* go);
+  virtual ~Component();
+
+  virtual void update(float dt);
+
+  void set_parent(GO* go);
+
+  struct DLLNode_ node;
+  GO* parent_go;
+};
+
+GO* component_to_go(Component* comp);
+Component* go_find_component(GO* go, const TypeInfo* info);
+
+// registers a GO with the collidables section of the world. GO
+// components will get COLLIDED messages letting them known when they
+// hit other GOs that have a collidable component
+class CCollidable : public Component {
+ public:
+  OBJECT_PROTO(CCollidable);
+
+  CCollidable();
+  CCollidable(GO* go, float w, float h);
+  virtual ~CCollidable();
+
+  void rect(Rect rect);
+  int intersect(CCollidable* other);
+
+  struct DLLNode_ collidable_node;
+  float w;
+  float h;
+  int mask;
+};
 
 class World : public Collective {
  public:
@@ -10,14 +60,14 @@ class World : public Collective {
 
   World();
 
-  struct DLL_ collidables;
+  DLL_DECLARE(CCollidable, collidable_node) collidables;
 };
-
-class GO;
 
 typedef int(*WorldCallback)(GO* go, void* udata);
 void world_foreach(World* world, Vector pos, float rad,
                    WorldCallback callback, void* udata);
+
+void world_notify_collisions(World* world);
 
 
 /* GO: GameObject
@@ -40,12 +90,15 @@ class GO : public Agent {
   virtual void update(float dt);
 
   // beware: death of parent is not handled
+  struct DLLNode_ transform_siblings;
   struct GO* transform_parent;
+  SimpleDLL transform_children;
 
   // pos and vel are always relative to the parent if there is one
   struct Vector_ pos;
   struct Vector_ vel;
-  struct DLL_ components;
+
+  DLL_DECLARE(Component, node) components;
 
   // the world we're a part of
   World* world;
@@ -59,26 +112,5 @@ void go_pos(Vector pos, GO* go);
 void go_vel(Vector vel, GO* go);
 void go_set_parent(GO* child, GO* parent);
 World* go_world(GO* go);
-
-class Component : public Object {
- public:
-  OBJECT_PROTO(Component);
-
-  Component();
-  Component(GO* go);
-  virtual ~Component();
-
-  virtual void update(float dt);
-
-  void set_parent(GO* go);
-
-  struct DLLNode_ node;
-
-  GO* parent_go;
-};
-
-Component* node_to_component(DLLNode node);
-GO* component_to_go(Component* comp);
-Component* go_find_component(GO* go, const TypeInfo* info);
 
 #endif

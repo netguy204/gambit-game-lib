@@ -7,7 +7,6 @@
 OBJECT_IMPL(World);
 
 World::World() {
-  dll_zero(&this->collidables);
 }
 
 void world_foreach(World* world, Vector pos, float rad, WorldCallback callback, void* udata) {
@@ -22,10 +21,6 @@ void world_foreach(World* world, Vector pos, float rad, WorldCallback callback, 
   }
 }
 
-Component* node_to_component(DLLNode node) {
-  return container_of(node, Component, node);
-}
-
 void world_add_go(World* world, GO* go) {
   Message* message = message_make(NULL, COLLECTIVE_ADD_AGENT, go);
   message_postinbox(world, message);
@@ -38,7 +33,6 @@ GO::GO() {
   this->transform_parent = NULL;
   vector_zero(&this->pos);
   vector_zero(&this->vel);
-  dll_zero(&this->components);
   this->ttag = 0;
 }
 
@@ -46,7 +40,6 @@ GO::GO(World* world) {
   this->transform_parent = NULL;
   vector_zero(&this->pos);
   vector_zero(&this->vel);
-  dll_zero(&this->components);
   this->ttag = 0;
   world_add_go(world, this);
 }
@@ -55,10 +48,20 @@ GO::~GO() {
   DLLNode node = this->components.head;
   while(node) {
     DLLNode next = node->next;
-    Component* comp = node_to_component(node);
+    Component* comp = this->components.to_element(node);
     delete comp;
     node = next;
   }
+
+  node = this->transform_children.head;
+  while(node) {
+    DLLNode next = node->next;
+    GO* child = container_of(node, GO, transform_siblings);
+    go_set_parent(child, NULL);
+    node = next;
+  }
+
+  go_set_parent(this, NULL);
 }
 
 void GO::update(float dt) {
@@ -70,7 +73,7 @@ void GO::update(float dt) {
   DLLNode node = this->components.head;
   while(node) {
     DLLNode next = node->next;
-    Component* comp = node_to_component(node);
+    Component* comp = this->components.to_element(node);
     comp->update(dt);
     node = next;
   }
@@ -99,6 +102,11 @@ void go_set_parent(GO* child, GO* parent) {
   struct Vector_ cpos, ppos;
   struct Vector_ cvel, pvel;
 
+  if(child->transform_parent) {
+    GO* old_parent = child->transform_parent;
+    old_parent->transform_children.remove_node(&child->transform_siblings);
+  }
+
   if(parent) {
     go_pos(&cpos, child);
     go_pos(&ppos, parent);
@@ -108,6 +116,8 @@ void go_set_parent(GO* child, GO* parent) {
     go_vel(&pvel, parent);
     vector_sub(&child->vel, &cvel, &pvel);
     child->transform_parent = parent;
+    parent->transform_children.add_head_node(&child->transform_siblings);
+
   } else if(!parent && child->transform_parent) {
     go_pos(&cpos, child);
     go_vel(&cvel, child);
@@ -137,7 +147,7 @@ Component::Component(GO* go)
 
 Component::~Component() {
   if(this->parent_go) {
-    dll_remove(&this->parent_go->components, &this->node);
+    this->parent_go->components.remove(this);
   }
 }
 
@@ -146,13 +156,13 @@ void Component::update(float dt) {
 
 void Component::set_parent(GO* go) {
   if(this->parent_go) {
-    dll_remove(&this->parent_go->components, &this->node);
+    this->parent_go->components.remove(this);
   }
 
   this->parent_go = go;
 
   if(go) {
-    dll_add_head(&go->components, &this->node);
+    this->parent_go->components.add_head(this);
   }
 }
 
@@ -163,11 +173,74 @@ GO* component_to_go(Component* comp) {
 Component* go_find_component(GO* go, const TypeInfo* info) {
   DLLNode node = go->components.head;
   while(node) {
-    Component* comp = node_to_component(node);
+    Component* comp = go->components.to_element(node);
     if(comp->typeinfo()->isInstanceOf(info)) {
       return comp;
     }
     node = node->next;
   }
   return NULL;
+}
+
+OBJECT_IMPL(CCollidable);
+
+CCollidable::CCollidable()
+  : Component(NULL), w(0), h(0) {
+}
+
+CCollidable::CCollidable(GO* go, float w, float h)
+  : Component(go), w(w), h(h), mask(MASK_PLATFORMER) {
+  if(go) {
+    go->world->collidables.add_head(this);
+  }
+}
+
+CCollidable::~CCollidable() {
+  GO* go = this->parent_go;
+  if(go) {
+    go->world->collidables.remove(this);
+  }
+}
+
+void CCollidable::rect(Rect rect) {
+  GO* go = this->parent_go;
+
+  struct Vector_ pos;
+  go_pos(&pos, go);
+  rect_centered(rect, &pos, this->w, this->h);
+}
+
+int CCollidable::intersect(CCollidable* b) {
+  struct Rect_ ra, rb;
+  this->rect(&ra);
+  b->rect(&rb);
+  return rect_intersect(&ra, &rb);
+}
+
+void world_notify_collisions(World* world) {
+  DLLNode n1 = world->collidables.head;
+  while(n1) {
+    CCollidable* c1 = world->collidables.to_element(n1);
+    GO* g1 = component_to_go(c1);
+
+    DLLNode n2 = n1->next;
+    while(n2) {
+      CCollidable* c2 = world->collidables.to_element(n2);
+
+      if((c1->mask & c2->mask) && c1->intersect(c2)) {
+        GO* g2 = component_to_go(c2);
+
+        Message* m1 = message_make(g2, MESSAGE_COLLIDING, c2);
+        m1->data2 = c1;
+        message_postinbox(g1, m1);
+
+        Message* m2 = message_make(g1, MESSAGE_COLLIDING, c1);
+        m2->data2 = c2;
+        message_postinbox(g2, m2);
+      }
+
+      n2 = n2->next;
+    }
+    n1 = n1->next;
+  }
 }

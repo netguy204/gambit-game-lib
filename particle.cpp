@@ -57,15 +57,11 @@ Sprite particle_sprite(Particle* particle) {
   return sprite;
 }
 
-Particle* node_to_particle(DLLNode node) {
-  return container_of(node, Particle, node);
-}
-
-SpriteList particles_spritelist(DLL list) {
+SpriteList particles_spritelist(ParticleDLL* list) {
   SpriteList result = NULL;
   DLLNode node = list->head;
   while(node) {
-    Particle* p = node_to_particle(node);
+    Particle* p = list->to_element(node);
     Sprite sprite = particle_sprite(p);
     if(sprite) {
       result = frame_spritelist_append(result, sprite);

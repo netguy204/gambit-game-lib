@@ -11,15 +11,9 @@
 
 FixedAllocator message_allocator;
 
-Message* node_to_message(DLLNode node) {
-  return container_of(node, Message, node);
-}
-
 OBJECT_IMPL(Agent);
 
 Agent::Agent() {
-  dll_zero(&this->inbox);
-  dll_zero(&this->outbox);
   this->subscribers = 0;
   this->delta_subscribers = 0;
   this->state = 0;
@@ -36,10 +30,6 @@ void Agent::update(float dt) {
   // update the subscriber count
   this->subscribers += this->delta_subscribers;
   this->delta_subscribers = 0;
-}
-
-DLL agent_inbox(Agent* agent) {
-  return &agent->inbox;
 }
 
 // dispatcher methods
@@ -73,7 +63,6 @@ void collective_add(Collective* collective, Agent* agent);
 OBJECT_IMPL(Collective);
 
 Collective::Collective() {
-  dll_zero(&this->children);
   this->sub_dispatchers = heapvector_make();
 }
 
@@ -107,7 +96,7 @@ void message_free(Message* message) {
 void message_report_read(Message* message) {
   message->read_count += 1;
   if(message->read_count >= message->source->subscribers) {
-    dll_remove(&message->source->outbox, (DLLNode)message);
+    message->source->outbox.remove(message);
 
     if(message->report_completed) {
       message->report_completed(message);
@@ -117,19 +106,19 @@ void message_report_read(Message* message) {
 }
 
 void message_postinbox(Agent* dst, Message* message) {
-  dll_add_head(&dst->inbox, (DLLNode)message);
+  dst->inbox.add_head(message);
 }
 
 void message_postoutbox(Agent* src, Message* message, ReportCompleted report_completed) {
   message->report_completed = report_completed;
-  dll_add_head(&src->outbox, (DLLNode)message);
+  src->outbox.add_head(message);
 }
 
-void messages_drop(DLL list) {
-  Message* message = (Message*)dll_remove_tail(list);
+void messages_drop(MessageDLL* list) {
+  Message* message = list->remove_tail();
   while(message) {
     message_free(message);
-    message = (Message*)dll_remove_tail(list);
+    message = list->remove_tail();
   }
 }
 
@@ -154,7 +143,7 @@ void foreach_outboxmessage(Dispatcher* dispatcher, Agent* agent,
 
   while(node) {
     DLLNode next = node->next;
-    Message* message = node_to_message(node);
+    Message* message = agent->outbox.to_element(node);
 
     if(message->kind == MESSAGE_TERMINATING) {
       if(!callback) {
@@ -190,7 +179,7 @@ void agent_terminate_report_complete(Message* message) {
 }
 
 void foreach_inboxmessage(Agent* agent, InboxMessageCallback callback, void * udata) {
-  Message* message = (Message*)dll_remove_tail(&agent->inbox);
+  Message* message = agent->inbox.remove_tail();
 
   int terminate_requested = 0;
 
@@ -209,7 +198,7 @@ void foreach_inboxmessage(Agent* agent, InboxMessageCallback callback, void * ud
     }
 
     message_free(message);
-    message = (Message*)dll_remove_tail(&agent->inbox);
+    message = agent->inbox.remove_tail();
   }
 }
 
@@ -225,14 +214,14 @@ void dispatcher_remove_agent(Dispatcher* dispatcher, Agent* agent) {
 
 // tie an agent's lifetime to this collective
 void collective_add(Collective* collective, Agent* agent) {
-  dll_add_head(&collective->children, &agent->node);
+  collective->children.add_head(agent);
   // we want messages from things we own too so we can drop them if
   // they tell us they died
   dispatcher_add_agent(collective, agent);
 }
 
 void collective_remove(Collective* collective, Agent* agent) {
-  dll_remove(&collective->children, &agent->node);
+  collective->children.remove(agent);
   dispatcher_remove_agent(collective, agent);
 }
 
@@ -279,10 +268,10 @@ void Collective::update(float dt) {
   foreach_inboxmessage(this, collective_handle_inbox, NULL);
 
   // FIXME: is this necessary?
-  Message* message = (Message*)dll_remove_tail(&this->inbox);
+  Message* message = this->inbox.remove_tail();
   while(message) {
     message_free(message);
-    message = (Message*)dll_remove_tail(&this->inbox);
+    message = this->inbox.remove_tail();
   }
 
   // update all of our sub-agents

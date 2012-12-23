@@ -80,13 +80,11 @@ void CTimer::update(float dt) {
 
 int is_timer_expired(GO* go, void* data) {
   // look for an expired timer message
-  DLLNode node = agent_inbox(go)->head;
-  while(node) {
-    Message* message = node_to_message(node);
+  Message* message = NULL;
+  while(go->inbox.next(&message)) {
     if(message->kind == MESSAGE_TIMER_EXPIRED) {
       return 1;
     }
-    node = node->next;
   }
   return 0;
 }
@@ -258,7 +256,8 @@ void CTestDisplay::update(float dt) {
   assert(coll);
 
   struct ColoredRect_ rect;
-  collidable_rect((Rect)&rect, coll);
+  coll->rect(&rect);
+
   rect.color[0] = 1.0f;
   rect.color[1] = 0.0f;
   rect.color[2] = 0.0f;

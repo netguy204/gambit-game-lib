@@ -7,8 +7,10 @@
 const int int16_min = std::numeric_limits<int16_t>::min();
 const int int16_max = std::numeric_limits<int16_t>::max();
 
+typedef Queue<PlayListSample_, offsetof(PlayListSample_, node)> PlayListSampleQueue;
+
 PlayList playlist;
-Queue audio_queue;
+PlayListSampleQueue* audio_queue;
 Filter global_filter;
 FixedAllocator pls_allocator;
 
@@ -104,14 +106,14 @@ void audio_init() {
                                        "pls_allocator");
 
   playlist = playlist_make();
-  audio_queue = queue_make();
+  audio_queue = new PlayListSampleQueue();
   global_filter = lowpass_make(0, 0);
 
   native_audio_init();
 }
 
 void audio_enqueue(Sampler sampler) {
-  enqueue(audio_queue, (DLLNode)playlistsample_make(sampler));
+  audio_queue->enqueue(playlistsample_make(sampler));
 }
 
 long audio_current_sample() {
@@ -121,7 +123,7 @@ long audio_current_sample() {
 
 void audio_fill_buffer(int16_t* buffer, int nsamples) {
   PlayListSample sample;
-  while((sample = (PlayListSample)dequeue_noblock(audio_queue)) != NULL) {
+  while((sample = audio_queue->dequeue_noblock()) != NULL) {
     playlist_insert_sampler(playlist, sample);
   }
 

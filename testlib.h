@@ -122,14 +122,14 @@ typedef struct Command_ {
   void *data;
 } *Command;
 
+typedef Queue<Command_, offsetof(Command_, node)> CommandQueue;
+
 Command command_make(CommandFunction function, void* data);
 void command_free(Command command);
 
-#define command_dequeue(queue) (Command)dequeue(queue)
-
-void command_async(Queue queue, CommandFunction function, void* data);
-void command_sync(Queue queue, ThreadBarrier b,
-                     CommandFunction function, void* data);
+void command_async(CommandQueue* queue, CommandFunction function, void* data);
+void command_sync(CommandQueue* queue, ThreadBarrier b,
+                  CommandFunction function, void* data);
 
 #define renderer_enqueue(function, data) \
   command_async(render_queue, (CommandFunction)function, (void*)data)

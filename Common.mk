@@ -11,7 +11,7 @@ C_SRC+= \
 	sfmt/SFMT.c
 
 XML_INCLUDE:=-I/usr/include/libxml2
-CXXFLAGS+=$(XML_INCLUDE) -Isfmt/ -std=c++0x
+CXXFLAGS+=$(XML_INCLUDE) -Isfmt/ -std=c++0x -Wno-invalid-offsetof
 
 LDFLAGS+=-lpthread -ldl -lxml2
 C_OBJS=\

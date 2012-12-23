@@ -24,7 +24,7 @@ class Message {
   int read_count;
 };
 
-Message* node_to_message(DLLNode node);
+typedef DLL_DECLARE(Message, node) MessageDLL;
 
 class Agent : public Object {
  public:
@@ -36,16 +36,15 @@ class Agent : public Object {
   virtual void update(float dt);
 
   struct DLLNode_ node; // list of ownership siblings
-  struct DLL_ inbox;
-  struct DLL_ outbox;
+
+  MessageDLL inbox;
+  MessageDLL outbox;
+
   long next_timer;
   int delta_subscribers; // subscriber count update is deferred
   int subscribers;
   int state;
 };
-
-DLL agent_inbox(Agent* agent);
-DLL agent_outbox(Agent* agent);
 
 class Dispatcher : public Agent {
  public:
@@ -68,7 +67,8 @@ class Collective : public Dispatcher {
 
   virtual void update(float dt);
 
-  struct DLL_ children;
+  DLL_DECLARE(Agent, node) children;
+
   HeapVector sub_dispatchers;
 };
 

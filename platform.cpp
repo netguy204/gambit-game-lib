@@ -4,73 +4,6 @@
 #include <math.h>
 #include <stdarg.h>
 
-CCollidable* node_to_collidable(DLLNode node) {
-  return container_of(node, CCollidable, node);
-}
-
-void collidable_rect(Rect rect, CCollidable* coll) {
-  GO* go = component_to_go(coll);
-
-  struct Vector_ pos;
-  go_pos(&pos, go);
-  rect_centered(rect, &pos, coll->w, coll->h);
-}
-
-int collidable_intersect(CCollidable* a, CCollidable* b) {
-  struct Rect_ ra, rb;
-  collidable_rect(&ra, a);
-  collidable_rect(&rb, b);
-  return rect_intersect(&ra, &rb);
-}
-
-OBJECT_IMPL(CCollidable);
-
-CCollidable::CCollidable()
-  : Component(NULL), w(0), h(0) {
-}
-
-CCollidable::CCollidable(GO* go, float w, float h)
-  : Component(go), w(w), h(h), mask(MASK_PLATFORMER) {
-  if(go) {
-    dll_add_head(&go_world(go)->collidables, &this->node);
-  }
-}
-
-CCollidable::~CCollidable() {
-  GO* go = this->parent_go;
-  if(go) {
-    dll_remove(&go_world(go)->collidables, &this->node);
-  }
-}
-
-void world_notify_collisions(World* world) {
-  DLLNode n1 = world->collidables.head;
-  while(n1) {
-    CCollidable* c1 = node_to_collidable(n1);
-    GO* g1 = component_to_go(c1);
-
-    DLLNode n2 = n1->next;
-    while(n2) {
-      CCollidable* c2 = node_to_collidable(n2);
-
-      if((c1->mask & c2->mask) && collidable_intersect(c1, c2)) {
-        GO* g2 = component_to_go(c2);
-
-        Message* m1 = message_make(g2, MESSAGE_COLLIDING, c2);
-        m1->data2 = c1;
-        message_postinbox(g1, m1);
-
-        Message* m2 = message_make(g1, MESSAGE_COLLIDING, c1);
-        m2->data2 = c2;
-        message_postinbox(g2, m2);
-      }
-
-      n2 = n2->next;
-    }
-    n1 = n1->next;
-  }
-}
-
 OBJECT_IMPL(CPlatformer);
 
 CPlatformer::CPlatformer()
@@ -94,8 +27,8 @@ int CPlatformerObject_issupported(CPlatformer* plat) {
   if(!c2) return 0; // why could this happen?
 
   struct Rect_ r1, r2;
-  collidable_rect(&r1, c1);
-  collidable_rect(&r2, c2);
+  c1->rect(&r1);
+  c2->rect(&r2);
 
   return is_supported(&r1, &r2);
 }
@@ -104,9 +37,9 @@ void CPlatformerObject_lookforsupport(CPlatformer* plat, float dt) {
   GO* go = component_to_go(plat);
 
   // look for a collision message
-  DLLNode node = agent_inbox(go)->head;
+  DLLNode node = go->inbox.head;
   while(node) {
-    Message* message = node_to_message(node);
+    Message* message = go->inbox.to_element(node);
     if(message->kind == MESSAGE_COLLIDING) {
       // is it a kind of collidable we can stick to?
       CCollidable* cself = (CCollidable*)message->data2;
@@ -117,8 +50,8 @@ void CPlatformerObject_lookforsupport(CPlatformer* plat, float dt) {
         // resolve the collision
         struct Vector_ resolution;
         struct Rect_ rself, rother;
-        collidable_rect(&rself, cself);
-        collidable_rect(&rother, cother);
+        cself->rect(&rself);
+        cother->rect(&rother);
         resolve_interpenetration(&resolution, &rself, &rother);
         vector_add(&go->pos, &go->pos, &resolution);
 

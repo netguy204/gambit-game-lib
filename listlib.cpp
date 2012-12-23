@@ -76,27 +76,44 @@ void llentry_remove(LLNode* head, void* value) {
   }
 }
 
-void llnode_insert_after(DLLNode target, DLLNode addition) {
-  DLLNode after = target->next;
-  target->next = addition;
-  addition->prev = target;
-  addition->next = after;
-  if(after) {
-    after->prev = addition;
+DLLNode_::DLLNode_()
+  : next(NULL), prev(NULL) {
+}
+
+SimpleDLL::SimpleDLL()
+  : head(NULL), tail(NULL) {
+}
+
+void SimpleDLL::add_head_node(DLLNode addition) {
+  if(this->head == NULL) {
+    addition->next = NULL;
+    addition->prev = NULL;
+    this->head = addition;
+    this->tail = addition;
+  } else {
+    insert_before(this->head, addition);
+    this->head = addition;
   }
 }
 
-void llnode_insert_before(DLLNode target, DLLNode addition) {
-  DLLNode before = target->prev;
-  target->prev = addition;
-  addition->next = target;
-  addition->prev = before;
-  if(before) {
-    before->next = addition;
+void SimpleDLL::remove_node(DLLNode node) {
+  if(this->head == node) {
+    DLLNode next = node->next;
+    if(next) {
+      next->prev = NULL;
+      this->head = node->next;
+    } else {
+      this->head = NULL;
+      this->tail = NULL;
+    }
+    return;
   }
-}
 
-void llnode_remove(DLLNode node) {
+  if(this->tail == node) {
+    this->remove_tail_node();
+    return;
+  }
+
   DLLNode after = node->next;
   DLLNode before = node->prev;
 
@@ -111,57 +128,24 @@ void llnode_remove(DLLNode node) {
   }
 }
 
-void dll_add_head(DLL list, DLLNode addition) {
-  if(list->head == NULL) {
-    addition->next = NULL;
-    addition->prev = NULL;
-    list->head = addition;
-    list->tail = addition;
-  } else {
-    INSERT_BEFORE(list->head, addition);
-    list->head = addition;
-  }
-}
+DLLNode SimpleDLL::remove_tail_node() {
+  if (this->tail == NULL) return NULL;
 
-DLLNode dll_remove_tail(DLL list) {
-  if (list->tail == NULL) return NULL;
-
-  DLLNode result = list->tail;
+  DLLNode result = this->tail;
   DLLNode before = result->prev;
   if(before) {
     before->next = NULL;
-    list->tail = before;
+    this->tail = before;
   } else {
-    list->head = NULL;
-    list->tail = NULL;
+    this->head = NULL;
+    this->tail = NULL;
   }
   return result;
 }
 
-void dll_remove(DLL list, DLLNode node) {
-  if(list->head == node) {
-    DLLNode next = node->next;
-    if(next) {
-      next->prev = NULL;
-      list->head = node->next;
-    } else {
-      list->head = NULL;
-      list->tail = NULL;
-    }
-    return;
-  }
-
-  if(list->tail == node) {
-    dll_remove_tail(list);
-    return;
-  }
-
-  REMOVE(node);
-}
-
-int dll_count(DLL list) {
+int SimpleDLL::count() {
   int count = 0;
-  DLLNode node = list->head;
+  DLLNode node = this->head;
   while(node) {
     ++count;
     node = node->next;
@@ -169,7 +153,31 @@ int dll_count(DLL list) {
   return count;
 }
 
-void dll_zero(DLL list) {
-  list->head = NULL;
-  list->tail = NULL;
+void SimpleDLL::zero() {
+  this->head = NULL;
+  this->tail = NULL;
+}
+
+int SimpleDLL::is_empty() {
+  return this->head == NULL;
+}
+
+void SimpleDLL::insert_after(DLLNode target, DLLNode addition) {
+  DLLNode after = target->next;
+  target->next = addition;
+  addition->prev = target;
+  addition->next = after;
+  if(after) {
+    after->prev = addition;
+  }
+}
+
+void SimpleDLL::insert_before(DLLNode target, DLLNode addition) {
+  DLLNode before = target->prev;
+  target->prev = addition;
+  addition->next = target;
+  addition->prev = before;
+  if(before) {
+    before->next = addition;
+  }
 }

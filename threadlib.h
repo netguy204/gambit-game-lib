@@ -5,18 +5,55 @@
 #include <pthread.h>
 #include "listlib.h"
 
-typedef struct Queue_ {
-  struct DLL_ list;
+template<typename E, int OFFSET>
+class Queue {
+ public:
+  DLL<E,OFFSET> list;
   pthread_mutex_t mutex;
   pthread_cond_t cond;
-} *Queue;
 
-Queue queue_make();
-void queue_free(Queue queue);
+  Queue() {
+    pthread_mutex_init(&this->mutex, NULL);
+    pthread_cond_init(&this->cond, NULL);
+  }
 
-void enqueue(Queue queue, DLLNode item);
-DLLNode dequeue(Queue queue);
-DLLNode dequeue_noblock(Queue queue);
+  ~Queue() {
+    pthread_cond_destroy(&this->cond);
+    pthread_mutex_destroy(&this->mutex);
+  }
+
+  void enqueue(E* element) {
+    pthread_mutex_lock(&this->mutex);
+    this->list.add_head(element);
+    pthread_mutex_unlock(&this->mutex);
+
+    pthread_cond_signal(&this->cond);
+  }
+
+  E* dequeue() {
+    pthread_mutex_lock(&this->mutex);
+    while(1) {
+      if(this->list.tail) {
+        E* result = this->list.remove_tail();
+        pthread_mutex_unlock(&this->mutex);
+        return result;
+      } else {
+        /* need to wait for something to be put in the queue */
+        pthread_cond_wait(&this->cond, &this->mutex);
+      }
+    }
+  }
+
+  E* dequeue_noblock() {
+    pthread_mutex_lock(&this->mutex);
+    E* result = NULL;
+    if(this->list.tail) {
+      result = this->list.remove_tail();
+    }
+    pthread_mutex_unlock(&this->mutex);
+    return result;
+  }
+};
 
 typedef struct ThreadBarrier_ {
   pthread_mutex_t mutex;
