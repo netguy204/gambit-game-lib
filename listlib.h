@@ -70,20 +70,6 @@ class DLL : public SimpleDLL {
     return to_element(node);
   }
 
-  /*
-  void insert_after(E* _target, E* _addition) {
-    DLLNode target = to_node(_target);
-    DLLNode addition = to_node(_addition);
-    insert_after(target, addition);
-  }
-
-  void insert_before(E* _target, E* _addition) {
-    DLLNode target = to_node(_target);
-    DLLNode addition = to_node(_addition);
-    insert_before(target, addition);
-  }
-  */
-
   int next(E** element) {
     if(*element == NULL) {
       *element = to_element(this->head);
@@ -101,14 +87,23 @@ class DLL : public SimpleDLL {
     }
   }
 
-  DLLNode to_node(E* element) {
+  inline DLLNode to_node(E* element) {
     return (DLLNode)((char*)element + OFFSET);
   }
 
-  E* to_element(DLLNode node) {
+  inline E* to_element(DLLNode node) {
     return (E*)((char*)node - OFFSET);
   }
 
+  template<typename Func>
+  void foreach(Func func) {
+    DLLNode node = this->head;
+    while(node) {
+      DLLNode next = node->next;
+      if(func(to_element(node))) return;
+      node = next;
+    }
+  }
 };
 
 #define DLL_DECLARE(TYPE, LINKNAME) DLL<TYPE, offsetof(TYPE, LINKNAME)>

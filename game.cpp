@@ -77,17 +77,6 @@ void CTimer::update(float dt) {
   }
 }
 
-int is_timer_expired(GO* go, void* data) {
-  // look for an expired timer message
-  Message* message = NULL;
-  while(go->inbox.next(&message)) {
-    if(message->kind == MESSAGE_TIMER_EXPIRED) {
-      return 1;
-    }
-  }
-  return 0;
-}
-
 enum BombStates {
   BOMB_IDLE,
   BOMB_EXPLODING,
@@ -139,7 +128,18 @@ void CBombBehavior::update(float dt) {
   }
 
   // nothing to do if a timer hasn't gone off
-  if(!is_timer_expired(bomb, NULL)) return;
+  int timer_expired = 0;
+  bomb->inbox.foreach([&](Message* message) -> int {
+      // look for an expired timer message or an explosion
+      if(message->kind == MESSAGE_TIMER_EXPIRED
+         || message->kind == MESSAGE_EXPLOSION_NEARBY) {
+        timer_expired = 1;
+        return 1;
+      }
+      return 0;
+    });
+
+  if(!timer_expired) return;
 
   if(this->state == BOMB_IDLE) {
     // set the next timer and change state
@@ -148,14 +148,8 @@ void CBombBehavior::update(float dt) {
     Vector_ pos;
     bomb->pos(&pos);
     world_foreach(bomb->world, &pos, bomb_dim * bomb_chain_factor, [&](GO* item) -> int {
-        if(item == bomb) return 0;
-        if(item->ttag == TAG_PLAYER) return 0;
-        if(!item->find_component(&CCollidable::Type)) return 0;
-        if(item->ttag == TAG_BOMB) {
-          bomb_detonate(item);
-        } else if(item->ttag != TAG_PLATFORM) {
-          agent_send_terminate(item, world);
-        }
+        Message* message = message_make(bomb, MESSAGE_EXPLOSION_NEARBY, NULL);
+        message_postinbox(item, message);
         return 0;
       });
   } else if(this->state == BOMB_EXPLODING) {

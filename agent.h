@@ -79,6 +79,7 @@ enum MessageKind {
   MESSAGE_TERMINATING,    // agent is terminating
   MESSAGE_COLLIDING,      // agent is colliding with other (cother, cself)
   MESSAGE_TIMER_EXPIRED,  // args (payload)
+  MESSAGE_EXPLOSION_NEARBY,
   MESSAGE_MAX1,
   AGENT_TAKE_DAMAGE,      // command agent to take damage
   AGENT_START_ATTACK,
