@@ -7,11 +7,11 @@
 OBJECT_IMPL(CPlatformer);
 
 CPlatformer::CPlatformer()
-  : Component(NULL), grav_accel(9.81), platform_mask(0) {
+  : Component(NULL, PRIORITY_ACT), grav_accel(9.81), platform_mask(0) {
 }
 
 CPlatformer::CPlatformer(GO* go, float grav_accel)
-  : Component(go), grav_accel(grav_accel), platform_mask(MASK_PLATFORMER) {
+  : Component(go, PRIORITY_ACT), grav_accel(grav_accel), platform_mask(MASK_PLATFORMER) {
   this->max_speed = 64 / .1;
 }
 

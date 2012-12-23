@@ -15,12 +15,19 @@ typedef enum {
 
 class GO;
 
+enum ComponentPriority {
+  PRIORITY_THINK,
+  PRIORITY_ACT,
+  PRIORITY_SHOW,
+  PRIORITY_LEAST
+};
+
 class Component : public Object {
  public:
   OBJECT_PROTO(Component);
 
   Component();
-  Component(GO* go);
+  Component(GO* go, ComponentPriority priority);
   virtual ~Component();
 
   virtual void update(float dt);
@@ -29,6 +36,7 @@ class Component : public Object {
 
   struct DLLNode_ node;
   GO* go;
+  ComponentPriority priority;
 };
 
 // registers a GO with the collidables section of the world. GO

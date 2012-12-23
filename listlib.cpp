@@ -93,6 +93,19 @@ void SimpleDLL::add_head_node(DLLNode addition) {
   }
 }
 
+void SimpleDLL::add_tail_node(DLLNode addition) {
+  if(this->tail == NULL) {
+    addition->next = NULL;
+    addition->next = NULL;
+    this->head = addition;
+    this->tail = addition;
+    ++this->nelems;
+  } else {
+    insert_after(this->tail, addition);
+    this->tail = addition;
+  }
+}
+
 void SimpleDLL::remove_node(DLLNode node) {
   if(this->head == node) {
     DLLNode next = node->next;

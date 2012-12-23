@@ -40,6 +40,7 @@ class SimpleDLL {
   int nelems;
 
   void add_head_node(DLLNode node);
+  void add_tail_node(DLLNode node);
   void remove_node(DLLNode node);
   DLLNode remove_tail_node();
 
@@ -69,6 +70,11 @@ class DLL : public SimpleDLL {
     add_head_node(addition);
   }
 
+  void add_tail(E* element) {
+    DLLNode addition = to_node(element);
+    add_tail_node(addition);
+  }
+
   void remove(E* element) {
     DLLNode node = to_node(element);
     remove_node(node);
@@ -79,21 +85,14 @@ class DLL : public SimpleDLL {
     return to_element(node);
   }
 
-  int next(E** element) {
-    if(*element == NULL) {
-      *element = to_element(this->head);
-      return *element != NULL;
-    }
+  E* head_element() {
+    if(!this->head) return NULL;
+    return to_element(this->head);
+  }
 
-    DLLNode node = to_node(*element);
-    DLLNode next = node->next;
-    if(next) {
-      *element = to_element(next);
-      return 1;
-    } else {
-      *element = NULL;
-      return 0;
-    }
+  E* tail_element() {
+    if(!this->tail) return NULL;
+    return to_element(this->tail);
   }
 
   inline DLLNode to_node(E* element) {
@@ -111,6 +110,30 @@ class DLL : public SimpleDLL {
       DLLNode next = node->next;
       if(func(to_element(node))) return;
       node = next;
+    }
+  }
+
+  template<typename Func>
+  void insert_before_when(E* element, Func func) {
+    E* h = head_element();
+
+    if(!h || func(h)) {
+      add_head(element);
+      return;
+    }
+
+    int found = 0;
+    foreach([=, &found](E* e) -> int {
+        if(e != h && func(e)) {
+          insert_before(to_node(e), to_node(element));
+          found = 1;
+          return 1;
+        }
+        return 0;
+      });
+
+    if(!found) {
+      add_tail(element);
     }
   }
 };

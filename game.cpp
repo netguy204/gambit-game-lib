@@ -59,11 +59,11 @@ enum Tags {
 OBJECT_IMPL(CTimer);
 
 CTimer::CTimer()
-  : Component(NULL), time_remaining(0), expire_payload(NULL)
+  : Component(NULL, PRIORITY_THINK), time_remaining(0), expire_payload(NULL)
 {}
 
 CTimer::CTimer(GO* go, float time_remaining, void* payload)
-  : Component(go), time_remaining(time_remaining), expire_payload(payload) {
+  : Component(go, PRIORITY_THINK), time_remaining(time_remaining), expire_payload(payload) {
 }
 
 void CTimer::update(float dt) {
@@ -83,38 +83,14 @@ enum BombStates {
   BOMB_DONE
 };
 
-void bomb_detonate(GO* bomb) {
-  CTimer* timer = (CTimer*)bomb->find_component(&CTimer::Type);
-  if(timer && timer->time_remaining > bomb_explode_start) {
-    timer->time_remaining = bomb_explode_start;
-  }
-}
-
-int delete_all_but_player(GO* go, void* udata) {
-  if(go == udata) return 0;
-  if(go->ttag == TAG_PLAYER) return 0;
-
-  // ignore non-collidables
-  CCollidable* coll = (CCollidable*)go->find_component(&CCollidable::Type);
-  if(!coll) return 0;
-
-  // destroy what we hit
-  if(go->ttag == TAG_BOMB) {
-    bomb_detonate(go);
-  } else if(go->ttag != TAG_PLATFORM) {
-    agent_send_terminate(go, world);
-  }
-  return 0;
-}
-
 OBJECT_IMPL(CBombBehavior);
 
 CBombBehavior::CBombBehavior()
-  : Component(NULL), state(BOMB_IDLE) {
+  : Component(NULL, PRIORITY_ACT), state(BOMB_IDLE) {
 }
 
 CBombBehavior::CBombBehavior(GO* go)
-  : Component(go), state(BOMB_IDLE) {
+  : Component(go, PRIORITY_ACT), state(BOMB_IDLE) {
   new CTimer(go, bomb_delay - bomb_explode_start, NULL);
   this->state = BOMB_IDLE;
 }
@@ -162,11 +138,11 @@ void CBombBehavior::update(float dt) {
 OBJECT_IMPL(CLeftAndRight);
 
 CLeftAndRight::CLeftAndRight()
-  : Component(NULL), minx(0), maxx(screen_width) {
+  : Component(NULL, PRIORITY_ACT), minx(0), maxx(screen_width) {
 }
 
 CLeftAndRight::CLeftAndRight(GO* go, float minx, float maxx)
-  : Component(go), minx(minx), maxx(maxx) {
+  : Component(go, PRIORITY_ACT), minx(minx), maxx(maxx) {
 }
 
 void CLeftAndRight::update(float dt) {
@@ -186,11 +162,11 @@ void CLeftAndRight::update(float dt) {
 OBJECT_IMPL(CInput);
 
 CInput::CInput()
-  : Component(NULL), state(NULL), fire_pressed(0), facing(1) {
+  : Component(NULL, PRIORITY_THINK), state(NULL), fire_pressed(0), facing(1) {
 }
 
 CInput::CInput(GO* go)
-  : Component(go) {
+  : Component(go, PRIORITY_THINK) {
 
   this->state = NULL;
   this->fire_pressed = 0;
@@ -243,11 +219,11 @@ void CInput::update(float dt) {
 OBJECT_IMPL(CTestDisplay);
 
 CTestDisplay::CTestDisplay()
-  : Component(NULL) {
+  : Component(NULL, PRIORITY_SHOW) {
 }
 
 CTestDisplay::CTestDisplay(GO* go)
-  : Component(go) {
+  : Component(go, PRIORITY_SHOW) {
 }
 
 void CTestDisplay::update(float dt) {

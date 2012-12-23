@@ -128,8 +128,8 @@ Component::Component()
   : go(NULL) {
 }
 
-Component::Component(GO* go)
-  : go(NULL) {
+Component::Component(GO* go, ComponentPriority priority)
+  : go(NULL), priority(priority) {
 
   if(go) {
     set_parent(go);
@@ -153,18 +153,20 @@ void Component::set_parent(GO* go) {
   this->go = go;
 
   if(go) {
-    this->go->components.add_head(this);
+    this->go->components.insert_before_when(this, [this](Component* other) {
+        return this->priority < other->priority;
+      });
   }
 }
 
 OBJECT_IMPL(CCollidable);
 
 CCollidable::CCollidable()
-  : Component(NULL), w(0), h(0) {
+  : Component(NULL, PRIORITY_LEAST), w(0), h(0) {
 }
 
 CCollidable::CCollidable(GO* go, float w, float h)
-  : Component(go), w(w), h(h), mask(MASK_PLATFORMER) {
+  : Component(go, PRIORITY_LEAST), w(w), h(h), mask(MASK_PLATFORMER) {
   if(go) {
     go->world->collidables.add_head(this);
   }
