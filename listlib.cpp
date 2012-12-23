@@ -76,12 +76,8 @@ void llentry_remove(LLNode* head, void* value) {
   }
 }
 
-DLLNode_::DLLNode_()
-  : next(NULL), prev(NULL) {
-}
-
 SimpleDLL::SimpleDLL()
-  : head(NULL), tail(NULL) {
+  : head(NULL), tail(NULL), nelems(0) {
 }
 
 void SimpleDLL::add_head_node(DLLNode addition) {
@@ -90,6 +86,7 @@ void SimpleDLL::add_head_node(DLLNode addition) {
     addition->prev = NULL;
     this->head = addition;
     this->tail = addition;
+    ++this->nelems;
   } else {
     insert_before(this->head, addition);
     this->head = addition;
@@ -106,6 +103,8 @@ void SimpleDLL::remove_node(DLLNode node) {
       this->head = NULL;
       this->tail = NULL;
     }
+
+    --this->nelems;
     return;
   }
 
@@ -126,6 +125,7 @@ void SimpleDLL::remove_node(DLLNode node) {
     assert(before->next == node);
     before->next = after;
   }
+  --this->nelems;
 }
 
 DLLNode SimpleDLL::remove_tail_node() {
@@ -140,22 +140,18 @@ DLLNode SimpleDLL::remove_tail_node() {
     this->head = NULL;
     this->tail = NULL;
   }
+  --this->nelems;
   return result;
 }
 
 int SimpleDLL::count() {
-  int count = 0;
-  DLLNode node = this->head;
-  while(node) {
-    ++count;
-    node = node->next;
-  }
-  return count;
+  return this->nelems;
 }
 
 void SimpleDLL::zero() {
   this->head = NULL;
   this->tail = NULL;
+  this->nelems = 0;
 }
 
 int SimpleDLL::is_empty() {
@@ -170,6 +166,7 @@ void SimpleDLL::insert_after(DLLNode target, DLLNode addition) {
   if(after) {
     after->prev = addition;
   }
+  ++this->nelems;
 }
 
 void SimpleDLL::insert_before(DLLNode target, DLLNode addition) {
@@ -180,4 +177,5 @@ void SimpleDLL::insert_before(DLLNode target, DLLNode addition) {
   if(before) {
     before->next = addition;
   }
+  ++this->nelems;
 }

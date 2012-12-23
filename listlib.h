@@ -29,8 +29,6 @@ typedef struct DLLNode_ *DLLNode;
 struct DLLNode_ {
   DLLNode next;
   DLLNode prev;
-
-  DLLNode_();
 };
 
 class SimpleDLL {
@@ -39,6 +37,7 @@ class SimpleDLL {
 
   DLLNode head;
   DLLNode tail;
+  int nelems;
 
   void add_head_node(DLLNode node);
   void remove_node(DLLNode node);

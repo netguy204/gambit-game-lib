@@ -24,16 +24,16 @@ EXE_OBJS=$(C_OBJS) gambitmain.o
 all: $(BIN) resources
 
 $(BIN): $(EXE_OBJS)
-	$(CXX) $(CFLAGS) -o $@ $(EXE_OBJS) $(LDFLAGS)
+	$(CXX) $(CXXFLAGS) -o $@ $(EXE_OBJS) $(LDFLAGS)
 
 test_bin: $(C_OBJS) testlib_test.o
-	$(CXX) $(CFLAGS) -o $@ $(C_OBJS) testlib_test.o $(LDFLAGS)
+	$(CXX) $(CXXFLAGS) -o $@ $(C_OBJS) testlib_test.o $(LDFLAGS)
 
 test: test_bin
 	./test_bin
 
 C_TOOL_OBJS=$(C_OBJS)
-BUILD_WITH_XML=$(CXX) $(CFLAGS) -o $@ $< $(C_TOOL_OBJS) $(LDFLAGS)
+BUILD_WITH_XML=$(CXX) $(CXXFLAGS) -o $@ $< $(C_TOOL_OBJS) $(LDFLAGS)
 
 SPRITE_PSDS=$(wildcard sprites/*.psd)
 SPRITE_PNGS=$(patsubst %.psd, %.png, $(SPRITE_PSDS))
@@ -54,7 +54,7 @@ items_bin: items_bin.o $(C_TOOL_OBJS)
 	$(BUILD_WITH_XML)
 
 sfmt/SFMT.o: sfmt/SFMT.c
-	$(CXX) $(CFLAGS) -c $< -o $@ -DSFMT_MEXP=607
+	$(CXX) $(CXXFLAGS) -c $< -o $@ -DSFMT_MEXP=607
 
 clean:
 	rm -rf *.o $(BIN) buildatlas test items_bin $(RESOURCE_FILES)
