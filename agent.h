@@ -58,7 +58,7 @@ class Dispatcher : public Agent {
   LLNode dispatchees;
 };
 
-class Collective : public Dispatcher {
+class Collective : public Agent {
  public:
   OBJECT_PROTO(Collective);
 

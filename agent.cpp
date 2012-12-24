@@ -154,15 +154,6 @@ void foreach_outboxmessage(Dispatcher* dispatcher, Agent* agent,
     });
 }
 
-void foreach_dispatcheemessage(Dispatcher* dispatcher, OutboxMessageCallback callback,
-                               void * udata) {
-  LLNode node = dispatcher->dispatchees;
-  Agent* agent;
-  while((agent = (Agent*)llentry_nextvalue(&node))) {
-    foreach_outboxmessage(dispatcher, agent, callback, udata);
-  }
-}
-
 void agent_terminate_report_complete(Message* message) {
   // now we can free ourselves
   Agent* agent = message->source;
@@ -207,14 +198,12 @@ void dispatcher_remove_agent(Dispatcher* dispatcher, Agent* agent) {
 // tie an agent's lifetime to this collective
 void collective_add(Collective* collective, Agent* agent) {
   collective->children.add_head(agent);
-  // we want messages from things we own too so we can drop them if
-  // they tell us they died
-  dispatcher_add_agent(collective, agent);
+  agent->delta_subscribers += 1;
 }
 
 void collective_remove(Collective* collective, Agent* agent) {
   collective->children.remove(agent);
-  dispatcher_remove_agent(collective, agent);
+  agent->delta_subscribers -= 1;
 }
 
 void collective_add_agent(Collective* collective, void * data) {
@@ -226,19 +215,6 @@ void collective_add_agent(Collective* collective, void * data) {
   for(ii = 0; ii < HV_SIZE(collective->sub_dispatchers, Dispatcher*); ++ii) {
     Dispatcher* dispatcher = *HV_GET(collective->sub_dispatchers, Dispatcher*, ii);
     dispatcher_add_agent(dispatcher, agent);
-  }
-}
-
-void collective_handle_outboxes(Dispatcher* disp, Message* message, void * udata) {
-  Collective* collective = (Collective*)disp;
-
-  switch(message->kind) {
-  case MESSAGE_TERMINATING:
-    collective_remove(collective, message->source);
-    break;
-  default:
-    printf("COLLECTIVE: outbox unhandled message kind: %d\n",
-           message->kind);
   }
 }
 
@@ -259,13 +235,6 @@ void Collective::update(float dt) {
   // drain inbox
   foreach_inboxmessage(this, collective_handle_inbox, NULL);
 
-  // FIXME: is this necessary?
-  Message* message = this->inbox.remove_tail();
-  while(message) {
-    message_free(message);
-    message = this->inbox.remove_tail();
-  }
-
   // update all of our sub-agents
   this->children.foreach([=](Agent* agent) -> int {
       agent->update(dt);
@@ -273,5 +242,15 @@ void Collective::update(float dt) {
     });
 
   // drain the outboxes of our dispatchees
-  foreach_dispatcheemessage(this, collective_handle_outboxes, NULL);
+  this->children.foreach([this](Agent* agent) -> int {
+      int removed = 0;
+      agent->outbox.foreach([&](Message* message) -> int {
+          if(message->kind == MESSAGE_TERMINATING) {
+            collective_remove(this, agent);
+          }
+          message_report_read(message);
+          return 0;
+        });
+      return 0;
+    });
 }

@@ -12,6 +12,9 @@ class CPlatformer : public Component {
   CPlatformer(GO* go, float grav_accel);
 
   virtual void update(float dt);
+  void look_for_support();
+  void resolve_interpenetration();
+  int is_supported();
 
   float grav_accel;
   float max_speed;
