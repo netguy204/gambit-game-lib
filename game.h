@@ -105,6 +105,33 @@ class CCameraFocus : public Component {
   GO* camera;
 };
 
+struct PEntry {
+  Vector_ pos;
+  Vector_ vel;
+  float life;
+};
+
+class CParticleEmitter : public Component {
+ public:
+  OBJECT_PROTO(CParticleEmitter);
+
+  CParticleEmitter();
+  CParticleEmitter(GO* go, SpriteAtlasEntry entry, Vector offset, int nmax);
+  ~CParticleEmitter();
+
+  virtual void update(float dt);
+  void init_entry(PEntry* e, float life);
+
+  Vector_ offset;
+  SpriteAtlasEntry entry;
+  int nmax;
+  int active;
+  float max_life;
+  float max_speed;
+  float max_offset;
+  PEntry* entries;
+};
+
 void game_init();
 void game_shutdown();
 

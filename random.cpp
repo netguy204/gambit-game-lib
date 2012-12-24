@@ -3,7 +3,7 @@
 #include <math.h>
 #include <limits>
 
-const int uint32_max = std::numeric_limits<uint32_t>::max();
+const uint32_t uint32_max = std::numeric_limits<uint32_t>::max();
 
 int rand_in_range(Random random, int lower, int upper) {
   int range = upper - lower;

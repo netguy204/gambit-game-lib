@@ -10,6 +10,7 @@
 #include "tiles.h"
 #include "random.h"
 #include "game_ui.h"
+#include "color.h"
 
 #include "config.h"
 
@@ -362,7 +363,7 @@ void CCameraFocus::update(float dt) {
   go->pos(&desired);
   vector_sub(&desired, &desired, &offset);
 
-  const float max_v = 600;
+  const float max_v = 800;
   const float max_dx = max_v * dt;
 
   Vector_ delta;
@@ -376,25 +377,81 @@ void CCameraFocus::update(float dt) {
 
   vector_scale(&delta, &delta, max_dx / mag);
   vector_add(&camera->_pos, &camera->_pos, &delta);
+}
 
-  /*
-  Vector_ xv;
-  vector_sub(&xv, &desired, &camera->_pos);
-  float x = vector_mag(&xv);
+OBJECT_IMPL(CParticleEmitter);
 
-  const float mass = 1;
-  Vector_ spring_dv;
-  const float kfactor = 10;
-  vector_scale(&spring_dv, &xv, kfactor / mass * dt);
+CParticleEmitter::CParticleEmitter()
+  : Component(NULL, PRIORITY_ACT), entry(NULL), entries(NULL), nmax(0), active(0) {
+}
 
-  Vector_ drag_dv;
-  const float dfactor = 9;
-  float speed = vector_mag(&camera->_vel);
-  vector_scale(&drag_dv, &camera->_vel, -dfactor / mass * dt);
+void vector_random(Vector v, float scale) {
+  float mag = 0;
+  while(mag < 0.0001) {
+    v->x = random_next_gaussian(&rgen);
+    v->y = random_next_gaussian(&rgen);
+    mag = vector_dot(v, v);
+  }
 
-  vector_add(&camera->_vel, &camera->_vel, &spring_dv);
-  vector_add(&camera->_vel, &camera->_vel, &drag_dv);
-  */
+  mag = sqrtf(mag);
+  vector_scale(v, v, scale / mag);
+}
+
+CParticleEmitter::CParticleEmitter(GO* go, SpriteAtlasEntry entry, Vector offset, int nmax)
+  : Component(go, PRIORITY_ACT), entry(entry), offset(*offset), nmax(nmax),
+    max_life(1), max_speed(100), max_offset(10), active(1) {
+  entries = new PEntry[nmax];
+
+  float dlife = max_life / nmax;
+
+  for(int ii = 0; ii < nmax; ++ii) {
+    PEntry* e = &entries[ii];
+    init_entry(e, dlife * ii);
+  }
+}
+
+void CParticleEmitter::init_entry(PEntry* e, float life) {
+  Vector_ wpos;
+  go->pos(&wpos);
+  vector_add(&wpos, &wpos, &offset);
+  vector_random(&e->vel, max_speed);
+  vector_random(&e->pos, max_offset);
+  vector_add(&e->pos, &e->pos, &wpos);
+  e->life = life;
+}
+
+CParticleEmitter::~CParticleEmitter() {
+  delete[] entries;
+}
+
+void CParticleEmitter::update(float dt) {
+  const float max_temp = 6500;
+  const float min_temp = 0;
+  const float temp_slope = (max_temp - min_temp) / max_life;
+  const float dim = 5;
+
+  for(int ii = 0; ii < nmax; ++ii) {
+    PEntry* e = &entries[ii];
+    if(active && e->life <= 0) {
+      // re-init dead particles
+      init_entry(e, max_life);
+    } else if(!active) {
+      // skip dead particles
+      continue;
+    }
+
+    // integrate
+    vector_integrate(&e->pos, &e->pos, &e->vel, dt);
+    e->life -= dt;
+
+    // draw
+    struct ColoredRect_ rect;
+    rect_centered(&rect, &e->pos, dim, dim);
+    const float temp = min_temp + e->life * temp_slope;
+    color_for_temp(temp, rect.color);
+    rect.color[3] = powf(e->life / max_life, 0.7);
+    camera_relative_enqueue(&rect);
+  }
 }
 
 GO* platform_make(float x, float y, float w, float h) {
@@ -460,12 +517,17 @@ GO* bomb_make(Vector pos, Vector vel) {
   new CPlatformer(go, bomb_gravity_accel);
   new CBombBehavior(go);
 
+  Vector_ offset = {0.0f, 16.0f};
+  new CParticleEmitter(go, NULL, &offset, 10);
   return go;
 }
 
 void game_step(long delta, InputState state);
 
 void game_support_init() {
+  color_init();
+  random_init(&rgen, 1234);
+
   main_clock = clock_make();
 
   player_gravity_accel = (player_jump_speed * player_jump_speed) / (2 * player_jump_height);

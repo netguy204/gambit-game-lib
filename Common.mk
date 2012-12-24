@@ -5,10 +5,10 @@ CPP_SRC+= \
 	realmain.cpp stb_image.cpp tiles.cpp random.cpp \
 	perlin.cpp heapvector.cpp xmltools.cpp \
 	pathfinder.cpp utils.cpp matrix.cpp ooc.cpp \
-	game_ui.cpp platform.cpp gameobject.cpp
+	game_ui.cpp platform.cpp gameobject.cpp color.cpp
 
 C_SRC+= \
-	sfmt/SFMT.c
+	sfmt/SFMT.c spectra.c
 
 XML_INCLUDE:=-I/usr/include/libxml2
 CXXFLAGS+=$(XML_INCLUDE) -Isfmt/ -std=c++0x -Wno-invalid-offsetof
