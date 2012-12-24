@@ -34,7 +34,7 @@ float charge_delay = 0.2;
 float bomb_explode_start = 0.3;
 float bomb_chain_factor = 5.0;
 float enemy_speed = 100;
-float enemy_dim = 48;
+float enemy_dim = 40;
 
 World* world;
 struct Random_ rgen;
@@ -45,6 +45,8 @@ CInput* player_input;
 GO* camera;
 
 SpriteAtlas atlas;
+SpriteAtlasEntry bomb_entry;
+
 Clock main_clock;
 
 int max_bombs = 50;
@@ -68,6 +70,16 @@ void camera_relative_enqueue(ColoredRect rect) {
   rect->maxy -= dy;
 
   filledrect_enqueue_for_screen(rect);
+}
+
+void camera_relative_enqueue(Sprite sprite) {
+  float dx = floorf(camera->_pos.x);
+  float dy = floorf(camera->_pos.y);
+
+  sprite->displayX -= dx;
+  sprite->displayY -= dy;
+  SpriteList list = frame_spritelist_append(NULL, sprite);
+  spritelist_enqueue_for_screen(list);
 }
 
 OBJECT_IMPL(CTimer);
@@ -297,6 +309,29 @@ void CTestDisplay::update(float dt) {
   camera_relative_enqueue(&rect);
 }
 
+OBJECT_IMPL(CStaticSprite);
+
+CStaticSprite::CStaticSprite()
+  : Component(NULL, PRIORITY_SHOW), entry(NULL) {
+}
+
+CStaticSprite::CStaticSprite(GO* go, SpriteAtlasEntry entry)
+  : Component(go, PRIORITY_SHOW), entry(entry) {
+}
+
+void CStaticSprite::update(float dt) {
+  Vector_ pos;
+  go->pos(&pos);
+
+  Sprite sprite = frame_make_sprite();
+  sprite_fillfromentry(sprite, entry);
+  sprite->displayX = pos.x;
+  sprite->displayY = pos.y;
+  sprite->originX = 0.5;
+  sprite->originY = 0.5;
+  camera_relative_enqueue(sprite);
+}
+
 OBJECT_IMPL(CCameraFocus);
 
 CCameraFocus::CCameraFocus()
@@ -420,7 +455,7 @@ GO* bomb_make(Vector pos, Vector vel) {
   go->_pos = *pos;
   go->_vel = *vel;
 
-  new CTestDisplay(go, 1.0, 0.0, 0.0);
+  new CStaticSprite(go, bomb_entry);
   new CCollidable(go, bomb_dim, bomb_dim);
   new CPlatformer(go, bomb_gravity_accel);
   new CBombBehavior(go);
@@ -437,6 +472,7 @@ void game_support_init() {
   bomb_gravity_accel = (throw_speed * throw_speed) / (2 * bomb_max_height);
 
   atlas = spriteatlas_load("resources/images_default.dat", "resources/images_default.png");
+  bomb_entry = spriteatlas_find(atlas, "bomb");
 
   world = new World();
 }

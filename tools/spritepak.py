@@ -107,7 +107,8 @@ def mk_sheet(filenames, outbase, tgt_dims, notrimg):
         v1 = float(current_y) / tgt_h
         u1 = float(current_x + img_w) / tgt_w
         v0 = float(current_y + img_h) / tgt_h
-        struct_tuple = (0, img_w, img_h, u0, v0, u1, v1, basename)
+        pakname, _ = os.path.splitext(basename)
+        struct_tuple = (0, img_w, img_h, u0, v0, u1, v1, pakname)
         packed = struct.pack(packing, *struct_tuple)
         outdat.write(packed)
 

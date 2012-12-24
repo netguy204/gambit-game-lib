@@ -3,6 +3,7 @@
 
 #include "platform.h"
 #include "testlib.h"
+#include "spriteatlas.h"
 
 class CInput : public Component {
  public:
@@ -77,6 +78,18 @@ class CTestDisplay : public Component {
   virtual void update(float dt);
 
   float r, g, b;
+};
+
+class CStaticSprite : public Component {
+ public:
+  OBJECT_PROTO(CStaticSprite);
+
+  CStaticSprite();
+  CStaticSprite(GO* go, SpriteAtlasEntry entry);
+
+  virtual void update(float dt);
+
+  SpriteAtlasEntry entry;
 };
 
 // probably want all renders to happen after this has done its update
