@@ -47,6 +47,7 @@ GO* camera;
 
 SpriteAtlas atlas;
 SpriteAtlasEntry bomb_entry;
+SpriteAtlasEntry spark_entry;
 
 Clock main_clock;
 
@@ -426,9 +427,12 @@ CParticleEmitter::~CParticleEmitter() {
 
 void CParticleEmitter::update(float dt) {
   const float max_temp = 6500;
-  const float min_temp = 0;
+  const float min_temp = 2000;
   const float temp_slope = (max_temp - min_temp) / max_life;
   const float dim = 5;
+  SpriteList list = NULL;
+  float dx = floorf(camera->_pos.x);
+  float dy = floorf(camera->_pos.y);
 
   for(int ii = 0; ii < nmax; ++ii) {
     PEntry* e = &entries[ii];
@@ -445,13 +449,22 @@ void CParticleEmitter::update(float dt) {
     e->life -= dt;
 
     // draw
-    struct ColoredRect_ rect;
-    rect_centered(&rect, &e->pos, dim, dim);
+    Sprite sprite = frame_make_sprite();
+    sprite_fillfromentry(sprite, spark_entry);
+    sprite->displayX = e->pos.x - dx;
+    sprite->displayY = e->pos.y - dy;
+    sprite->originX = 0.5;
+    sprite->originY = 0.5;
+    sprite->angle = vector_angle(&e->vel);
+
     const float temp = min_temp + e->life * temp_slope;
-    color_for_temp(temp, rect.color);
-    rect.color[3] = powf(e->life / max_life, 0.7);
-    camera_relative_enqueue(&rect);
+    color_for_temp(temp, sprite->color);
+    sprite->color[3] = e->life / max_life;
+
+    list = frame_spritelist_append(list, sprite);
   }
+
+  spritelist_enqueue_for_screen_colored(list);
 }
 
 GO* platform_make(float x, float y, float w, float h) {
@@ -535,6 +548,7 @@ void game_support_init() {
 
   atlas = spriteatlas_load("resources/images_default.dat", "resources/images_default.png");
   bomb_entry = spriteatlas_find(atlas, "bomb");
+  spark_entry = spriteatlas_find(atlas, "spark");
 
   world = new World();
 }

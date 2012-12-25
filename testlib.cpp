@@ -212,6 +212,12 @@ void spritelist_enqueue_for_screen(SpriteList list) {
   renderer_enqueue(spritelist_render_to_screen, list);
 }
 
+extern void spritelist_render_to_screen_colored(SpriteList list);
+
+void spritelist_enqueue_for_screen_colored(SpriteList list) {
+  renderer_enqueue(spritelist_render_to_screen_colored, list);
+}
+
 extern void rect_render_to_screen(ColoredRect rect);
 
 void rect_enqueue_for_screen(ColoredRect rect) {

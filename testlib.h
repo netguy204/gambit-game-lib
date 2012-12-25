@@ -98,6 +98,7 @@ typedef struct Sprite_ {
   float displayY;
   float w, h;
   float u0, u1, v0, v1;
+  float color[4];
 } *Sprite;
 
 Sprite frame_make_sprite();
@@ -111,6 +112,7 @@ typedef struct SpriteList_ {
 SpriteList frame_spritelist_append(SpriteList list, Sprite sprite);
 
 void spritelist_enqueue_for_screen(SpriteList list);
+void spritelist_enqueue_for_screen_colored(SpriteList list);
 void rect_enqueue_for_screen(ColoredRect rect);
 void filledrect_enqueue_for_screen(ColoredRect rect);
 

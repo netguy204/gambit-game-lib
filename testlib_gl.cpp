@@ -70,12 +70,14 @@ int renderer_load_shader(const char* src, int kind) {
 typedef enum {
   GLPARAM_VERTEX,
   GLPARAM_TEXCOORD0,
+  GLPARAM_COLOR0,
   GLPARAM_DONE
 } ProgramParameters;
 
 GLuint standard_program;
 GLuint vertex_buffer;
 GLuint texcoord_buffer;
+GLuint color_buffer;
 struct Matrix44_ orthographic_projection;
 GLuint tex0_uniform_location;
 GLuint mvp_uniform_location;
@@ -83,6 +85,10 @@ GLuint mvp_uniform_location;
 GLuint solid_program;
 GLuint solid_mvp_uniform_location;
 GLuint solid_color_location;
+
+GLuint standard_color_program;
+GLuint color_tex0_uniform_location;
+GLuint color_mvp_uniform_location;
 
 int renderer_link_shader(const char* vertexname, const char* fragmentname, ...) {
   char* vertex_source = filename_slurp(vertexname);
@@ -127,11 +133,12 @@ void renderer_init_standard_shader() {
                                      GLPARAM_TEXCOORD0, "tex_coord0",
                                      GLPARAM_DONE);
   standard_program = program;
-  tex0_uniform_location = glGetUniformLocation(program, "tex0");
+  tex0_uniform_location = glGetUniformLocation(program, "textureUnit0");
   mvp_uniform_location = glGetUniformLocation(program, "mvpMatrix");
 
   glGenBuffers(1, &vertex_buffer);
   glGenBuffers(1, &texcoord_buffer);
+  glGenBuffers(1, &color_buffer);
 
   program = renderer_link_shader("resources/standard.vert", "resources/solid.frag",
                                  GLPARAM_VERTEX, "vertex",
@@ -139,6 +146,16 @@ void renderer_init_standard_shader() {
   solid_program = program;
   solid_mvp_uniform_location = glGetUniformLocation(program, "mvpMatrix");
   solid_color_location = glGetUniformLocation(program, "color");
+
+  program = renderer_link_shader("resources/standard_color.vert", "resources/standard_color.frag",
+                                 GLPARAM_VERTEX, "vertex",
+                                 GLPARAM_TEXCOORD0, "tex_coord0",
+                                 GLPARAM_COLOR0, "color_coord0",
+                                 GLPARAM_DONE);
+
+  standard_color_program = program;
+  color_tex0_uniform_location = glGetUniformLocation(program, "textureUnit0");
+  color_mvp_uniform_location = glGetUniformLocation(program, "mvpMatrix");
 }
 
 void renderer_gl_init() {
@@ -201,9 +218,7 @@ void renderer_finish_image_free(void* texturep) {
 
 GLuint last_texture = -1;
 
-void spritelist_render_to_screen(SpriteList list) {
-  if(!list) return;
-
+int spritelist_set_texs_and_verts(SpriteList list) {
   int nquads = list->count;
   int ntris = nquads * 2;
   int nverts = 3 * ntris;
@@ -276,16 +291,6 @@ void spritelist_render_to_screen(SpriteList list) {
     texs[tex_idx++] = sprite->v0;
   }
 
-  glUseProgram(standard_program);
-
-  if(list->sprite->resource->texture != last_texture) {
-    glBindTexture(GL_TEXTURE_2D, list->sprite->resource->texture);
-    glUniform1i(tex0_uniform_location, 0);
-    last_texture = list->sprite->resource->texture;
-  }
-
-  glUniformMatrix4fv(mvp_uniform_location, 1, GL_FALSE, orthographic_projection.data);
-
   glEnableVertexAttribArray(GLPARAM_VERTEX);
   glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
   glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 3 * nverts, verts, GL_DYNAMIC_DRAW);
@@ -296,8 +301,96 @@ void spritelist_render_to_screen(SpriteList list) {
   glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 2 * nverts, texs, GL_DYNAMIC_DRAW);
   glVertexAttribPointer(GLPARAM_TEXCOORD0, 2, GL_FLOAT, GL_FALSE, 0, 0);
 
+  return nverts;
+}
+
+void spritelist_render_to_screen(SpriteList list) {
+  if(!list) return;
+
+  glUseProgram(standard_program);
+
+  int nverts = spritelist_set_texs_and_verts(list);
+
+  if(list->sprite->resource->texture != last_texture) {
+    glBindTexture(GL_TEXTURE_2D, list->sprite->resource->texture);
+    last_texture = list->sprite->resource->texture;
+  }
+
+  glUniform1i(tex0_uniform_location, 0);
+  glUniformMatrix4fv(mvp_uniform_location, 1, GL_FALSE, orthographic_projection.data);
   glDrawArrays(GL_TRIANGLES, 0, nverts);
 }
+
+void spritelist_render_to_screen_colored(SpriteList list) {
+  if(!list) return;
+
+  glUseProgram(standard_color_program);
+
+  int nverts = spritelist_set_texs_and_verts(list);
+
+  int ncolors = nverts * 4;
+  GLfloat* colors = (GLfloat*)stack_allocator_alloc(gldata_allocator, sizeof(float) * ncolors);
+
+  SpriteList element;
+  int color_idx = 0;
+  for(element = list; element != NULL;
+      element = (SpriteList)element->node.next) {
+    Sprite sprite = element->sprite;
+
+    // bottom-left
+    colors[color_idx++] = sprite->color[0];
+    colors[color_idx++] = sprite->color[1];
+    colors[color_idx++] = sprite->color[2];
+    colors[color_idx++] = sprite->color[3];
+
+    // bottom-right
+    colors[color_idx++] = sprite->color[0];
+    colors[color_idx++] = sprite->color[1];
+    colors[color_idx++] = sprite->color[2];
+    colors[color_idx++] = sprite->color[3];
+
+    // top-right
+    colors[color_idx++] = sprite->color[0];
+    colors[color_idx++] = sprite->color[1];
+    colors[color_idx++] = sprite->color[2];
+    colors[color_idx++] = sprite->color[3];
+
+    // top-right
+    colors[color_idx++] = sprite->color[0];
+    colors[color_idx++] = sprite->color[1];
+    colors[color_idx++] = sprite->color[2];
+    colors[color_idx++] = sprite->color[3];
+
+    // top-left
+    colors[color_idx++] = sprite->color[0];
+    colors[color_idx++] = sprite->color[1];
+    colors[color_idx++] = sprite->color[2];
+    colors[color_idx++] = sprite->color[3];
+
+    // bottom-left
+    colors[color_idx++] = sprite->color[0];
+    colors[color_idx++] = sprite->color[1];
+    colors[color_idx++] = sprite->color[2];
+    colors[color_idx++] = sprite->color[3];
+  }
+
+  glEnableVertexAttribArray(GLPARAM_COLOR0);
+  glBindBuffer(GL_ARRAY_BUFFER, color_buffer);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 4 * nverts, colors, GL_DYNAMIC_DRAW);
+  glVertexAttribPointer(GLPARAM_COLOR0, 4, GL_FLOAT, GL_FALSE, 0, 0);
+
+  if(list->sprite->resource->texture != last_texture) {
+    glBindTexture(GL_TEXTURE_2D, list->sprite->resource->texture);
+    last_texture = list->sprite->resource->texture;
+  }
+
+  glUniform1i(color_tex0_uniform_location, 0);
+  glUniformMatrix4fv(color_mvp_uniform_location, 1, GL_FALSE, orthographic_projection.data);
+  glDrawArrays(GL_TRIANGLES, 0, nverts);
+
+  glDisableVertexAttribArray(GLPARAM_COLOR0);
+}
+
 
 void rect_render_to_screen(ColoredRect crect) {
   Rect rect = (Rect)crect;
