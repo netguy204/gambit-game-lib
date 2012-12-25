@@ -66,40 +66,40 @@ class DLL : public SimpleDLL {
  public:
 
   void add_head(E* element) {
-    DLLNode addition = to_node(element);
+    DLLNode addition = DLL<E,OFFSET>::to_node(element);
     add_head_node(addition);
   }
 
   void add_tail(E* element) {
-    DLLNode addition = to_node(element);
+    DLLNode addition = DLL<E,OFFSET>::to_node(element);
     add_tail_node(addition);
   }
 
   void remove(E* element) {
-    DLLNode node = to_node(element);
+    DLLNode node = DLL<E,OFFSET>::to_node(element);
     remove_node(node);
   }
 
   E* remove_tail() {
     DLLNode node = remove_tail_node();
-    return to_element(node);
+    return DLL<E,OFFSET>::to_element(node);
   }
 
   E* head_element() {
     if(!this->head) return NULL;
-    return to_element(this->head);
+    return DLL<E,OFFSET>::to_element(this->head);
   }
 
   E* tail_element() {
     if(!this->tail) return NULL;
-    return to_element(this->tail);
+    return DLL<E,OFFSET>::to_element(this->tail);
   }
 
-  inline DLLNode to_node(E* element) {
+  DLLNode to_node(E* element) {
     return (DLLNode)((char*)element + OFFSET);
   }
 
-  inline E* to_element(DLLNode node) {
+  E* to_element(DLLNode node) {
     return (E*)((char*)node - OFFSET);
   }
 
@@ -108,7 +108,7 @@ class DLL : public SimpleDLL {
     DLLNode node = this->head;
     while(node) {
       DLLNode next = node->next;
-      if(func(to_element(node))) return;
+      if(func(DLL<E,OFFSET>::to_element(node))) return;
       node = next;
     }
   }
@@ -125,7 +125,7 @@ class DLL : public SimpleDLL {
     int found = 0;
     foreach([=, &found](E* e) -> int {
         if(e != h && func(e)) {
-          insert_before(to_node(e), to_node(element));
+          insert_before(DLL<E,OFFSET>::to_node(e), DLL<E,OFFSET>::to_node(element));
           found = 1;
           return 1;
         }

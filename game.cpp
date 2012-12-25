@@ -101,7 +101,7 @@ void CTimer::update(float dt) {
     Message* message = message_make(go, MESSAGE_TIMER_EXPIRED, this->expire_payload);
     // need to add component priorities for this to be effective
     message_postinbox(go, message);
-    delete this;
+    delete_me = 1;
   }
 }
 
@@ -191,7 +191,7 @@ void CEnemyBehavior::update(float dt) {
     this->state = ENEMY_FALLING;
     this->go->_vel.x = 0;
     CLeftAndRight* lnr = (CLeftAndRight*)go->find_component(&CLeftAndRight::Type);
-    delete lnr;
+    lnr->delete_me;
   }
 
   // see if a bomb went off

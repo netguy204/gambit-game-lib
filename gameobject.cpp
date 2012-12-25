@@ -55,7 +55,11 @@ void GO::update(float dt) {
   vector_add(&this->_pos, &this->_pos, &dx);
 
   this->components.foreach([=](Component* comp) -> int {
-      comp->update(dt);
+      if(comp->delete_me) {
+	delete(comp);
+      } else {
+	comp->update(dt);
+      }
       return 0;
     });
 
@@ -85,7 +89,11 @@ Component* GO::find_component(const TypeInfo* info) {
   Component* result = NULL;
   this->components.foreach([&](Component* comp) -> int {
       if(comp->typeinfo()->isInstanceOf(info)) {
-        result = comp;
+	if(comp->delete_me) {
+	  result = NULL;
+	} else {
+	  result = comp;
+	}
         return 1;
       }
       return 0;
@@ -139,11 +147,11 @@ void go_set_parent(GO* child, GO* parent) {
 OBJECT_IMPL(Component);
 
 Component::Component()
-  : go(NULL) {
+  : go(NULL), delete_me(0) {
 }
 
 Component::Component(GO* go, ComponentPriority priority)
-  : go(NULL), priority(priority) {
+  : go(NULL), priority(priority), delete_me(0) {
 
   if(go) {
     set_parent(go);
