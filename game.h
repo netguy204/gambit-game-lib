@@ -94,6 +94,18 @@ class CStaticSprite : public Component {
   static SpriteList list;
 };
 
+class CPlayerSprite : public Component {
+ public:
+  OBJECT_PROTO(CPlayerSprite);
+
+  CPlayerSprite();
+  CPlayerSprite(GO* go);
+
+  virtual void update(float dt);
+
+  static SpriteList list;
+};
+
 class CDrawPatch : public Component {
  public:
   OBJECT_PROTO(CDrawPatch);

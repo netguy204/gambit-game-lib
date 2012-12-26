@@ -22,11 +22,11 @@
 float bomb_delay = 6.0f;
 float player_speed = 600;
 float player_jump_speed = 1200;
-float player_width = 64;
+float player_width = 28;
 float player_height = 64;
 float player_jump_height = 300;
 float bomb_max_height = 400;
-float bomb_dim = 32;
+float bomb_dim = 48;
 float player_gravity_accel;
 float bomb_gravity_accel;
 float throw_speed = 1200;
@@ -51,6 +51,9 @@ SpriteAtlasEntry spark_entry;
 SpriteAtlasEntry expl_entry;
 SpriteAtlasEntry enemy_entry;
 SpriteAtlasEntry platform_entry;
+SpriteAtlasEntry guy_right_entry;
+SpriteAtlasEntry guy_left_entry;
+
 TileMap background;
 
 Clock main_clock;
@@ -162,6 +165,10 @@ void CBombBehavior::update(float dt) {
     cp->start_scale = 0.7;
     cp->max_life = bomb_explode_start;
     cp->grav_accel = -30;
+
+    // stop displaying the sprite
+    CStaticSprite* spr = (CStaticSprite*)go->find_component(&CStaticSprite::Type);
+    spr->delete_me = 1;
   } else if(this->state == BOMB_EXPLODING) {
     // destroy the bomb
     this->state = BOMB_DONE;
@@ -343,6 +350,42 @@ void CStaticSprite::update(float dt) {
 
   Sprite sprite = frame_make_sprite();
   sprite_fillfromentry(sprite, entry);
+  sprite->displayX = px;
+  sprite->displayY = py;
+  sprite->originX = 0.5;
+  sprite->originY = 0.5;
+
+  CStaticSprite::list = frame_spritelist_append(CStaticSprite::list, sprite);
+}
+
+OBJECT_IMPL(CPlayerSprite);
+
+SpriteList CPlayerSprite::list = NULL;
+
+CPlayerSprite::CPlayerSprite()
+  : Component(NULL, PRIORITY_SHOW) {
+}
+
+CPlayerSprite::CPlayerSprite(GO* go)
+  : Component(go, PRIORITY_SHOW) {
+}
+
+void CPlayerSprite::update(float dt) {
+  Vector_ pos;
+  go->pos(&pos);
+
+  CInput* ci = (CInput*)go->find_component(&CInput::Type);
+  float dx = floorf(camera->_pos.x);
+  float dy = floorf(camera->_pos.y);
+  float px = pos.x - dx;
+  float py = pos.y - dy;
+  Sprite sprite = frame_make_sprite();
+  if(ci->facing > 0) {
+    sprite_fillfromentry(sprite, guy_right_entry);
+  } else {
+    sprite_fillfromentry(sprite, guy_left_entry);
+  }
+
   sprite->displayX = px;
   sprite->displayY = py;
   sprite->originX = 0.5;
@@ -572,7 +615,7 @@ void player_setup() {
   player_go->_pos.y = 100;
   player_go->ttag = TAG_PERMANENT;
 
-  new CTestDisplay(player_go, 0.0, 0.0, 1.0);
+  new CPlayerSprite(player_go);
   new CCollidable(player_go, player_width, player_height);
   new CPlatformer(player_go, player_gravity_accel);
   new CCameraFocus(player_go, camera);
@@ -617,6 +660,8 @@ void game_support_init() {
   expl_entry = spriteatlas_find(atlas, "expl1");
   enemy_entry = spriteatlas_find(atlas, "enemy");
   platform_entry = spriteatlas_find(atlas, "platform2");
+  guy_left_entry = spriteatlas_find(atlas, "guy-left");
+  guy_right_entry = spriteatlas_find(atlas, "guy");
 
   screen_hh = screen_height / 2.0f;
   screen_hw = screen_width / 2.0f;
@@ -716,6 +761,9 @@ void game_step(long delta, InputState state) {
 
   spritelist_enqueue_for_screen(CDrawPatch::list);
   CDrawPatch::list = NULL;
+
+  spritelist_enqueue_for_screen(CPlayerSprite::list);
+  CPlayerSprite::list = NULL;
 
   // render all particles
   spritelist_enqueue_for_screen_colored(CParticleEmitter::list);
