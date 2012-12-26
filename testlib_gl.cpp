@@ -69,8 +69,15 @@ int renderer_load_shader(const char* src, int kind) {
 
 typedef enum {
   GLPARAM_VERTEX,
-  GLPARAM_TEXCOORD0,
+  GLPARAM_OTHER0,
+  GLPARAM_NORMAL0,
   GLPARAM_COLOR0,
+  GLPARAM_COLOR1,
+  GLPARAM_FOGCOORD0,
+  GLPARAM_OTHER1,
+  GLPARAM_TEXCOORD0,
+  GLPARAM_TEXCOORD1,
+  GLPARAM_TEXCOORD2,
   GLPARAM_DONE
 } ProgramParameters;
 
@@ -150,7 +157,7 @@ void renderer_init_standard_shader() {
   program = renderer_link_shader("resources/standard_color.vert", "resources/standard_color.frag",
                                  GLPARAM_VERTEX, "vertex",
                                  GLPARAM_TEXCOORD0, "tex_coord0",
-                                 GLPARAM_COLOR0, "color_coord0",
+                                 GLPARAM_OTHER0, "color_coord0",
                                  GLPARAM_DONE);
 
   standard_color_program = program;
@@ -374,10 +381,10 @@ void spritelist_render_to_screen_colored(SpriteList list) {
     colors[color_idx++] = sprite->color[3];
   }
 
-  glEnableVertexAttribArray(GLPARAM_COLOR0);
+  glEnableVertexAttribArray(GLPARAM_OTHER0);
   glBindBuffer(GL_ARRAY_BUFFER, color_buffer);
   glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 4 * nverts, colors, GL_DYNAMIC_DRAW);
-  glVertexAttribPointer(GLPARAM_COLOR0, 4, GL_FLOAT, GL_FALSE, 0, 0);
+  glVertexAttribPointer(GLPARAM_OTHER0, 4, GL_FLOAT, GL_FALSE, 0, 0);
 
   if(list->sprite->resource->texture != last_texture) {
     glBindTexture(GL_TEXTURE_2D, list->sprite->resource->texture);
@@ -387,8 +394,6 @@ void spritelist_render_to_screen_colored(SpriteList list) {
   glUniform1i(color_tex0_uniform_location, 0);
   glUniformMatrix4fv(color_mvp_uniform_location, 1, GL_FALSE, orthographic_projection.data);
   glDrawArrays(GL_TRIANGLES, 0, nverts);
-
-  glDisableVertexAttribArray(GLPARAM_COLOR0);
 }
 
 

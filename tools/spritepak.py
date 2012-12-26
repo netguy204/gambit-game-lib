@@ -8,7 +8,7 @@ import struct
 
 packing = 'Piiffff12s0l'
 
-def find_visible_bounds(image, pad=1):
+def find_visible_bounds(image, pad=0):
     data = list(image.getdata())
     w, h = image.size
 

@@ -20,15 +20,15 @@ typedef enum {
 } EightPatchElement;
 
 const char* eight_patch_names[EP_MAX] = {
-  "8patch_0.png",
-  "8patch_1.png",
-  "8patch_2.png",
-  "8patch_3.png",
-  "8patch_4.png",
-  "8patch_5.png",
-  "8patch_6.png",
-  "8patch_7.png",
-  "8patch_8.png"
+  "8patch_0",
+  "8patch_1",
+  "8patch_2",
+  "8patch_3",
+  "8patch_4",
+  "8patch_5",
+  "8patch_6",
+  "8patch_7",
+  "8patch_8"
 };
 
 SpriteAtlasEntry patch_cache[EP_MAX];
@@ -48,11 +48,11 @@ void ensure_cache(SpriteAtlas atlas) {
       for(ii = 0; ii < array_size(font_cache[FONT_SMALL]); ++ii) {
         char name_buffer[64];
         if(jj == FONT_SMALL) {
-          snprintf(name_buffer, sizeof(name_buffer), "s_%d.png", ii + 1);
+          snprintf(name_buffer, sizeof(name_buffer), "s_%d", ii + 1);
         } else if(jj == FONT_MEDIUM) {
-          snprintf(name_buffer, sizeof(name_buffer), "%d.png", ii + 1);
+          snprintf(name_buffer, sizeof(name_buffer), "%d", ii + 1);
         } else if(jj == FONT_FIXED) {
-          snprintf(name_buffer, sizeof(name_buffer), "f_%d.png", ii + 1);
+          snprintf(name_buffer, sizeof(name_buffer), "f_%d", ii + 1);
         }
         font_cache[jj][ii] = spriteatlas_find(atlas, name_buffer);
       }

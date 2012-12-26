@@ -1,3 +1,7 @@
+#ifdef GLES2
+precision mediump float;
+#endif
+
 attribute vec4 vertex;
 attribute vec2 tex_coord0;
 attribute vec4 color_coord0;

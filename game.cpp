@@ -35,7 +35,7 @@ float charge_delay = 0.2;
 float bomb_explode_start = 0.3;
 float bomb_chain_factor = 5.0;
 float enemy_speed = 100;
-float enemy_dim = 40;
+float enemy_dim = 36;
 
 World* world;
 struct Random_ rgen;
@@ -48,6 +48,9 @@ GO* camera;
 SpriteAtlas atlas;
 SpriteAtlasEntry bomb_entry;
 SpriteAtlasEntry spark_entry;
+SpriteAtlasEntry enemy_entry;
+SpriteAtlasEntry platform_entry;
+TileMap background;
 
 Clock main_clock;
 
@@ -62,26 +65,21 @@ enum Tags {
   TAG_PERMANENT
 };
 
-void camera_relative_enqueue(ColoredRect rect) {
-  float dx = floorf(camera->_pos.x);
-  float dy = floorf(camera->_pos.y);
+float screen_hh;
+float screen_hw;
 
-  rect->minx -= dx;
-  rect->maxx -= dx;
+void camera_relative_enqueue(ColoredRect rect) {
+  float dy = floorf(camera->_pos.y);
   rect->miny -= dy;
   rect->maxy -= dy;
+  if(rect->miny > screen_height || rect->maxy < 0) return;
+
+  float dx = floorf(camera->_pos.x);
+  rect->minx -= dx;
+  rect->maxx -= dx;
+  if(rect->minx > screen_width || rect->maxx < 0) return;
 
   filledrect_enqueue_for_screen(rect);
-}
-
-void camera_relative_enqueue(Sprite sprite) {
-  float dx = floorf(camera->_pos.x);
-  float dy = floorf(camera->_pos.y);
-
-  sprite->displayX -= dx;
-  sprite->displayY -= dy;
-  SpriteList list = frame_spritelist_append(NULL, sprite);
-  spritelist_enqueue_for_screen(list);
 }
 
 OBJECT_IMPL(CTimer);
@@ -191,7 +189,7 @@ void CEnemyBehavior::update(float dt) {
     this->state = ENEMY_FALLING;
     this->go->_vel.x = 0;
     CLeftAndRight* lnr = (CLeftAndRight*)go->find_component(&CLeftAndRight::Type);
-    lnr->delete_me;
+    lnr->delete_me = 1;
   }
 
   // see if a bomb went off
@@ -313,6 +311,8 @@ void CTestDisplay::update(float dt) {
 
 OBJECT_IMPL(CStaticSprite);
 
+SpriteList CStaticSprite::list = NULL;
+
 CStaticSprite::CStaticSprite()
   : Component(NULL, PRIORITY_SHOW), entry(NULL) {
 }
@@ -325,14 +325,61 @@ void CStaticSprite::update(float dt) {
   Vector_ pos;
   go->pos(&pos);
 
+  float dx = floorf(camera->_pos.x);
+  float dy = floorf(camera->_pos.y);
+  float px = pos.x - dx;
+  float py = pos.y - dy;
+
+  if(px + entry->w < 0 || px - entry->w > screen_width) return;
+  if(py + entry->h < 0 || py - entry->h > screen_height) return;
+
   Sprite sprite = frame_make_sprite();
   sprite_fillfromentry(sprite, entry);
-  sprite->displayX = pos.x;
-  sprite->displayY = pos.y;
+  sprite->displayX = px;
+  sprite->displayY = py;
   sprite->originX = 0.5;
   sprite->originY = 0.5;
-  camera_relative_enqueue(sprite);
+
+  CStaticSprite::list = frame_spritelist_append(CStaticSprite::list, sprite);
 }
+
+OBJECT_IMPL(CDrawPatch);
+
+SpriteList CDrawPatch::list = NULL;
+
+CDrawPatch::CDrawPatch()
+  : Component(NULL, PRIORITY_SHOW), entry(NULL) {
+}
+
+CDrawPatch::CDrawPatch(GO* go, SpriteAtlasEntry entry)
+  : Component(go, PRIORITY_SHOW), entry(entry) {
+}
+
+void CDrawPatch::update(float dt) {
+  CCollidable* coll = (CCollidable*)go->find_component(&CCollidable::Type);
+  assert(coll);
+
+  Vector_ pos;
+  go->pos(&pos);
+
+  float dx = floorf(camera->_pos.x);
+  float dy = floorf(camera->_pos.y);
+  int basex = pos.x - dx;
+  int basey = pos.y - dy;
+  int offset = -coll->w / 2 + entry->w / 2;
+  while(offset < coll->w / 2 - entry->w / 2) {
+    Sprite sprite = frame_make_sprite();
+    sprite_fillfromentry(sprite, entry);
+    sprite->displayX = basex + offset;
+    sprite->displayY = basey;
+    sprite->originX = 0.5;
+    sprite->originY = 0.5;
+
+    CDrawPatch::list = frame_spritelist_append(CDrawPatch::list, sprite);
+    offset += entry->w;
+  }
+}
+
 
 OBJECT_IMPL(CCameraFocus);
 
@@ -382,6 +429,8 @@ void CCameraFocus::update(float dt) {
 
 OBJECT_IMPL(CParticleEmitter);
 
+SpriteList CParticleEmitter::list = NULL;
+
 CParticleEmitter::CParticleEmitter()
   : Component(NULL, PRIORITY_ACT), entry(NULL), entries(NULL), nmax(0), active(0) {
 }
@@ -430,7 +479,7 @@ void CParticleEmitter::update(float dt) {
   const float min_temp = 2000;
   const float temp_slope = (max_temp - min_temp) / max_life;
   const float dim = 5;
-  SpriteList list = NULL;
+
   float dx = floorf(camera->_pos.x);
   float dy = floorf(camera->_pos.y);
 
@@ -461,10 +510,8 @@ void CParticleEmitter::update(float dt) {
     color_for_temp(temp, sprite->color);
     sprite->color[3] = e->life / max_life;
 
-    list = frame_spritelist_append(list, sprite);
+    CParticleEmitter::list = frame_spritelist_append(CParticleEmitter::list, sprite);
   }
-
-  spritelist_enqueue_for_screen_colored(list);
 }
 
 GO* platform_make(float x, float y, float w, float h) {
@@ -473,7 +520,7 @@ GO* platform_make(float x, float y, float w, float h) {
   go->_pos.y = y;
   go->ttag = TAG_PERMANENT;
 
-  new CTestDisplay(go, 0.0, 0.7, 0.0);
+  new CDrawPatch(go, platform_entry);
   new CCollidable(go, w, h);
   return go;
 }
@@ -492,7 +539,7 @@ GO* enemy_make(float x, float y) {
   go->_pos.x = x;
   go->_pos.y = y;
 
-  new CTestDisplay(go, 0.7, 0.0, 0.5);
+  new CStaticSprite(go, enemy_entry);
   new CCollidable(go, enemy_dim, enemy_dim);
   new CPlatformer(go, player_gravity_accel);
   new CEnemyBehavior(go);
@@ -549,6 +596,11 @@ void game_support_init() {
   atlas = spriteatlas_load("resources/images_default.dat", "resources/images_default.png");
   bomb_entry = spriteatlas_find(atlas, "bomb");
   spark_entry = spriteatlas_find(atlas, "spark");
+  enemy_entry = spriteatlas_find(atlas, "enemy");
+  platform_entry = spriteatlas_find(atlas, "platform2");
+
+  screen_hh = screen_height / 2.0f;
+  screen_hw = screen_width / 2.0f;
 
   world = new World();
 }
@@ -557,15 +609,26 @@ void game_init() {
   game_support_init();
   player_setup();
 
+  // background tilemap
+  const int tdim = 64;
+  const int world_width = screen_width * 3;
+  const int world_height = screen_height * 6;
+  background = tilemap_make(world_width / tdim, world_height / tdim, tdim, tdim);
+  memset(background->tiles, 0, tilemap_size(background));
+  TileSpec spec = (TileSpec)malloc(sizeof(struct TileSpec_));
+  background->tile_specs = spec;
+  spec[0].image = spriteatlas_find(atlas, "back1");
+  spec[0].bitmask = TILESPEC_VISIBLE;
+
   platform_make(screen_width / 2, 32, screen_width, 64);
-  slidingplatform_make(300, 300, 256, 64, 100, 128, 1024);
-  slidingplatform_make(600, 600, 256, 64, 100, 128, 1024);
-  slidingplatform_make(300, 900, 256, 64, 100, 128, 1024);
-  slidingplatform_make(600, 1200, 256, 64, 100, 128, 1024);
-  slidingplatform_make(300, 1500, 256, 64, 100, 128, 1024);
-  slidingplatform_make(600, 1800, 256, 64, 100, 128, 1024);
-  slidingplatform_make(300, 2100, 256, 64, 100, 128, 1024);
-  slidingplatform_make(600, 2400, 256, 64, 100, 128, 1024);
+  slidingplatform_make(300, 300, 257, 64, 100, 128, 1024);
+  slidingplatform_make(600, 600, 257, 64, 100, 128, 1024);
+  slidingplatform_make(300, 900, 257, 64, 100, 128, 1024);
+  slidingplatform_make(600, 1200, 257, 64, 100, 128, 1024);
+  slidingplatform_make(300, 1500, 257, 64, 100, 128, 1024);
+  slidingplatform_make(600, 1800, 257, 64, 100, 128, 1024);
+  slidingplatform_make(300, 2100, 257, 64, 100, 128, 1024);
+  slidingplatform_make(600, 2400, 257, 64, 100, 128, 1024);
 
   set_game_step(game_step);
 }
@@ -620,10 +683,24 @@ void game_step(long delta, InputState state) {
     // add enemy
   }
 
+  SpriteList bg = tilemap_spritelist(background, camera->_pos.x + screen_width,
+                                     camera->_pos.y + screen_height,
+                                     screen_width, screen_height);
+  spritelist_enqueue_for_screen(bg);
 
   player_input->state = state;
   world_notify_collisions(world);
   world->update(dt);
+
+  spritelist_enqueue_for_screen(CStaticSprite::list);
+  CStaticSprite::list = NULL;
+
+  spritelist_enqueue_for_screen(CDrawPatch::list);
+  CDrawPatch::list = NULL;
+
+  // render all particles
+  spritelist_enqueue_for_screen_colored(CParticleEmitter::list);
+  CParticleEmitter::list = NULL;
 }
 
 void game_shutdown() {
