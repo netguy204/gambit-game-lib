@@ -4,13 +4,6 @@
 
 #include <math.h>
 
-#ifdef __APPLE__
-#include <OpenGL/gl.h>
-#else
-#include <GL/glew.h>
-#include <GL/gl.h>
-#endif
-
 StackAllocator gldata_allocator;
 
 static const GLfloat quadCoords[4 * 3] = {

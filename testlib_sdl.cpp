@@ -1,5 +1,12 @@
 /* SDL/OpenGL implementation of testlib suitable for desktops */
 
+#ifdef __APPLE__
+#include <OpenGL/gl.h>
+#else
+#include <GL/glew.h>
+#include <GL/gl.h>
+#endif
+
 #include <SDL/SDL.h>
 #include <SDL/SDL_opengl.h>
 
