@@ -35,3 +35,4 @@ f_25.png
 f_26.png
 platform2.png
 back1.png
+expl1.png

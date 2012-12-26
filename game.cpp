@@ -48,6 +48,7 @@ GO* camera;
 SpriteAtlas atlas;
 SpriteAtlasEntry bomb_entry;
 SpriteAtlasEntry spark_entry;
+SpriteAtlasEntry expl_entry;
 SpriteAtlasEntry enemy_entry;
 SpriteAtlasEntry platform_entry;
 TileMap background;
@@ -154,6 +155,13 @@ void CBombBehavior::update(float dt) {
         message_postinbox(item, message);
         return 0;
       });
+
+    // add explosion particle emitter
+    Vector_ zero = {0.0f, 0.0f};
+    CParticleEmitter* cp = new CParticleEmitter(go, expl_entry, &zero, 10);
+    cp->start_scale = 0.7;
+    cp->max_life = bomb_explode_start;
+    cp->grav_accel = -30;
   } else if(this->state == BOMB_EXPLODING) {
     // destroy the bomb
     this->state = BOMB_DONE;
@@ -449,7 +457,8 @@ void vector_random(Vector v, float scale) {
 
 CParticleEmitter::CParticleEmitter(GO* go, SpriteAtlasEntry entry, Vector offset, int nmax)
   : Component(go, PRIORITY_ACT), entry(entry), offset(*offset), nmax(nmax),
-    max_life(1), max_speed(100), max_offset(10), active(1) {
+    max_life(1), max_speed(100), max_offset(3), active(1), grav_accel(0),
+    start_scale(1), end_scale(1) {
   entries = new PEntry[nmax];
 
   float dlife = max_life / nmax;
@@ -478,7 +487,7 @@ void CParticleEmitter::update(float dt) {
   const float max_temp = 6500;
   const float min_temp = 2000;
   const float temp_slope = (max_temp - min_temp) / max_life;
-  const float dim = 5;
+  const float scale_slope = (start_scale - end_scale) / max_life;
 
   float dx = floorf(camera->_pos.x);
   float dy = floorf(camera->_pos.y);
@@ -494,16 +503,21 @@ void CParticleEmitter::update(float dt) {
     }
 
     // integrate
+    e->vel.y -= grav_accel * dt;
     vector_integrate(&e->pos, &e->pos, &e->vel, dt);
     e->life -= dt;
 
+    const float scale = end_scale + e->life * scale_slope;
+
     // draw
     Sprite sprite = frame_make_sprite();
-    sprite_fillfromentry(sprite, spark_entry);
+    sprite_fillfromentry(sprite, entry);
     sprite->displayX = e->pos.x - dx;
     sprite->displayY = e->pos.y - dy;
     sprite->originX = 0.5;
     sprite->originY = 0.5;
+    sprite->w *= scale;
+    sprite->h *= scale;
     sprite->angle = vector_angle(&e->vel);
 
     const float temp = min_temp + e->life * temp_slope;
@@ -577,8 +591,12 @@ GO* bomb_make(Vector pos, Vector vel) {
   new CPlatformer(go, bomb_gravity_accel);
   new CBombBehavior(go);
 
+  // sparks
   Vector_ offset = {0.0f, 16.0f};
-  new CParticleEmitter(go, NULL, &offset, 10);
+  CParticleEmitter* pe = new CParticleEmitter(go, spark_entry, &offset, 10);
+  pe->grav_accel = 80;
+  pe->start_scale = 0.0;
+
   return go;
 }
 
@@ -596,6 +614,7 @@ void game_support_init() {
   atlas = spriteatlas_load("resources/images_default.dat", "resources/images_default.png");
   bomb_entry = spriteatlas_find(atlas, "bomb");
   spark_entry = spriteatlas_find(atlas, "spark");
+  expl_entry = spriteatlas_find(atlas, "expl1");
   enemy_entry = spriteatlas_find(atlas, "enemy");
   platform_entry = spriteatlas_find(atlas, "platform2");
 

@@ -147,6 +147,9 @@ class CParticleEmitter : public Component {
   float max_life;
   float max_speed;
   float max_offset;
+  float grav_accel;
+  float start_scale;
+  float end_scale;
   PEntry* entries;
 
   static SpriteList list;
