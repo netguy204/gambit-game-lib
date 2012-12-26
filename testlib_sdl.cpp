@@ -100,7 +100,7 @@ void renderer_init(void* empty) {
 #ifndef __APPLE__
   GLenum err = glewInit();
   if(err != GLEW_OK) {
-    fprintf(stder, "Failed to initialize GLEW\n");
+    fprintf(stderr, "Failed to initialize GLEW\n");
     exit(1);
   }
 #endif
