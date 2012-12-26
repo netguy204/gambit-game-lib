@@ -97,6 +97,14 @@ void renderer_init(void* empty) {
     exit(1);
   }
 
+#ifndef __APPLE__
+  GLenum err = glewInit();
+  if(err != GLEW_OK) {
+    fprintf(stder, "Failed to initialize GLEW\n");
+    exit(1);
+  }
+#endif
+
   renderer_gl_init();
 }
 
