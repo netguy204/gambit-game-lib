@@ -7,7 +7,7 @@ PLATFORM:=$(shell uname)
 ifeq ($(PLATFORM), Darwin)
 	LDFLAGS+= -framework OpenGL
 else
-	LDFLAGS+= -lGL -lm -ldl -lutil
+	LDFLAGS+= -lGL -lGLEW -lm -ldl -lutil
 endif
 
 CFLAGS+=`sdl-config --cflags`
