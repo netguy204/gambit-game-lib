@@ -103,6 +103,9 @@ int renderer_link_shader(const char* vertexname, const char* fragmentname, ...) 
 
   int vertex = renderer_load_shader(vertex_source, GL_VERTEX_SHADER);
   int fragment = renderer_load_shader(fragment_source, GL_FRAGMENT_SHADER);
+  free(vertex_source);
+  free(fragment_source);
+
   int program = glCreateProgram();
 
   glAttachShader(program, vertex);

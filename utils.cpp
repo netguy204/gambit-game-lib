@@ -37,7 +37,9 @@ long filename_size(const char* filename) {
   if(!f) fail_exit("file %s does not exist", filename);
 
   fseek(f, 0, SEEK_END);
-  return ftell(f);
+  long size = ftell(f);
+  fclose(f);
+  return size;
 }
 
 char* filename_slurp(const char* filename) {
