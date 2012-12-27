@@ -59,11 +59,12 @@ typedef struct OggSampler_ {
   OggVorbis_File vf;
   long sample_rate;
   long samples_past;
+  float volume;
   int channels;
   char buffer[4096];
 } *OggSampler;
 
-Sampler oggsampler_make(const char* filename, long sample);
+Sampler oggsampler_make(const char* filename, long sample, float volume);
 
 #define DURATION(f) (((Sampler)f)->duration_samples)
 #define START(f) (((Sampler)f)->start_sample)

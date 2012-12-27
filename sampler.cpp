@@ -138,10 +138,10 @@ int16_t oggsampler_sample(void* _sampler, long sample) {
   sample -= sampler->samples_past;
 
   int16_t value = buffer[sample * sampler->channels];
-  return value;
+  return value * sampler->volume;
 }
 
-Sampler oggsampler_make(const char* filename, long start) {
+Sampler oggsampler_make(const char* filename, long start, float volume) {
   OggSampler sampler = (OggSampler)malloc(sizeof(struct OggSampler_));
   sampler->f = fopen(filename, "rb");
   if(ov_open(sampler->f, &sampler->vf, NULL, 0) < 0) {
@@ -157,6 +157,7 @@ Sampler oggsampler_make(const char* filename, long start) {
   sampler->samples_past = 0;
   sampler->channels = vi->channels;
   sampler->sample_rate = vi->rate;
+  sampler->volume = volume;
   oggsampler_fillbuffer(sampler);
 
   return (Sampler)sampler;

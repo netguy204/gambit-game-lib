@@ -86,6 +86,10 @@ void camera_relative_enqueue(ColoredRect rect) {
   filledrect_enqueue_for_screen(rect);
 }
 
+void play_vorbis(const char* filename, float volume) {
+  audio_enqueue(oggsampler_make(filename, audio_current_sample(), volume));
+}
+
 OBJECT_IMPL(CTimer);
 
 CTimer::CTimer()
@@ -162,6 +166,9 @@ void CBombBehavior::update(float dt) {
     // stop displaying the sprite
     CStaticSprite* spr = (CStaticSprite*)go->find_component(&CStaticSprite::Type);
     spr->delete_me = 1;
+
+    // play the sound
+    play_vorbis("sounds/Explosion6.ogg", 0.5);
   } else if(this->state == BOMB_EXPLODING) {
     // destroy the bomb
     this->state = BOMB_DONE;
@@ -281,6 +288,7 @@ void CInput::update(float dt) {
         vector_add(&abs_vel, &abs_vel, &par_vel);
       }
 
+      play_vorbis("sounds/Jump20.ogg", 0.4);
       bomb_make(&abs_pos, &abs_vel);
     }
   }
@@ -700,7 +708,7 @@ void game_init() {
   slidingplatform_make(300, 2100, 257, 64, 100, 128, 1024);
   slidingplatform_make(600, 2400, 257, 64, 100, 128, 1024);
 
-  audio_enqueue(oggsampler_make("./music_sample.ogg", audio_current_sample()));
+  play_vorbis("sounds/DST-2ndBallad.ogg", 0.7);
   //audio_enqueue(sinsampler_make(audio_current_sample(), SAMPLE_FREQ * 10, C_(1), 8000, 0.0));
 
   set_game_step(game_step);
