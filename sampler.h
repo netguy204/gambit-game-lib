@@ -1,6 +1,8 @@
 #ifndef SAMPLER_H
 #define SAMPLER
 
+#include <ivorbisfile.h>
+
 #include "config.h"
 
 #include <stdint.h>
@@ -50,6 +52,18 @@ typedef struct SawSampler_ {
 
 Sampler sawsampler_make(long start, long duration,
                         float freq, float amp, float phase);
+
+typedef struct OggSampler_ {
+  struct Sampler_ sampler;
+  FILE* f;
+  OggVorbis_File vf;
+  long sample_rate;
+  long samples_past;
+  int channels;
+  char buffer[4096];
+} *OggSampler;
+
+Sampler oggsampler_make(const char* filename, long sample);
 
 #define DURATION(f) (((Sampler)f)->duration_samples)
 #define START(f) (((Sampler)f)->start_sample)

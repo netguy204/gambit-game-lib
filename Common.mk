@@ -8,12 +8,13 @@ CPP_SRC+= \
 	game_ui.cpp platform.cpp gameobject.cpp color.cpp
 
 TREMOR_SRC=$(wildcard tremor/*.c)
+OGG_SRC=$(wildcard libogg-1.3.0/src/*.c)
 
 C_SRC+= \
-	sfmt/SFMT.c spectra.c $(TREMOR_SRC)
+	sfmt/SFMT.c spectra.c $(OGG_SRC) $(TREMOR_SRC)
 
 XML_INCLUDE:=-I/usr/include/libxml2
-CXXFLAGS+=$(XML_INCLUDE) -Isfmt/ -std=c++0x -Wno-invalid-offsetof
+CXXFLAGS+=$(XML_INCLUDE) -Isfmt/ -std=c++0x -Wno-invalid-offsetof -Itremor/
 
 LDFLAGS+=-lpthread -ldl -lxml2
 C_OBJS=\
@@ -59,7 +60,7 @@ sfmt/SFMT.o: sfmt/SFMT.c
 	$(CXX) $(CXXFLAGS) -c $< -o $@ -DSFMT_MEXP=607
 
 clean:
-	rm -rf *.o $(BIN) buildatlas test items_bin $(RESOURCE_FILES)
+	rm -rf $(C_OBJS) $(BIN) buildatlas test items_bin $(RESOURCE_FILES)
 
 
 

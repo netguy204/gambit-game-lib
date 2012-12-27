@@ -68,10 +68,10 @@ void playlist_insert_sampler(PlayList list, PlayListSample sample) {
 void playlist_fill_buffer(PlayList list, int16_t* buffer, int nsamples) {
   int ii;
   long next_sample = list->next_sample;
-  list->next_sample += nsamples;
+  list->next_sample += nsamples / 2;
 
   for(ii = 0; ii < nsamples; ii+=2) {
-    long sample = next_sample + ii;
+    long sample = next_sample + ii / 2;
     PlayListSample node;
 
     /* mixing strategy outlined at:

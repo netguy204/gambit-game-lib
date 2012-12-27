@@ -100,6 +100,69 @@ Sampler sawsampler_make(long start, long duration,
   return (Sampler)sampler;
 }
 
+void oggsampler_release(void* _sampler) {
+  OggSampler sampler = (OggSampler)_sampler;
+  ov_clear(&sampler->vf);
+  fclose(sampler->f);
+  free(sampler);
+}
+
+void oggsampler_fillbuffer(OggSampler sampler) {
+  int section;
+  int read = 0;
+  while(read < sizeof(sampler->buffer)) {
+    int ret = ov_read(&sampler->vf, &sampler->buffer[read], sizeof(sampler->buffer) - read, &section);
+    if(ret == 0) {
+      // done
+      memset(&sampler->buffer[read], 0, sizeof(sampler->buffer) - read);
+      read = sizeof(sampler->buffer);
+    } else if(ret < 0) {
+      if(ret == OV_EBADLINK) {
+        fprintf(stderr, "corrupt bitsream!\n");
+        exit(1);
+      }
+    }
+    read += ret;
+  }
+}
+
+int16_t oggsampler_sample(void* _sampler, long sample) {
+  OggSampler sampler = (OggSampler)_sampler;
+  const int bufsz = sizeof(sampler->buffer) / (sizeof(int16_t) * sampler->channels);
+
+  sample = sampler_offset(sampler, sample);
+  while(sample - sampler->samples_past >= bufsz) {
+    oggsampler_fillbuffer(sampler);
+    sampler->samples_past += bufsz;
+  }
+  int16_t* buffer = (int16_t*)sampler->buffer;
+  sample -= sampler->samples_past;
+
+  int16_t value = buffer[sample * sampler->channels];
+  return value;
+}
+
+Sampler oggsampler_make(const char* filename, long start) {
+  OggSampler sampler = (OggSampler)malloc(sizeof(struct OggSampler_));
+  sampler->f = fopen(filename, "rb");
+  if(ov_open(sampler->f, &sampler->vf, NULL, 0) < 0) {
+    fprintf(stderr, "error opening vorbis file %s\n", filename);
+    exit(1);
+  }
+
+  vorbis_info *vi = ov_info(&sampler->vf, -1);
+  ((Sampler)sampler)->start_sample = start;
+  ((Sampler)sampler)->duration_samples = ov_pcm_total(&sampler->vf, -1);
+  ((Sampler)sampler)->function = oggsampler_sample;
+  ((Sampler)sampler)->release = oggsampler_release;
+  sampler->samples_past = 0;
+  sampler->channels = vi->channels;
+  sampler->sample_rate = vi->rate;
+  oggsampler_fillbuffer(sampler);
+
+  return (Sampler)sampler;
+}
+
 int16_t filter_value(Filter filter, int16_t value) {
   int ii;
   int xi = filter->xi;

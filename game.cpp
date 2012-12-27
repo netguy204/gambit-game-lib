@@ -33,7 +33,7 @@ float throw_speed = 1200;
 float ground_level = 100;
 float charge_delay = 0.2;
 float bomb_explode_start = 0.3;
-float bomb_chain_factor = 5.0;
+float bomb_chain_factor = 2.0;
 float enemy_speed = 100;
 float enemy_dim = 36;
 
@@ -151,13 +151,6 @@ void CBombBehavior::update(float dt) {
     // set the next timer and change state
     new CTimer(bomb, bomb_explode_start, NULL);
     this->state = BOMB_EXPLODING;
-    Vector_ pos;
-    bomb->pos(&pos);
-    world_foreach(bomb->world, &pos, bomb_dim * bomb_chain_factor, [&](GO* item) -> int {
-        Message* message = message_make(bomb, MESSAGE_EXPLOSION_NEARBY, NULL);
-        message_postinbox(item, message);
-        return 0;
-      });
 
     // add explosion particle emitter
     Vector_ zero = {0.0f, 0.0f};
@@ -173,6 +166,15 @@ void CBombBehavior::update(float dt) {
     // destroy the bomb
     this->state = BOMB_DONE;
     agent_send_terminate(bomb, bomb->world);
+
+    // notify our neighbors
+    Vector_ pos;
+    bomb->pos(&pos);
+    world_foreach(bomb->world, &pos, bomb_dim * bomb_chain_factor, [&](GO* item) -> int {
+        Message* message = message_make(bomb, MESSAGE_EXPLOSION_NEARBY, NULL);
+        message_postinbox(item, message);
+        return 0;
+      });
   }
 }
 
@@ -697,6 +699,9 @@ void game_init() {
   slidingplatform_make(600, 1800, 257, 64, 100, 128, 1024);
   slidingplatform_make(300, 2100, 257, 64, 100, 128, 1024);
   slidingplatform_make(600, 2400, 257, 64, 100, 128, 1024);
+
+  audio_enqueue(oggsampler_make("./music_sample.ogg", audio_current_sample()));
+  //audio_enqueue(sinsampler_make(audio_current_sample(), SAMPLE_FREQ * 10, C_(1), 8000, 0.0));
 
   set_game_step(game_step);
 }
