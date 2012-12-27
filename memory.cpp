@@ -82,7 +82,7 @@ StackAllocator stack_allocator_make(size_t stack_size, const char* name) {
 #ifdef DEBUG_MEMORY
   allocator->name = name;
 #endif
-  pthread_mutex_init(&allocator->mutex, NULL);
+
   allocator->stack_bottom = &allocator[1];
   allocator->stack_top = allocator->stack_bottom;
   allocator->stack_max = (char*)allocator->stack_top + stack_size;
@@ -90,12 +90,10 @@ StackAllocator stack_allocator_make(size_t stack_size, const char* name) {
 }
 
 void* stack_allocator_alloc(StackAllocator allocator, size_t size) {
-  pthread_mutex_lock(&allocator->mutex);
   size = NEXT_ALIGNED_SIZE(size);
   SAFETY(if((char*)allocator->stack_top + size > (char*)allocator->stack_max) return fail_exit("stack_allocator %s failed", allocator->name));
   void* mem = allocator->stack_top;
   allocator->stack_top = (char*)allocator->stack_top + size;
-  pthread_mutex_unlock(&allocator->mutex);
 
   return mem;
 }

@@ -435,11 +435,11 @@ void CDrawPatch::update(float dt) {
 OBJECT_IMPL(CCameraFocus);
 
 CCameraFocus::CCameraFocus()
-  : Component(NULL, PRIORITY_SHOW) {
+  : Component(NULL, PRIORITY_THINK) {
 }
 
 CCameraFocus::CCameraFocus(GO* go, GO* camera)
-  : Component(go, PRIORITY_SHOW), camera(camera)  {
+  : Component(go, PRIORITY_THINK), camera(camera)  {
 }
 
 void CCameraFocus::update(float dt) {
@@ -457,12 +457,16 @@ void CCameraFocus::update(float dt) {
     facing_offset = screen_width / 3.0f * input->state->leftright;
   }
 
-  Vector_ offset = {screen_width / 2.0f - facing_offset, screen_height / 2.0f - supported_offset};
+  Vector_ offset = {screen_width / 2.0f, screen_height / 2.0f - supported_offset};
   Vector_ desired;
   go->pos(&desired);
   vector_sub(&desired, &desired, &offset);
 
-  const float max_v = 800;
+  float max_v = 1600;
+  if(input->state->updown){
+    max_v = 600;
+  }
+
   const float max_dx = max_v * dt;
 
   Vector_ delta;
@@ -737,6 +741,19 @@ void game_end(long delta, InputState state) {
   }
 }
 
+void render_hud() {
+  float patch_width = floorf(screen_width / 128) * 128;
+  float patch_height = 128;
+
+  Rect_ patch = {
+    (screen_width - patch_width) / 2.0f,
+    -32.0f,
+    (screen_width + patch_width) / 2.0f,
+    patch_height - 32.0f};
+  SpriteList list = spritelist_from_8patch(NULL, atlas, &patch);
+  spritelist_enqueue_for_screen(list);
+}
+
 void game_step(long delta, InputState state) {
   float dt = clock_update(main_clock, delta / 1000.0);
   enemy_timer -= dt;
@@ -768,6 +785,8 @@ void game_step(long delta, InputState state) {
   // render all particles
   spritelist_enqueue_for_screen_colored(CParticleEmitter::list);
   CParticleEmitter::list = NULL;
+
+  render_hud();
 }
 
 void game_shutdown() {

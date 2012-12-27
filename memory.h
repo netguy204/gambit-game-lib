@@ -22,7 +22,7 @@ typedef struct StackAllocator_ {
   const char* name;
   long max_alloced;
 #endif
-  pthread_mutex_t mutex;
+
   void* stack_top;
   void* stack_bottom;
   void* stack_max;
