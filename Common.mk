@@ -10,11 +10,15 @@ CPP_SRC+= \
 TREMOR_SRC=$(wildcard tremor/*.c)
 OGG_SRC=$(wildcard libogg-1.3.0/src/*.c)
 
+OGG_HEADER=libogg-1.3.0/include/ogg/config_types.h
+
 C_SRC+= \
 	sfmt/SFMT.c spectra.c $(OGG_SRC) $(TREMOR_SRC)
 
 XML_INCLUDE:=-I/usr/include/libxml2
-CXXFLAGS+=$(XML_INCLUDE) -Isfmt/ -std=c++0x -Wno-invalid-offsetof -Itremor/
+
+CFLAGS+=$(XML_INCLUDE) -Isfmt/ -Itremor/ -Ilibogg-1.3.0/include/
+CXXFLAGS+=$(CFLAGS) -std=c++0x -Wno-invalid-offsetof
 
 LDFLAGS+=-lpthread -ldl -lxml2
 C_OBJS=\
@@ -24,7 +28,7 @@ C_OBJS=\
 EXE_OBJS=$(C_OBJS) gambitmain.o
 
 #testlib.o: testlib_gl.cpp
-all: $(BIN) resources
+all: $(OGG_HEADER) $(BIN) resources
 
 $(BIN): $(EXE_OBJS)
 	$(CXX) $(CXXFLAGS) -o $@ $(EXE_OBJS) $(LDFLAGS)
@@ -34,6 +38,9 @@ test_bin: $(C_OBJS) testlib_test.o
 
 test: test_bin
 	./test_bin
+
+$(OGG_HEADER): libogg-1.3.0/configure
+	cd libogg-1.3.0 ; ./configure
 
 C_TOOL_OBJS=$(C_OBJS)
 BUILD_WITH_XML=$(CXX) $(CXXFLAGS) -o $@ $< $(C_TOOL_OBJS) $(LDFLAGS)

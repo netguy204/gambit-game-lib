@@ -103,7 +103,6 @@ Sampler sawsampler_make(long start, long duration,
 void oggsampler_release(void* _sampler) {
   OggSampler sampler = (OggSampler)_sampler;
   ov_clear(&sampler->vf);
-  fclose(sampler->f);
   free(sampler);
 }
 
