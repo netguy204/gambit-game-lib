@@ -7,17 +7,17 @@ CPP_SRC+= \
 	pathfinder.cpp utils.cpp matrix.cpp ooc.cpp \
 	game_ui.cpp platform.cpp gameobject.cpp color.cpp
 
-TREMOR_SRC=$(wildcard tremor/*.c)
-OGG_SRC=$(wildcard libogg-1.3.0/src/*.c)
+TREMOR_SRC=$(wildcard vender/tremor/*.c)
+OGG_SRC=$(wildcard vender/libogg-1.3.0/src/*.c)
 
-OGG_HEADER=libogg-1.3.0/include/ogg/config_types.h
+OGG_HEADER=vender/libogg-1.3.0/include/ogg/config_types.h
 
 C_SRC+= \
 	sfmt/SFMT.c spectra.c $(OGG_SRC) $(TREMOR_SRC)
 
 XML_INCLUDE:=-I/usr/include/libxml2
 
-CFLAGS+=$(XML_INCLUDE) -Isfmt/ -Itremor/ -Ilibogg-1.3.0/include/
+CFLAGS+=$(XML_INCLUDE) -Isfmt/ -Ivender/tremor/ -Ivender/libogg-1.3.0/include/
 CXXFLAGS+=$(CFLAGS) -std=c++0x -Wno-invalid-offsetof
 
 LDFLAGS+=-lpthread -ldl -lxml2
@@ -39,8 +39,8 @@ test_bin: $(C_OBJS) testlib_test.o
 test: test_bin
 	./test_bin
 
-$(OGG_HEADER): libogg-1.3.0/configure
-	cd libogg-1.3.0 ; ./configure
+$(OGG_HEADER): vender/libogg-1.3.0/configure
+	cd vender/libogg-1.3.0 ; ./configure
 
 C_TOOL_OBJS=$(C_OBJS)
 BUILD_WITH_XML=$(CXX) $(CXXFLAGS) -o $@ $< $(C_TOOL_OBJS) $(LDFLAGS)
