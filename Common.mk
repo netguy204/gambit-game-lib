@@ -7,8 +7,10 @@ CPP_SRC+= \
 	pathfinder.cpp utils.cpp matrix.cpp ooc.cpp \
 	game_ui.cpp platform.cpp gameobject.cpp color.cpp
 
+TREMOR_SRC=$(wildcard tremor/*.c)
+
 C_SRC+= \
-	sfmt/SFMT.c spectra.c
+	sfmt/SFMT.c spectra.c $(TREMOR_SRC)
 
 XML_INCLUDE:=-I/usr/include/libxml2
 CXXFLAGS+=$(XML_INCLUDE) -Isfmt/ -std=c++0x -Wno-invalid-offsetof
@@ -58,5 +60,7 @@ sfmt/SFMT.o: sfmt/SFMT.c
 
 clean:
 	rm -rf *.o $(BIN) buildatlas test items_bin $(RESOURCE_FILES)
+
+
 
 .phony: all resources pngs
