@@ -11,16 +11,17 @@ TREMOR_SRC=$(wildcard vender/tremor/*.c)
 OGG_SRC=$(wildcard vender/libogg-1.3.0/src/*.c)
 
 OGG_HEADER=vender/libogg-1.3.0/include/ogg/config_types.h
+LUA_LIB=vender/lua-5.2.1/src/liblua.a
 
 C_SRC+= \
 	sfmt/SFMT.c spectra.c $(OGG_SRC) $(TREMOR_SRC)
 
 XML_INCLUDE:=-I/usr/include/libxml2
 
-CFLAGS+=$(XML_INCLUDE) -Isfmt/ -Ivender/tremor/ -Ivender/libogg-1.3.0/include/
+CFLAGS+=$(XML_INCLUDE) -Isfmt/ -Ivender/tremor/ -Ivender/libogg-1.3.0/include/ -Ivender/lua-5.2.1/src
 CXXFLAGS+=$(CFLAGS) -std=c++0x -Wno-invalid-offsetof
 
-LDFLAGS+=-lpthread -ldl -lxml2
+LDFLAGS+=-lpthread -ldl -lxml2 $(LUA_LIB)
 C_OBJS=\
 	$(patsubst %.cpp,%.o,$(CPP_SRC)) \
 	$(patsubst %.c,%.o,$(C_SRC))
@@ -41,6 +42,9 @@ test: test_bin
 
 $(OGG_HEADER): vender/libogg-1.3.0/configure
 	cd vender/libogg-1.3.0 ; ./configure
+
+$(LUA_LIB):
+	cd vender/lua-5.2.1 ; make $(PLATFORM)
 
 C_TOOL_OBJS=$(C_OBJS)
 BUILD_WITH_XML=$(CXX) $(CXXFLAGS) -o $@ $< $(C_TOOL_OBJS) $(LDFLAGS)

@@ -6,8 +6,10 @@ SDL_LIBS:=`sdl-config --libs`
 PLATFORM:=$(shell uname)
 ifeq ($(PLATFORM), Darwin)
 	LDFLAGS+= -framework OpenGL
+	PLATFORM=macosx
 else
 	LDFLAGS+= -lGL -lGLEW -lm -ldl -lutil
+	PLATFORM=linux
 endif
 
 CFLAGS+=`sdl-config --cflags`

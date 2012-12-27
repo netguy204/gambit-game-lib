@@ -1,6 +1,8 @@
 CPP_SRC=testlib_rpi.cpp audio_rpi.cpp joystick.cpp
 BIN=pimain
 
+PLATFORM=linux
+
 # from https://github.com/raspberrypi/firmware/blob/master/opt/vc/src/hello_pi/Makefile.include
 CFLAGS+=-D_ARM_ASSEM_
 
