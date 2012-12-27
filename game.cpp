@@ -586,7 +586,7 @@ void CParticleEmitter::update(float dt) {
 }
 
 GO* platform_make(float x, float y, float w, float h) {
-  GO* go = new GO(world);
+  GO* go = world->create_go();
   go->_pos.x = x;
   go->_pos.y = y;
   go->ttag = TAG_PERMANENT;
@@ -606,7 +606,7 @@ GO* slidingplatform_make(float x, float y, float w, float h, float speed,
 }
 
 GO* enemy_make(float x, float y) {
-  GO* go = new GO(world);
+  GO* go = world->create_go();
   go->_pos.x = x;
   go->_pos.y = y;
 
@@ -619,12 +619,12 @@ GO* enemy_make(float x, float y) {
 }
 
 void player_setup() {
-  camera = new GO(world);
+  camera = world->create_go();
   camera->_pos.x = 100;
   camera->_pos.y = 100;
   vector_zero(&camera->_vel);
 
-  player_go = new GO(world);
+  player_go = world->create_go();
   player_go->_pos.x = 100;
   player_go->_pos.y = 100;
   player_go->ttag = TAG_PERMANENT;
@@ -638,7 +638,7 @@ void player_setup() {
 }
 
 GO* bomb_make(Vector pos, Vector vel) {
-  GO* go = new GO(world);
+  GO* go = world->create_go();
 
   go->_pos = *pos;
   go->_vel = *vel;

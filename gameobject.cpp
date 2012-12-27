@@ -3,6 +3,8 @@
 #include "config.h"
 #include "testlib.h"
 
+#include <lua.hpp>
+
 #include <stdarg.h>
 
 OBJECT_IMPL(World);
@@ -10,10 +12,12 @@ OBJECT_IMPL(World);
 World::World() {
 }
 
-void world_add_go(World* world, GO* go) {
+GO* World::create_go() {
+  GO* go = new GO();
   Message* message = message_make(NULL, COLLECTIVE_ADD_AGENT, go);
-  message_postinbox(world, message);
-  go->world = world;
+  message_postinbox(this, message);
+  go->world = this;
+  return go;
 }
 
 OBJECT_IMPL(GO);
@@ -25,14 +29,9 @@ GO::GO() {
   this->ttag = 0;
 }
 
-GO::GO(World* world) {
-  this->transform_parent = NULL;
-  vector_zero(&this->_pos);
-  vector_zero(&this->_vel);
-  this->ttag = 0;
-  world_add_go(world, this);
-}
-
+// removal from the world is handled by the terminate message. Users
+// shouldn't write "delete go;" as this won't handle world cleanup
+// correctly
 GO::~GO() {
   this->components.foreach([](Component* comp) -> int {
       delete comp;
@@ -56,9 +55,9 @@ void GO::update(float dt) {
 
   this->components.foreach([=](Component* comp) -> int {
       if(comp->delete_me) {
-	delete(comp);
+        delete(comp);
       } else {
-	comp->update(dt);
+        comp->update(dt);
       }
       return 0;
     });
@@ -89,11 +88,11 @@ Component* GO::find_component(const TypeInfo* info) {
   Component* result = NULL;
   this->components.foreach([&](Component* comp) -> int {
       if(comp->typeinfo()->isInstanceOf(info)) {
-	if(comp->delete_me) {
-	  result = NULL;
-	} else {
-	  result = comp;
-	}
+        if(comp->delete_me) {
+          result = NULL;
+        } else {
+          result = comp;
+        }
         return 1;
       }
       return 0;
@@ -253,4 +252,12 @@ void world_notify_collisions(World* world) {
       }
     }
   }
+}
+
+static int Lworld_create_go(lua_State *L) {
+  return 0;
+}
+
+void gameobject_init() {
+
 }

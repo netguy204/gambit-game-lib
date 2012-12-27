@@ -5,6 +5,8 @@
 #include "vector.h"
 #include "rect.h"
 
+void gameobject_init();
+
 typedef enum {
   MASK_NON_COLLIDER = 0,
   MASK_PLATFORM = 1,
@@ -66,6 +68,8 @@ class World : public Collective {
 
   World();
 
+  GO* create_go();
+
   DLL_DECLARE(CCollidable, collidable_node) collidables;
 };
 
@@ -86,7 +90,6 @@ class GO : public Agent {
   OBJECT_PROTO(GO);
 
   GO();
-  GO(World* world);
   virtual ~GO();
 
   virtual void update(float dt);

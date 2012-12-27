@@ -31,7 +31,7 @@ EXE_OBJS=$(C_OBJS) gambitmain.o
 #testlib.o: testlib_gl.cpp
 all: $(OGG_HEADER) $(BIN) resources
 
-$(BIN): $(EXE_OBJS)
+$(BIN): $(EXE_OBJS) $(LUA_LIB)
 	$(CXX) $(CXXFLAGS) -o $@ $(EXE_OBJS) $(LDFLAGS)
 
 test_bin: $(C_OBJS) testlib_test.o
