@@ -305,20 +305,28 @@ static Component* LCcheck_component(lua_State *L, int pos) {
   return (Component*)LCcheck_lut(L, LUT_COMPONENT, pos);
 }
 
+static TypeInfo* LCcheck_type(lua_State *L, int pos) {
+  const char* name = luaL_checkstring(L, pos);
+  TypeInfo* type = TypeRegistry::instance().find_type(name);
+  if(type == NULL) {
+    luaL_error(L, "`%s' does not name a registered type", name);
+  }
+  return type;
+}
+
+static void LCpush_component(lua_State *L, Component *comp) {
+  LCpush_lut(L, LUT_COMPONENT, comp);
+}
+
 static int Lgo_find_component(lua_State *L) {
   GO* go = LCcheck_go(L, 1);
-  const char* cname = luaL_checkstring(L, 2);
-
-  TypeInfo* type = TypeRegistry::instance().find_type(cname);
-  if(type == NULL) {
-    luaL_error(L, "`%s' does not name a registered type", cname);
-  }
+  TypeInfo* type = LCcheck_type(L, 2);
 
   Component* comp = go->find_component(type);
   if(comp == NULL) {
     lua_pushnil(L);
   } else {
-    LCpush_lut(L, LUT_COMPONENT, comp);
+    LCpush_component(L, comp);
   }
   return 1;
 }
@@ -339,6 +347,39 @@ static int Lgo_vel(lua_State *L) {
   go->_vel.x = x;
   go->_vel.y = y;
   return 0;
+}
+
+static int Lgo_add_component(lua_State *L) {
+  GO* go = LCcheck_go(L, 1);
+  TypeInfo* type = LCcheck_type(L, 2);
+  Component* comp = go->add_component(type);
+
+  // argument 3 should be an optional table
+  if(lua_gettop(L) != 3) {
+    LCpush_component(L, comp);
+    return 1;
+  }
+
+  if(!lua_istable(L, 3)) {
+    luaL_error(L, "argument 3 should be a table");
+    return 0;
+  }
+
+  // iterate the table using the keys as property names
+  lua_pushnil(L);
+  while(lua_next(L, 3)) {
+    const char* pname = luaL_checkstring(L, -2);
+    PropertyInfo* prop = type->property(pname);
+    if(!prop) {
+      luaL_error(L, "`%s' does not name a property of `%s'",
+                 pname, type->name());
+    }
+    prop->LCset_value(comp, L, -1);
+    lua_pop(L, 1); // pop the value, leave the key
+  }
+
+  LCpush_component(L, comp);
+  return 1;
 }
 
 static int Lcomponent_tostring(lua_State *L) {
@@ -374,7 +415,7 @@ void init_lua(World* world) {
   LClink_metatable(L, LUT_WORLD, world_m);
 
   static const luaL_Reg go_m[] = {
-    //{"add_component", Lgo_add_component}
+    {"add_component", Lgo_add_component},
     {"find_component", Lgo_find_component},
     {"pos", Lgo_pos},
     {"vel", Lgo_vel},
@@ -396,6 +437,12 @@ void init_lua(World* world) {
 
   LCpush_go(L, world->camera);
   lua_setglobal(L, "camera");
+
+  lua_pushnumber(L, screen_width);
+  lua_setglobal(L, "screen_width");
+
+  lua_pushnumber(L, screen_height);
+  lua_setglobal(L, "screen_height");
 
   lua_pop(L, lua_gettop(L));
 }

@@ -60,9 +60,6 @@ enum Tags {
   TAG_PERMANENT
 };
 
-float screen_hh;
-float screen_hw;
-
 void camera_relative_enqueue(ColoredRect rect) {
   float dy = floorf(camera->_pos.y);
   rect->miny -= dy;
@@ -79,6 +76,24 @@ void camera_relative_enqueue(ColoredRect rect) {
 
 void play_vorbis(const char* filename, float volume) {
   audio_enqueue(oggsampler_make(filename, audio_current_sample(), volume));
+}
+
+// specialize PropertyTypeImpl for SpriteAtlasEntry
+template<>
+void PropertyTypeImpl<SpriteAtlasEntry>::LCpush_value(PropertyInfo* info, Object* obj, lua_State* L) {
+  SpriteAtlasEntry entry;
+  get_value(info, obj, &entry);
+  lua_pushlightuserdata(L, entry);
+}
+
+template<>
+void PropertyTypeImpl<SpriteAtlasEntry>::LCset_value(PropertyInfo* info, Object* obj, lua_State* L, int pos) {
+  if(!lua_islightuserdata(L, pos)) {
+    luaL_error(L, "position %d does not contain lightuserdata", pos);
+  }
+
+  SpriteAtlasEntry entry = (SpriteAtlasEntry)lua_touserdata(L, pos);
+  set_value(info, obj, &entry);
 }
 
 OBJECT_IMPL(CTimer);
@@ -673,13 +688,9 @@ void game_support_init() {
   player_gravity_accel = (player_jump_speed * player_jump_speed) / (2 * player_jump_height);
   bomb_gravity_accel = (throw_speed * throw_speed) / (2 * bomb_max_height);
 
-  screen_hh = screen_height / 2.0f;
-  screen_hw = screen_width / 2.0f;
-
   world = new World();
   player_go = world->player;
   camera = world->camera;
-  //world->load_level("level.lua");
 }
 
 void game_init() {
@@ -697,16 +708,7 @@ void game_init() {
   spec[0].image = world->atlas_entry(ATLAS, "back1");
   spec[0].bitmask = TILESPEC_VISIBLE;
 
-
-  platform_make(screen_width / 2, 32, screen_width, 64);
-  slidingplatform_make(300, 300, 257, 64, 100, 128, 1024);
-  slidingplatform_make(600, 600, 257, 64, 100, 128, 1024);
-  slidingplatform_make(300, 900, 257, 64, 100, 128, 1024);
-  slidingplatform_make(600, 1200, 257, 64, 100, 128, 1024);
-  slidingplatform_make(300, 1500, 257, 64, 100, 128, 1024);
-  slidingplatform_make(600, 1800, 257, 64, 100, 128, 1024);
-  slidingplatform_make(300, 2100, 257, 64, 100, 128, 1024);
-  slidingplatform_make(600, 2400, 257, 64, 100, 128, 1024);
+  world->load_level("resources/level1.lua");
 
   play_vorbis("sounds/DST-2ndBallad.ogg", 0.7);
   //audio_enqueue(sinsampler_make(audio_current_sample(), SAMPLE_FREQ * 10, C_(1), 8000, 0.0));

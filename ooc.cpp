@@ -28,8 +28,8 @@ bool TypeInfo::isInstanceOf(const TypeInfo* other) const {
   return this == other;
 }
 
-PropertyInfo::PropertyInfo(TypeInfo* type, const char* name, size_t offset)
-  : m_type(type), m_name(name), m_offset(offset) {
+PropertyInfo::PropertyInfo(TypeInfo* type, PropertyType* ptype, const char* name, size_t offset)
+  : m_type(type), m_propertyType(ptype), m_name(name), m_offset(offset) {
   m_type->register_property(this);
 }
 
@@ -37,22 +37,46 @@ const char* PropertyInfo::name() const {
   return m_name;
 }
 
-#define CAST_MEMBER(obj, offset, type) *(type*)((char*)obj + offset)
-
-float PropertyInfo::float_value(Object* obj) {
-  return CAST_MEMBER(obj, m_offset, float);
+void PropertyInfo::set_value(Object* obj, void* value) {
+  m_propertyType->set_value(this, obj, value);
 }
 
-void PropertyInfo::set_float_value(Object* obj, float value) {
-  CAST_MEMBER(obj, m_offset, float) = value;
+void PropertyInfo::get_value(Object* obj, void* value) {
+  m_propertyType->get_value(this, obj, value);
 }
 
-int PropertyInfo::int_value(Object* obj) {
-  return CAST_MEMBER(obj, m_offset, int);
+void PropertyInfo::LCpush_value(Object* obj, lua_State* L) {
+  m_propertyType->LCpush_value(this, obj, L);
 }
 
-void PropertyInfo::set_int_value(Object* obj, int value) {
-  CAST_MEMBER(obj, m_offset, int) = value;
+void PropertyInfo::LCset_value(Object* obj, lua_State* L, int pos) {
+  m_propertyType->LCset_value(this, obj, L, pos);
+}
+
+template<>
+void PropertyTypeImpl<int>::LCpush_value(PropertyInfo* info, Object* obj, lua_State* L) {
+  int val;
+  get_value(info, obj, &val);
+  lua_pushinteger(L, val);
+}
+
+template<>
+void PropertyTypeImpl<int>::LCset_value(PropertyInfo* info, Object* obj, lua_State* L, int pos) {
+  int val = luaL_checkinteger(L, pos);
+  set_value(info, obj, &val);
+}
+
+template<>
+void PropertyTypeImpl<float>::LCpush_value(PropertyInfo* info, Object* obj, lua_State* L) {
+  float val;
+  get_value(info, obj, &val);
+  lua_pushnumber(L, val);
+}
+
+template<>
+void PropertyTypeImpl<float>::LCset_value(PropertyInfo* info, Object* obj, lua_State* L, int pos) {
+  float val = luaL_checknumber(L, pos);
+  set_value(info, obj, &val);
 }
 
 bool cmp_str::operator()(char const *a, char const *b) {
