@@ -5,7 +5,13 @@
 #include <stdio.h>
 #include <string.h>
 
-SpriteAtlas spriteatlas_load(const char* datafilename, const char* imgfilename) {
+SpriteAtlas spriteatlas_load(const char* name, const char* imgtype) {
+  char datafilename[128];
+  char imgfilename[128];
+
+  snprintf(datafilename, sizeof(datafilename), "%s.dat", name);
+  snprintf(imgfilename, sizeof(imgfilename), "%s.%s", name, imgtype);
+
   FILE* datafile = fopen(datafilename, "r");
   if(datafile == NULL) fail_exit("failed to open %s", datafilename);
 
@@ -31,6 +37,7 @@ SpriteAtlas spriteatlas_load(const char* datafilename, const char* imgfilename) 
 }
 
 void spriteatlas_free(SpriteAtlas atlas) {
+  image_free(atlas->image);
   free(atlas);
 }
 

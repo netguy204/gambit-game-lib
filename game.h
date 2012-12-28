@@ -9,8 +9,7 @@ class CInput : public Component {
  public:
   OBJECT_PROTO(CInput);
 
-  CInput();
-  CInput(GO* go);
+  CInput(void* go);
 
   virtual void update(float dt);
 
@@ -23,8 +22,7 @@ class CLeftAndRight : public Component {
  public:
   OBJECT_PROTO(CLeftAndRight);
 
-  CLeftAndRight();
-  CLeftAndRight(GO* go, float minx, float maxx);
+  CLeftAndRight(void* go);
 
   virtual void update(float dt);
 
@@ -35,8 +33,7 @@ class CTimer : public Component {
  public:
   OBJECT_PROTO(CTimer);
 
-  CTimer();
-  CTimer(GO* go, float time_remaining, void* payload);
+  CTimer(void* go);
 
   virtual void update(float dt);
 
@@ -48,8 +45,7 @@ class CBombBehavior : public Component {
  public:
   OBJECT_PROTO(CBombBehavior);
 
-  CBombBehavior();
-  CBombBehavior(GO* go);
+  CBombBehavior(void* go);
 
   virtual void update(float dt);
 
@@ -60,8 +56,7 @@ class CEnemyBehavior : public Component {
  public:
   OBJECT_PROTO(CEnemyBehavior);
 
-  CEnemyBehavior();
-  CEnemyBehavior(GO* go);
+  CEnemyBehavior(void* go);
 
   virtual void update(float dt);
 
@@ -72,8 +67,7 @@ class CTestDisplay : public Component {
  public:
   OBJECT_PROTO(CTestDisplay);
 
-  CTestDisplay();
-  CTestDisplay(GO* go, float r, float g, float b);
+  CTestDisplay(void* go);
 
   virtual void update(float dt);
 
@@ -84,8 +78,7 @@ class CStaticSprite : public Component {
  public:
   OBJECT_PROTO(CStaticSprite);
 
-  CStaticSprite();
-  CStaticSprite(GO* go, SpriteAtlasEntry entry);
+  CStaticSprite(void* go);
 
   virtual void update(float dt);
 
@@ -98,8 +91,7 @@ class CPlayerSprite : public Component {
  public:
   OBJECT_PROTO(CPlayerSprite);
 
-  CPlayerSprite();
-  CPlayerSprite(GO* go);
+  CPlayerSprite(void* go);
 
   virtual void update(float dt);
 
@@ -110,8 +102,7 @@ class CDrawPatch : public Component {
  public:
   OBJECT_PROTO(CDrawPatch);
 
-  CDrawPatch();
-  CDrawPatch(GO* go, SpriteAtlasEntry atlas);
+  CDrawPatch(void* go);
 
   virtual void update(float dt);
 
@@ -127,8 +118,7 @@ class CCameraFocus : public Component {
  public:
   OBJECT_PROTO(CCameraFocus);
 
-  CCameraFocus();
-  CCameraFocus(GO* go, GO* camera);
+  CCameraFocus(void* go);
 
   virtual void update(float dt);
 
@@ -145,9 +135,9 @@ class CParticleEmitter : public Component {
  public:
   OBJECT_PROTO(CParticleEmitter);
 
-  CParticleEmitter();
-  CParticleEmitter(GO* go, SpriteAtlasEntry entry, Vector offset, int nmax);
-  ~CParticleEmitter();
+  CParticleEmitter(void* go);
+  virtual ~CParticleEmitter();
+  void init();
 
   virtual void update(float dt);
   void init_entry(PEntry* e, float life);

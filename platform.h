@@ -8,8 +8,7 @@ class CPlatformer : public Component {
  public:
   OBJECT_PROTO(CPlatformer);
 
-  CPlatformer();
-  CPlatformer(GO* go, float grav_accel);
+  CPlatformer(void* go);
 
   virtual void update(float dt);
   void look_for_support();

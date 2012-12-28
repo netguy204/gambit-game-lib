@@ -77,7 +77,7 @@ float clock_cycles_to_seconds(long cycles);
 long clock_seconds_to_cycles(float seconds);
 
 typedef struct ImageResource_ {
-  struct LLNode_ node;
+  struct DLLNode_ node;
   int w, h;
   unsigned int texture;
   int channels;
@@ -87,6 +87,7 @@ typedef struct ImageResource_ {
 ImageResource image_load(const char * file);
 int image_width(ImageResource resource);
 int image_height(ImageResource resource);
+void image_free(ImageResource resource);
 void images_free();
 
 typedef struct Sprite_ {

@@ -20,6 +20,13 @@ Agent::Agent() {
   this->next_timer = 0;
 }
 
+Agent::Agent(void* p) {
+  this->subscribers = 0;
+  this->delta_subscribers = 0;
+  this->state = 0;
+  this->next_timer = 0;
+}
+
 Agent::~Agent() {
   // should we do something with the agent's mailboxes?
   messages_dropall(this);
@@ -36,6 +43,10 @@ void Agent::update(float dt) {
 OBJECT_IMPL(Dispatcher);
 
 Dispatcher::Dispatcher() {
+  this->dispatchees = NULL;
+}
+
+Dispatcher::Dispatcher(void* p) {
   this->dispatchees = NULL;
 }
 
@@ -62,6 +73,10 @@ void collective_add(Collective* collective, Agent* agent);
 OBJECT_IMPL(Collective);
 
 Collective::Collective() {
+  this->sub_dispatchers = heapvector_make();
+}
+
+Collective::Collective(void* p) {
   this->sub_dispatchers = heapvector_make();
 }
 

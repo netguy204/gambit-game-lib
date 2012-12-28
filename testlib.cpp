@@ -94,7 +94,7 @@ void end_frame() {
   renderer_enqueue_sync(signal_render_complete, NULL);
 }
 
-static LLNode last_resource = NULL;
+static DLL_DECLARE(ImageResource_, node) image_resources;
 
 int image_width(ImageResource resource) {
   return resource->w;
@@ -117,28 +117,25 @@ ImageResource image_load(const char * file) {
   resource->w = w;
   resource->h = h;
   resource->channels = channels;
-  resource->node.next = last_resource;
   resource->data = data;
-  last_resource = (LLNode)resource;
-
+  image_resources.add_head(resource);
   renderer_enqueue(renderer_finish_image_load, resource);
 
   return resource;
 }
 
-void images_free() {
-  LLNode head = last_resource;
-  LLNode next;
-  while(head) {
-    ImageResource resource = (ImageResource)head;
-    renderer_enqueue(renderer_finish_image_free,
-                     resource->texture);
+void image_free(ImageResource resource) {
+  renderer_enqueue(renderer_finish_image_free,
+                   resource->texture);
+  image_resources.remove(resource);
+  fixed_allocator_free(image_resource_allocator, resource);
+}
 
-    next = head->next;
-    fixed_allocator_free(image_resource_allocator, resource);
-    head = next;
-  }
-  last_resource = NULL;
+void images_free() {
+  image_resources.foreach([](ImageResource resource) -> int {
+      image_free(resource);
+      return 0;
+    });
 }
 
 /* portable implementation */

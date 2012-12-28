@@ -3,30 +3,20 @@
 #include "config.h"
 #include "testlib.h"
 
-#include <lua.hpp>
-
 #include <stdarg.h>
 
-OBJECT_IMPL(World);
-
-World::World() {
-}
-
-GO* World::create_go() {
-  GO* go = new GO();
-  Message* message = message_make(NULL, COLLECTIVE_ADD_AGENT, go);
-  message_postinbox(this, message);
-  go->world = this;
-  return go;
-}
-
 OBJECT_IMPL(GO);
+OBJECT_PROPERTY(GO, ttag);
 
 GO::GO() {
   this->transform_parent = NULL;
   vector_zero(&this->_pos);
   vector_zero(&this->_vel);
   this->ttag = 0;
+}
+
+GO::GO(void* p) {
+  throw std::exception();
 }
 
 // removal from the world is handled by the terminate message. Users
@@ -144,8 +134,9 @@ void go_set_parent(GO* child, GO* parent) {
 }
 
 OBJECT_IMPL(Component);
+OBJECT_PROPERTY(Component, delete_me);
 
-Component::Component()
+Component::Component(void* p)
   : go(NULL), delete_me(0) {
 }
 
@@ -181,15 +172,14 @@ void Component::set_parent(GO* go) {
 }
 
 OBJECT_IMPL(CCollidable);
+OBJECT_PROPERTY(CCollidable, w);
+OBJECT_PROPERTY(CCollidable, h);
+OBJECT_PROPERTY(CCollidable, mask);
 
-CCollidable::CCollidable()
-  : Component(NULL, PRIORITY_LEAST), w(0), h(0) {
-}
-
-CCollidable::CCollidable(GO* go, float w, float h)
-  : Component(go, PRIORITY_LEAST), w(w), h(h), mask(MASK_PLATFORMER) {
-  if(go) {
-    go->world->collidables.add_head(this);
+CCollidable::CCollidable(void* go)
+  : Component((GO*)go, PRIORITY_LEAST), w(0), h(0), mask(MASK_PLATFORMER) {
+  if(this->go) {
+    this->go->world->collidables.add_head(this);
   }
 }
 
@@ -254,10 +244,202 @@ void world_notify_collisions(World* world) {
   }
 }
 
+#define LUT_WORLD "World"
+#define LUT_GO "Go"
+#define LUT_COMPONENT "Component"
+
+static void LCpush_lut(lua_State *L, const char* metatable, void* ut) {
+  void** p = (void**)lua_newuserdata(L, sizeof(void*));
+  luaL_setmetatable(L, metatable);
+  *p = ut;
+}
+
+static void* LCcheck_lut(lua_State *L, const char* metatable, int pos) {
+  static char error_msg[256];
+
+  void **ud = (void**)luaL_checkudata(L, pos, metatable);
+  if(ud == NULL) {
+    snprintf(error_msg, sizeof(error_msg), "`%s' expected", metatable);
+    luaL_argcheck(L, ud != NULL, pos, error_msg);
+  }
+  return *ud;
+}
+
+static World* LCcheck_world(lua_State *L, int pos) {
+  return (World*)LCcheck_lut(L, LUT_WORLD, pos);
+}
+
+int LCpush_world(lua_State *L, World* world) {
+  LCpush_lut(L, LUT_WORLD, world);
+  return 1;
+}
+
+static GO* LCcheck_go(lua_State *L, int pos) {
+  return (GO*)LCcheck_lut(L, LUT_GO, pos);
+}
+
+void LCpush_go(lua_State *L, GO* go) {
+  LCpush_lut(L, LUT_GO, go);
+}
+
 static int Lworld_create_go(lua_State *L) {
+  World* world = LCcheck_world(L, 1);
+  LCpush_go(L, world->create_go());
+  return 1;
+}
+
+static int Lworld_atlas_entry(lua_State *L) {
+  World* world = LCcheck_world(L, 1);
+  const char* atlas = luaL_checkstring(L, 2);
+  const char* entry = luaL_checkstring(L, 3);
+  SpriteAtlasEntry result = world->atlas_entry(atlas, entry);
+  lua_pushlightuserdata(L, result);
+  return 1;
+}
+
+static Component* LCcheck_component(lua_State *L, int pos) {
+  return (Component*)LCcheck_lut(L, LUT_COMPONENT, pos);
+}
+
+static int Lgo_find_component(lua_State *L) {
+  GO* go = LCcheck_go(L, 1);
+  const char* cname = luaL_checkstring(L, 2);
+
+  TypeInfo* type = TypeRegistry::instance().find_type(cname);
+  if(type == NULL) {
+    luaL_error(L, "`%s' does not name a registered type", cname);
+  }
+
+  Component* comp = go->find_component(type);
+  if(comp == NULL) {
+    lua_pushnil(L);
+  } else {
+    LCpush_lut(L, LUT_COMPONENT, comp);
+  }
+  return 1;
+}
+
+static int Lgo_pos(lua_State *L) {
+  GO* go = LCcheck_go(L, 1);
+  int x = luaL_checkint(L, 2);
+  int y = luaL_checkint(L, 3);
+  go->_pos.x = x;
+  go->_pos.y = y;
   return 0;
 }
 
-void gameobject_init() {
+static int Lgo_vel(lua_State *L) {
+  GO* go = LCcheck_go(L, 1);
+  int x = luaL_checkint(L, 2);
+  int y = luaL_checkint(L, 3);
+  go->_vel.x = x;
+  go->_vel.y = y;
+  return 0;
+}
 
+static int Lcomponent_tostring(lua_State *L) {
+  Component* comp = LCcheck_component(L, 1);
+  lua_pushstring(L, comp->typeinfo()->name());
+  return 1;
+}
+
+void LClink_metatable(lua_State *L, const char* name, const luaL_Reg* table) {
+  luaL_newmetatable(L, name);
+  lua_pushstring(L, "__index");
+  lua_pushvalue(L, -2);
+  lua_settable(L, -3);
+  luaL_setfuncs(L, table, 0);
+}
+
+OBJECT_IMPL(World);
+
+void init_lua(World* world) {
+  world->player = world->create_go();
+  world->camera = world->create_go();
+
+  lua_State* L = luaL_newstate();
+  world->L = L;
+
+  luaL_openlibs(L);
+
+  static const luaL_Reg world_m[] = {
+    {"create_go", Lworld_create_go},
+    {"atlas_entry", Lworld_atlas_entry},
+    {NULL, NULL}};
+
+  LClink_metatable(L, LUT_WORLD, world_m);
+
+  static const luaL_Reg go_m[] = {
+    //{"add_component", Lgo_add_component}
+    {"find_component", Lgo_find_component},
+    {"pos", Lgo_pos},
+    {"vel", Lgo_vel},
+    {NULL, NULL}};
+
+  LClink_metatable(L, LUT_GO, go_m);
+
+  static const luaL_Reg component_m[] = {
+    {"__tostring", Lcomponent_tostring},
+    {NULL, NULL}};
+
+  LClink_metatable(L, LUT_COMPONENT, component_m);
+
+  LCpush_world(L, world);
+  lua_setglobal(L, "world");
+
+  LCpush_go(L, world->player);
+  lua_setglobal(L, "player");
+
+  LCpush_go(L, world->camera);
+  lua_setglobal(L, "camera");
+
+  lua_pop(L, lua_gettop(L));
+}
+
+World::World(void*p)
+  : L(NULL) {
+  init_lua(this);
+}
+World::World()
+  : L(NULL) {
+  init_lua(this);
+}
+
+World::~World() {
+  for(NameToAtlas::iterator iter = name_to_atlas.begin();
+      iter != name_to_atlas.end(); ++iter) {
+    spriteatlas_free(iter->second);
+  }
+}
+
+void World::load_level(const char* level) {
+  luaL_dofile(L, level);
+  lua_getglobal(L, "level_init");
+  lua_call(L, 0, 0);
+}
+
+GO* World::create_go() {
+  GO* go = new GO();
+  Message* message = message_make(NULL, COLLECTIVE_ADD_AGENT, go);
+  message_postinbox(this, message);
+  go->world = this;
+  return go;
+}
+
+SpriteAtlas World::atlas(const char* atlas_name) {
+  NameToAtlas::iterator iter = name_to_atlas.find(atlas_name);
+  SpriteAtlas atlas;
+
+  if(iter == name_to_atlas.end()) {
+    atlas = spriteatlas_load(atlas_name, "png");
+    name_to_atlas.insert(std::make_pair(atlas_name, atlas));
+  } else {
+    atlas = iter->second;
+  }
+
+  return atlas;
+}
+
+SpriteAtlasEntry World::atlas_entry(const char* atlas_name, const char* entry) {
+  return spriteatlas_find(atlas(atlas_name), entry);
 }

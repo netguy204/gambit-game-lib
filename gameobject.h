@@ -4,8 +4,10 @@
 #include "agent.h"
 #include "vector.h"
 #include "rect.h"
+#include "spriteatlas.h"
 
-void gameobject_init();
+#include <lua.hpp>
+#include <map>
 
 typedef enum {
   MASK_NON_COLLIDER = 0,
@@ -28,7 +30,8 @@ class Component : public Object {
  public:
   OBJECT_PROTO(Component);
 
-  Component();
+  // invalid constructor, throws
+  Component(void* invalid);
   Component(GO* go, ComponentPriority priority);
   virtual ~Component();
 
@@ -49,8 +52,7 @@ class CCollidable : public Component {
  public:
   OBJECT_PROTO(CCollidable);
 
-  CCollidable();
-  CCollidable(GO* go, float w, float h);
+  CCollidable(void* go);
   virtual ~CCollidable();
 
   void rect(Rect rect);
@@ -62,17 +64,33 @@ class CCollidable : public Component {
   int mask;
 };
 
+typedef std::map<const char*, SpriteAtlas, cmp_str> NameToAtlas;
+
 class World : public Collective {
  public:
   OBJECT_PROTO(World);
 
   World();
+  World(void*);
+  virtual ~World();
+
+  void load_level(const char* level);
+
+  SpriteAtlas atlas(const char* atlas);
+  SpriteAtlasEntry atlas_entry(const char* atlas, const char* entry);
 
   GO* create_go();
 
+  GO* player;
+  GO* camera;
+
+  lua_State* L;
+
   DLL_DECLARE(CCollidable, collidable_node) collidables;
+  NameToAtlas name_to_atlas;
 };
 
+int LCpush_world(lua_State *L, World* world);
 void world_notify_collisions(World* world);
 
 
@@ -90,6 +108,7 @@ class GO : public Agent {
   OBJECT_PROTO(GO);
 
   GO();
+  GO(void*);
   virtual ~GO();
 
   virtual void update(float dt);
@@ -117,6 +136,7 @@ class GO : public Agent {
 };
 
 void go_set_parent(GO* child, GO* parent);
+void LCpush_go(lua_State *L, GO* go);
 
 template<typename Func>
 void world_foreach(World* world, Vector pos, float rad, Func func) {

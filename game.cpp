@@ -19,6 +19,8 @@
 #include <stdarg.h>
 #include <math.h>
 
+#define ATLAS "resources/images_default"
+
 float bomb_delay = 6.0f;
 float player_speed = 600;
 float player_jump_speed = 1200;
@@ -41,21 +43,10 @@ World* world;
 struct Random_ rgen;
 
 GO* player_go;
-CInput* player_input;
-
 GO* camera;
 
-SpriteAtlas atlas;
-SpriteAtlasEntry bomb_entry;
-SpriteAtlasEntry spark_entry;
-SpriteAtlasEntry expl_entry;
-SpriteAtlasEntry enemy_entry;
-SpriteAtlasEntry platform_entry;
-SpriteAtlasEntry guy_right_entry;
-SpriteAtlasEntry guy_left_entry;
-
+CInput* player_input;
 TileMap background;
-
 Clock main_clock;
 
 int max_bombs = 50;
@@ -91,13 +82,10 @@ void play_vorbis(const char* filename, float volume) {
 }
 
 OBJECT_IMPL(CTimer);
+OBJECT_PROPERTY(CTimer, time_remaining);
 
-CTimer::CTimer()
-  : Component(NULL, PRIORITY_THINK), time_remaining(0), expire_payload(NULL)
-{}
-
-CTimer::CTimer(GO* go, float time_remaining, void* payload)
-  : Component(go, PRIORITY_THINK), time_remaining(time_remaining), expire_payload(payload) {
+CTimer::CTimer(void* go)
+  : Component((GO*)go, PRIORITY_THINK), time_remaining(0), expire_payload(NULL) {
 }
 
 void CTimer::update(float dt) {
@@ -119,13 +107,10 @@ enum BombStates {
 
 OBJECT_IMPL(CBombBehavior);
 
-CBombBehavior::CBombBehavior()
-  : Component(NULL, PRIORITY_ACT), state(BOMB_IDLE) {
-}
-
-CBombBehavior::CBombBehavior(GO* go)
-  : Component(go, PRIORITY_ACT), state(BOMB_IDLE) {
-  new CTimer(go, bomb_delay - bomb_explode_start, NULL);
+CBombBehavior::CBombBehavior(void* go)
+  : Component((GO*)go, PRIORITY_ACT), state(BOMB_IDLE) {
+  CTimer* timer = new CTimer(go);
+  timer->time_remaining = bomb_delay - bomb_explode_start;
   this->state = BOMB_IDLE;
 }
 
@@ -153,15 +138,20 @@ void CBombBehavior::update(float dt) {
 
   if(this->state == BOMB_IDLE) {
     // set the next timer and change state
-    new CTimer(bomb, bomb_explode_start, NULL);
+    CTimer* timer = new CTimer(bomb);
+    timer->time_remaining = bomb_explode_start;
     this->state = BOMB_EXPLODING;
 
     // add explosion particle emitter
-    Vector_ zero = {0.0f, 0.0f};
-    CParticleEmitter* cp = new CParticleEmitter(go, expl_entry, &zero, 10);
+    CParticleEmitter* cp = new CParticleEmitter(go);
+    cp->entry = go->world->atlas_entry(ATLAS, "expl1");
+    cp->offset.x = 0;
+    cp->offset.y = 0;
+    cp->nmax = 10;
     cp->start_scale = 0.7;
     cp->max_life = bomb_explode_start;
     cp->grav_accel = -30;
+    cp->init();
 
     // stop displaying the sprite
     CStaticSprite* spr = (CStaticSprite*)go->find_component(&CStaticSprite::Type);
@@ -192,12 +182,8 @@ enum EnemyState {
   ENEMY_LANDED
 };
 
-CEnemyBehavior::CEnemyBehavior()
-  : Component(NULL, PRIORITY_ACT), state(ENEMY_FALLING) {
-}
-
-CEnemyBehavior::CEnemyBehavior(GO* go)
-  : Component(go, PRIORITY_ACT), state(ENEMY_FALLING) {
+CEnemyBehavior::CEnemyBehavior(void* go)
+  : Component((GO*)go, PRIORITY_ACT), state(ENEMY_FALLING) {
 }
 
 void CEnemyBehavior::update(float dt) {
@@ -207,7 +193,9 @@ void CEnemyBehavior::update(float dt) {
 
     CCollidable* coll = (CCollidable*)go->transform_parent->find_component(&CCollidable::Type);
     this->go->_vel.x = enemy_speed;
-    new CLeftAndRight(this->go, -coll->w / 2, coll->w / 2);
+    CLeftAndRight* lnr = new CLeftAndRight(this->go);
+    lnr->minx = -coll->w / 2;
+    lnr->maxx = coll->w / 2;
   } else if(this->state == ENEMY_LANDED && !this->go->transform_parent) {
     // when our platform disappears, go back to falling
     this->state = ENEMY_FALLING;
@@ -227,13 +215,11 @@ void CEnemyBehavior::update(float dt) {
 }
 
 OBJECT_IMPL(CLeftAndRight);
+OBJECT_PROPERTY(CLeftAndRight, minx);
+OBJECT_PROPERTY(CLeftAndRight, maxx);
 
-CLeftAndRight::CLeftAndRight()
-  : Component(NULL, PRIORITY_ACT), minx(0), maxx(screen_width) {
-}
-
-CLeftAndRight::CLeftAndRight(GO* go, float minx, float maxx)
-  : Component(go, PRIORITY_ACT), minx(minx), maxx(maxx) {
+CLeftAndRight::CLeftAndRight(void* go)
+  : Component((GO*)go, PRIORITY_ACT), minx(0), maxx(0) {
 }
 
 void CLeftAndRight::update(float dt) {
@@ -252,12 +238,8 @@ void CLeftAndRight::update(float dt) {
 
 OBJECT_IMPL(CInput);
 
-CInput::CInput()
-  : Component(NULL, PRIORITY_THINK), state(NULL), fire_pressed(0), facing(1) {
-}
-
-CInput::CInput(GO* go)
-  : Component(go, PRIORITY_THINK) {
+CInput::CInput(void* go)
+  : Component((GO*)go, PRIORITY_THINK) {
 
   this->state = NULL;
   this->fire_pressed = 0;
@@ -309,13 +291,12 @@ void CInput::update(float dt) {
 }
 
 OBJECT_IMPL(CTestDisplay);
+OBJECT_PROPERTY(CTestDisplay, r);
+OBJECT_PROPERTY(CTestDisplay, g);
+OBJECT_PROPERTY(CTestDisplay, b);
 
-CTestDisplay::CTestDisplay()
-  : Component(NULL, PRIORITY_SHOW), r(1.0), g(0.0), b(1.0) {
-}
-
-CTestDisplay::CTestDisplay(GO* go, float r, float g, float b)
-  : Component(go, PRIORITY_SHOW), r(r), g(g), b(b) {
+CTestDisplay::CTestDisplay(void* go)
+  : Component((GO*)go, PRIORITY_SHOW), r(1.0f), g(0.0f), b(1.0f) {
 }
 
 void CTestDisplay::update(float dt) {
@@ -335,15 +316,12 @@ void CTestDisplay::update(float dt) {
 }
 
 OBJECT_IMPL(CStaticSprite);
+OBJECT_PROPERTY(CStaticSprite, entry);
 
 SpriteList CStaticSprite::list = NULL;
 
-CStaticSprite::CStaticSprite()
-  : Component(NULL, PRIORITY_SHOW), entry(NULL) {
-}
-
-CStaticSprite::CStaticSprite(GO* go, SpriteAtlasEntry entry)
-  : Component(go, PRIORITY_SHOW), entry(entry) {
+CStaticSprite::CStaticSprite(void* go)
+  : Component((GO*)go, PRIORITY_SHOW), entry(NULL) {
 }
 
 void CStaticSprite::update(float dt) {
@@ -372,12 +350,8 @@ OBJECT_IMPL(CPlayerSprite);
 
 SpriteList CPlayerSprite::list = NULL;
 
-CPlayerSprite::CPlayerSprite()
-  : Component(NULL, PRIORITY_SHOW) {
-}
-
-CPlayerSprite::CPlayerSprite(GO* go)
-  : Component(go, PRIORITY_SHOW) {
+CPlayerSprite::CPlayerSprite(void* go)
+  : Component((GO*)go, PRIORITY_SHOW) {
 }
 
 void CPlayerSprite::update(float dt) {
@@ -391,9 +365,9 @@ void CPlayerSprite::update(float dt) {
   float py = pos.y - dy;
   Sprite sprite = frame_make_sprite();
   if(ci->facing > 0) {
-    sprite_fillfromentry(sprite, guy_right_entry);
+    sprite_fillfromentry(sprite, go->world->atlas_entry(ATLAS, "guy"));
   } else {
-    sprite_fillfromentry(sprite, guy_left_entry);
+    sprite_fillfromentry(sprite, go->world->atlas_entry(ATLAS, "guy-left"));
   }
 
   sprite->displayX = px;
@@ -405,15 +379,12 @@ void CPlayerSprite::update(float dt) {
 }
 
 OBJECT_IMPL(CDrawPatch);
+OBJECT_PROPERTY(CDrawPatch, entry);
 
 SpriteList CDrawPatch::list = NULL;
 
-CDrawPatch::CDrawPatch()
-  : Component(NULL, PRIORITY_SHOW), entry(NULL) {
-}
-
-CDrawPatch::CDrawPatch(GO* go, SpriteAtlasEntry entry)
-  : Component(go, PRIORITY_SHOW), entry(entry) {
+CDrawPatch::CDrawPatch(void* go)
+  : Component((GO*)go, PRIORITY_SHOW), entry(NULL) {
 }
 
 void CDrawPatch::update(float dt) {
@@ -444,12 +415,8 @@ void CDrawPatch::update(float dt) {
 
 OBJECT_IMPL(CCameraFocus);
 
-CCameraFocus::CCameraFocus()
-  : Component(NULL, PRIORITY_THINK) {
-}
-
-CCameraFocus::CCameraFocus(GO* go, GO* camera)
-  : Component(go, PRIORITY_THINK), camera(camera)  {
+CCameraFocus::CCameraFocus(void* go)
+  : Component((GO*)go, PRIORITY_THINK), camera(NULL)  {
 }
 
 void CCameraFocus::update(float dt) {
@@ -493,12 +460,16 @@ void CCameraFocus::update(float dt) {
 }
 
 OBJECT_IMPL(CParticleEmitter);
+OBJECT_PROPERTY(CParticleEmitter, entry);
+OBJECT_PROPERTY(CParticleEmitter, active);
+OBJECT_PROPERTY(CParticleEmitter, max_life);
+OBJECT_PROPERTY(CParticleEmitter, max_speed);
+OBJECT_PROPERTY(CParticleEmitter, max_offset);
+OBJECT_PROPERTY(CParticleEmitter, grav_accel);
+OBJECT_PROPERTY(CParticleEmitter, start_scale);
+OBJECT_PROPERTY(CParticleEmitter, end_scale);
 
 SpriteList CParticleEmitter::list = NULL;
-
-CParticleEmitter::CParticleEmitter()
-  : Component(NULL, PRIORITY_ACT), entry(NULL), entries(NULL), nmax(0), active(0) {
-}
 
 void vector_random(Vector v, float scale) {
   float mag = 0;
@@ -512,10 +483,15 @@ void vector_random(Vector v, float scale) {
   vector_scale(v, v, scale / mag);
 }
 
-CParticleEmitter::CParticleEmitter(GO* go, SpriteAtlasEntry entry, Vector offset, int nmax)
-  : Component(go, PRIORITY_ACT), entry(entry), offset(*offset), nmax(nmax),
+CParticleEmitter::CParticleEmitter(void* go)
+  : Component((GO*)go, PRIORITY_ACT), entry(NULL), nmax(0), entries(NULL),
     max_life(1), max_speed(100), max_offset(3), active(1), grav_accel(0),
     start_scale(1), end_scale(1) {
+}
+
+void CParticleEmitter::init() {
+  if(entries) delete[] entries;
+
   entries = new PEntry[nmax];
 
   float dlife = max_life / nmax;
@@ -591,8 +567,12 @@ GO* platform_make(float x, float y, float w, float h) {
   go->_pos.y = y;
   go->ttag = TAG_PERMANENT;
 
-  new CDrawPatch(go, platform_entry);
-  new CCollidable(go, w, h);
+  CDrawPatch* patch = new CDrawPatch(go);
+  patch->entry = world->atlas_entry(ATLAS, "platform2");
+
+  CCollidable* coll = new CCollidable(go);
+  coll->w = w;
+  coll->h = h;
   return go;
 }
 
@@ -601,7 +581,9 @@ GO* slidingplatform_make(float x, float y, float w, float h, float speed,
   GO* go = platform_make(x, y, w, h);
   go->_vel.x = speed;
 
-  new CLeftAndRight(go, minx, maxx);
+  CLeftAndRight* lnr = new CLeftAndRight(go);
+  lnr->minx = minx;
+  lnr->maxx = maxx;
   return go;
 }
 
@@ -610,29 +592,40 @@ GO* enemy_make(float x, float y) {
   go->_pos.x = x;
   go->_pos.y = y;
 
-  new CStaticSprite(go, enemy_entry);
-  new CCollidable(go, enemy_dim, enemy_dim);
-  new CPlatformer(go, player_gravity_accel);
+  CStaticSprite* ss = new CStaticSprite(go);
+  ss->entry = world->atlas_entry(ATLAS, "enemy");
+
+  CCollidable* coll = new CCollidable(go);
+  coll->w = enemy_dim;
+  coll->h = enemy_dim;
+
+  CPlatformer* cp = new CPlatformer(go);
+  cp->grav_accel = player_gravity_accel;
+
   new CEnemyBehavior(go);
 
   return go;
 }
 
 void player_setup() {
-  camera = world->create_go();
   camera->_pos.x = 100;
   camera->_pos.y = 100;
   vector_zero(&camera->_vel);
 
-  player_go = world->create_go();
   player_go->_pos.x = 100;
   player_go->_pos.y = 100;
   player_go->ttag = TAG_PERMANENT;
 
   new CPlayerSprite(player_go);
-  new CCollidable(player_go, player_width, player_height);
-  new CPlatformer(player_go, player_gravity_accel);
-  new CCameraFocus(player_go, camera);
+  CCollidable* coll = new CCollidable(player_go);
+  coll->w = player_width;
+  coll->h = player_height;
+
+  CPlatformer* cp = new CPlatformer(player_go);
+  cp->grav_accel = player_gravity_accel;
+
+  CCameraFocus* cam = new CCameraFocus(player_go);
+  cam->camera = camera;
 
   player_input = new CInput(player_go);
 }
@@ -643,16 +636,28 @@ GO* bomb_make(Vector pos, Vector vel) {
   go->_pos = *pos;
   go->_vel = *vel;
 
-  new CStaticSprite(go, bomb_entry);
-  new CCollidable(go, bomb_dim, bomb_dim);
-  new CPlatformer(go, bomb_gravity_accel);
+  CStaticSprite* ss = new CStaticSprite(go);
+  ss->entry = world->atlas_entry(ATLAS, "bomb");
+
+  CCollidable* coll = new CCollidable(go);
+  coll->w = bomb_dim;
+  coll->h = bomb_dim;
+
+  CPlatformer* plat = new CPlatformer(go);
+  plat->grav_accel = bomb_gravity_accel;
+
   new CBombBehavior(go);
 
   // sparks
   Vector_ offset = {0.0f, 16.0f};
-  CParticleEmitter* pe = new CParticleEmitter(go, spark_entry, &offset, 10);
+  CParticleEmitter* pe = new CParticleEmitter(go);
+  pe->entry = world->atlas_entry(ATLAS, "spark");
+  pe->offset.x = 0.0f;
+  pe->offset.y = 16.0f;
+  pe->nmax = 10;
   pe->grav_accel = 80;
   pe->start_scale = 0.0;
+  pe->init();
 
   return go;
 }
@@ -668,19 +673,13 @@ void game_support_init() {
   player_gravity_accel = (player_jump_speed * player_jump_speed) / (2 * player_jump_height);
   bomb_gravity_accel = (throw_speed * throw_speed) / (2 * bomb_max_height);
 
-  atlas = spriteatlas_load("resources/images_default.dat", "resources/images_default.png");
-  bomb_entry = spriteatlas_find(atlas, "bomb");
-  spark_entry = spriteatlas_find(atlas, "spark");
-  expl_entry = spriteatlas_find(atlas, "expl1");
-  enemy_entry = spriteatlas_find(atlas, "enemy");
-  platform_entry = spriteatlas_find(atlas, "platform2");
-  guy_left_entry = spriteatlas_find(atlas, "guy-left");
-  guy_right_entry = spriteatlas_find(atlas, "guy");
-
   screen_hh = screen_height / 2.0f;
   screen_hw = screen_width / 2.0f;
 
   world = new World();
+  player_go = world->player;
+  camera = world->camera;
+  //world->load_level("level.lua");
 }
 
 void game_init() {
@@ -695,8 +694,9 @@ void game_init() {
   memset(background->tiles, 0, tilemap_size(background));
   TileSpec spec = (TileSpec)malloc(sizeof(struct TileSpec_));
   background->tile_specs = spec;
-  spec[0].image = spriteatlas_find(atlas, "back1");
+  spec[0].image = world->atlas_entry(ATLAS, "back1");
   spec[0].bitmask = TILESPEC_VISIBLE;
+
 
   platform_make(screen_width / 2, 32, screen_width, 64);
   slidingplatform_make(300, 300, 257, 64, 100, 128, 1024);
@@ -731,11 +731,11 @@ float endgame_timeout;
 void game_end(long delta, InputState state) {
   float dt = clock_update(main_clock, delta / 1000.0);
   if(win_state == STATE_WIN) {
-    SpriteList text = spritelist_from_string(NULL, atlas, FONT_MEDIUM,
+    SpriteList text = spritelist_from_string(NULL, world->atlas(ATLAS), FONT_MEDIUM,
                                              "WINNER", 400, screen_height/2);
     spritelist_enqueue_for_screen(text);
   } else if(win_state == STATE_LOSE) {
-    SpriteList text = spritelist_from_string(NULL, atlas, FONT_MEDIUM,
+    SpriteList text = spritelist_from_string(NULL, world->atlas(ATLAS), FONT_MEDIUM,
                                              "LOSER", 400, screen_height/2);
     spritelist_enqueue_for_screen(text);
   }
@@ -763,7 +763,7 @@ void render_hud() {
     -32.0f,
     (screen_width + patch_width) / 2.0f,
     patch_height - 32.0f};
-  SpriteList list = spritelist_from_8patch(NULL, atlas, &patch);
+  SpriteList list = spritelist_from_8patch(NULL, world->atlas(ATLAS), &patch);
   spritelist_enqueue_for_screen(list);
 }
 

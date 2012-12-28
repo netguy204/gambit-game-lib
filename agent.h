@@ -31,6 +31,8 @@ class Agent : public Object {
   OBJECT_PROTO(Agent);
 
   Agent();
+  Agent(void*);
+
   virtual ~Agent();
 
   virtual void update(float dt);
@@ -51,6 +53,8 @@ class Dispatcher : public Agent {
   OBJECT_PROTO(Dispatcher);
 
   Dispatcher();
+  Dispatcher(void*);
+
   virtual ~Dispatcher();
 
   virtual void update(float dt);
@@ -63,6 +67,8 @@ class Collective : public Agent {
   OBJECT_PROTO(Collective);
 
   Collective();
+  Collective(void*);
+
   virtual ~Collective();
 
   virtual void update(float dt);

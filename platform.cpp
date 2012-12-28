@@ -4,8 +4,6 @@
 #include <math.h>
 #include <stdarg.h>
 
-OBJECT_IMPL(CPlatformer);
-
 int rect_is_supported(Rect a, Rect b) {
   struct Rect_ shifted = {a->minx + 0.5f, a->miny - 0.5f, a->maxx - 0.5f, a->miny};
   if(rect_intersect(&shifted, b)) {
@@ -53,12 +51,13 @@ void rect_resolve_interpenetration(Vector resolution, Rect minor, Rect major) {
   }
 }
 
-CPlatformer::CPlatformer()
-  : Component(NULL, PRIORITY_ACT), grav_accel(9.81), platform_mask(0) {
-}
+OBJECT_IMPL(CPlatformer);
+OBJECT_PROPERTY(CPlatformer, grav_accel);
+OBJECT_PROPERTY(CPlatformer, max_speed);
+OBJECT_PROPERTY(CPlatformer, platform_mask);
 
-CPlatformer::CPlatformer(GO* go, float grav_accel)
-  : Component(go, PRIORITY_ACT), grav_accel(grav_accel), platform_mask(MASK_PLATFORMER) {
+CPlatformer::CPlatformer(void* go)
+  : Component((GO*)go, PRIORITY_ACT), grav_accel(0), platform_mask(MASK_PLATFORMER) {
   this->max_speed = 64 / .1;
 }
 
