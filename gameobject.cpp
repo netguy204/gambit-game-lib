@@ -37,6 +37,10 @@ GO::~GO() {
   go_set_parent(this, NULL);
 }
 
+Component* GO::add_component(TypeInfo* type) {
+  return (Component*)type->makeInstance(this);
+}
+
 void GO::update(float dt) {
   // do an integration step
   struct Vector_ dx;

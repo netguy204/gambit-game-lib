@@ -109,7 +109,7 @@ OBJECT_IMPL(CBombBehavior);
 
 CBombBehavior::CBombBehavior(void* go)
   : Component((GO*)go, PRIORITY_ACT), state(BOMB_IDLE) {
-  CTimer* timer = new CTimer(go);
+  CTimer* timer = this->go->add_c<CTimer>();
   timer->time_remaining = bomb_delay - bomb_explode_start;
   this->state = BOMB_IDLE;
 }
@@ -138,12 +138,12 @@ void CBombBehavior::update(float dt) {
 
   if(this->state == BOMB_IDLE) {
     // set the next timer and change state
-    CTimer* timer = new CTimer(bomb);
+    CTimer* timer = bomb->add_c<CTimer>();
     timer->time_remaining = bomb_explode_start;
     this->state = BOMB_EXPLODING;
 
     // add explosion particle emitter
-    CParticleEmitter* cp = new CParticleEmitter(go);
+    CParticleEmitter* cp = go->add_c<CParticleEmitter>();
     cp->entry = go->world->atlas_entry(ATLAS, "expl1");
     cp->offset.x = 0;
     cp->offset.y = 0;
@@ -193,7 +193,7 @@ void CEnemyBehavior::update(float dt) {
 
     CCollidable* coll = (CCollidable*)go->transform_parent->find_component(&CCollidable::Type);
     this->go->_vel.x = enemy_speed;
-    CLeftAndRight* lnr = new CLeftAndRight(this->go);
+    CLeftAndRight* lnr = go->add_c<CLeftAndRight>();
     lnr->minx = -coll->w / 2;
     lnr->maxx = coll->w / 2;
   } else if(this->state == ENEMY_LANDED && !this->go->transform_parent) {
@@ -567,10 +567,10 @@ GO* platform_make(float x, float y, float w, float h) {
   go->_pos.y = y;
   go->ttag = TAG_PERMANENT;
 
-  CDrawPatch* patch = new CDrawPatch(go);
+  CDrawPatch* patch = go->add_c<CDrawPatch>();
   patch->entry = world->atlas_entry(ATLAS, "platform2");
 
-  CCollidable* coll = new CCollidable(go);
+  CCollidable* coll = go->add_c<CCollidable>();
   coll->w = w;
   coll->h = h;
   return go;
@@ -581,7 +581,7 @@ GO* slidingplatform_make(float x, float y, float w, float h, float speed,
   GO* go = platform_make(x, y, w, h);
   go->_vel.x = speed;
 
-  CLeftAndRight* lnr = new CLeftAndRight(go);
+  CLeftAndRight* lnr = go->add_c<CLeftAndRight>();
   lnr->minx = minx;
   lnr->maxx = maxx;
   return go;
@@ -592,17 +592,17 @@ GO* enemy_make(float x, float y) {
   go->_pos.x = x;
   go->_pos.y = y;
 
-  CStaticSprite* ss = new CStaticSprite(go);
+  CStaticSprite* ss = go->add_c<CStaticSprite>();
   ss->entry = world->atlas_entry(ATLAS, "enemy");
 
-  CCollidable* coll = new CCollidable(go);
+  CCollidable* coll = go->add_c<CCollidable>();
   coll->w = enemy_dim;
   coll->h = enemy_dim;
 
-  CPlatformer* cp = new CPlatformer(go);
+  CPlatformer* cp = go->add_c<CPlatformer>();
   cp->grav_accel = player_gravity_accel;
 
-  new CEnemyBehavior(go);
+  go->add_c<CEnemyBehavior>();
 
   return go;
 }
@@ -616,18 +616,18 @@ void player_setup() {
   player_go->_pos.y = 100;
   player_go->ttag = TAG_PERMANENT;
 
-  new CPlayerSprite(player_go);
-  CCollidable* coll = new CCollidable(player_go);
+  player_go->add_c<CPlayerSprite>();
+  CCollidable* coll = player_go->add_c<CCollidable>();
   coll->w = player_width;
   coll->h = player_height;
 
-  CPlatformer* cp = new CPlatformer(player_go);
+  CPlatformer* cp = player_go->add_c<CPlatformer>();
   cp->grav_accel = player_gravity_accel;
 
-  CCameraFocus* cam = new CCameraFocus(player_go);
+  CCameraFocus* cam = player_go->add_c<CCameraFocus>();
   cam->camera = camera;
 
-  player_input = new CInput(player_go);
+  player_input = player_go->add_c<CInput>();
 }
 
 GO* bomb_make(Vector pos, Vector vel) {
@@ -636,21 +636,21 @@ GO* bomb_make(Vector pos, Vector vel) {
   go->_pos = *pos;
   go->_vel = *vel;
 
-  CStaticSprite* ss = new CStaticSprite(go);
+  CStaticSprite* ss = go->add_c<CStaticSprite>();
   ss->entry = world->atlas_entry(ATLAS, "bomb");
 
-  CCollidable* coll = new CCollidable(go);
+  CCollidable* coll = go->add_c<CCollidable>();
   coll->w = bomb_dim;
   coll->h = bomb_dim;
 
-  CPlatformer* plat = new CPlatformer(go);
+  CPlatformer* plat = go->add_c<CPlatformer>();
   plat->grav_accel = bomb_gravity_accel;
 
-  new CBombBehavior(go);
+  go->add_c<CBombBehavior>();
 
   // sparks
   Vector_ offset = {0.0f, 16.0f};
-  CParticleEmitter* pe = new CParticleEmitter(go);
+  CParticleEmitter* pe = go->add_c<CParticleEmitter>();
   pe->entry = world->atlas_entry(ATLAS, "spark");
   pe->offset.x = 0.0f;
   pe->offset.y = 16.0f;

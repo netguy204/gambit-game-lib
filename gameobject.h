@@ -111,6 +111,13 @@ class GO : public Agent {
   GO(void*);
   virtual ~GO();
 
+  Component* add_component(TypeInfo* type);
+
+  template<typename T>
+  T* add_c() {
+    return (T*)add_component(&T::Type);
+  }
+
   virtual void update(float dt);
 
   struct DLLNode_ transform_siblings;
