@@ -6,7 +6,7 @@ function plat(x, y, w, h)
 
    local art = world:atlas_entry("resources/images_default", "platform2")
    platform:add_component("CDrawPatch", {entry=art})
-   platform:add_component("CCollidable", {w=w, h=h})
+   local coll = platform:add_component("CCollidable", {w=w, h=h})
    return platform
 end
 
@@ -15,7 +15,7 @@ function mplat(x, y)
    platform:vel(100, 0)
 
    platform:add_component("CLeftAndRight", {minx=128, maxx=1024})
-   return plat
+   return platform
 end
 
 function level_init()

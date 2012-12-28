@@ -261,7 +261,13 @@ static void LCpush_lut(lua_State *L, const char* metatable, void* ut) {
 static void* LCcheck_lut(lua_State *L, const char* metatable, int pos) {
   static char error_msg[256];
 
-  void **ud = (void**)luaL_checkudata(L, pos, metatable);
+  void **ud;
+  if(metatable) {
+    ud = (void**)luaL_checkudata(L, pos, metatable);
+  } else {
+    ud = (void**)lua_touserdata(L, pos);
+  }
+
   if(ud == NULL) {
     snprintf(error_msg, sizeof(error_msg), "`%s' expected", metatable);
     luaL_argcheck(L, ud != NULL, pos, error_msg);
@@ -312,6 +318,10 @@ static TypeInfo* LCcheck_type(lua_State *L, int pos) {
     luaL_error(L, "`%s' does not name a registered type", name);
   }
   return type;
+}
+
+static Object* LCcheck_object(lua_State *L, int pos) {
+  return (Object*)LCcheck_lut(L, NULL, pos);
 }
 
 static void LCpush_component(lua_State *L, Component *comp) {
@@ -369,7 +379,7 @@ static int Lgo_add_component(lua_State *L) {
   lua_pushnil(L);
   while(lua_next(L, 3)) {
     const char* pname = luaL_checkstring(L, -2);
-    PropertyInfo* prop = type->property(pname);
+    const PropertyInfo* prop = type->property(pname);
     if(!prop) {
       luaL_error(L, "`%s' does not name a property of `%s'",
                  pname, type->name());
@@ -382,18 +392,51 @@ static int Lgo_add_component(lua_State *L) {
   return 1;
 }
 
-static int Lcomponent_tostring(lua_State *L) {
-  Component* comp = LCcheck_component(L, 1);
-  lua_pushstring(L, comp->typeinfo()->name());
+static int Lobject_mutate(lua_State* L) {
+  const char* name = luaL_checkstring(L, lua_upvalueindex(1));
+  Object* obj = LCcheck_object(L, 1);
+
+  const PropertyInfo* prop = obj->typeinfo()->property(name);
+  if(prop == NULL) {
+    luaL_error(L, "`%s' does not have property `%s'",
+               obj->typeinfo()->name(), name);
+  }
+
+  if(lua_gettop(L) == 1) {
+    prop->LCpush_value(obj, L);
+    return 1;
+  } else {
+    prop->LCset_value(obj, L, 2);
+    return 0;
+  }
+}
+
+static int Lobject_index(lua_State* L) {
+  const char* name = luaL_checkstring(L, 2);
+  lua_pushcclosure(L, Lobject_mutate, 1);
+  return 1;
+}
+
+static int Lobject_tostring(lua_State *L) {
+  Object* obj = LCcheck_object(L, 1);
+  lua_pushstring(L, obj->typeinfo()->name());
   return 1;
 }
 
 void LClink_metatable(lua_State *L, const char* name, const luaL_Reg* table) {
+  static const luaL_Reg object_m[] = {
+    {"__index", Lobject_index},
+    {NULL, NULL}};
+
   luaL_newmetatable(L, name);
   lua_pushstring(L, "__index");
   lua_pushvalue(L, -2);
   lua_settable(L, -3);
   luaL_setfuncs(L, table, 0);
+
+  lua_newtable(L);
+  luaL_setfuncs(L, object_m, 0);
+  lua_setmetatable(L, -2);
 }
 
 OBJECT_IMPL(World);
@@ -410,6 +453,7 @@ void init_lua(World* world) {
   static const luaL_Reg world_m[] = {
     {"create_go", Lworld_create_go},
     {"atlas_entry", Lworld_atlas_entry},
+    {"__tostring", Lobject_tostring},
     {NULL, NULL}};
 
   LClink_metatable(L, LUT_WORLD, world_m);
@@ -419,12 +463,13 @@ void init_lua(World* world) {
     {"find_component", Lgo_find_component},
     {"pos", Lgo_pos},
     {"vel", Lgo_vel},
+    {"__tostring", Lobject_tostring},
     {NULL, NULL}};
 
   LClink_metatable(L, LUT_GO, go_m);
 
   static const luaL_Reg component_m[] = {
-    {"__tostring", Lcomponent_tostring},
+    {"__tostring", Lobject_tostring},
     {NULL, NULL}};
 
   LClink_metatable(L, LUT_COMPONENT, component_m);

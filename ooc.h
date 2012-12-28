@@ -10,7 +10,7 @@ class Object;
 typedef Object*(*CtorFn)(void*);
 
 struct cmp_str {
-  bool operator()(char const *a, char const *b);
+  bool operator()(char const *a, char const *b) const;
 };
 
 class PropertyInfo;
@@ -20,7 +20,7 @@ class TypeInfo {
 public:
   TypeInfo(const char* name, CtorFn ctor);
   void register_property(PropertyInfo* property);
-  PropertyInfo* property(const char* name);
+  const PropertyInfo* property(const char* name) const;
 
   const char* name() const;
   Object* makeInstance(void*) const;
@@ -40,10 +40,10 @@ class PropertyInfo {
 
   const char* name() const;
 
-  void set_value(Object* obj, void* value);
-  void get_value(Object* obj, void* value);
-  void LCpush_value(Object* obj, lua_State* L);
-  void LCset_value(Object* obj, lua_State* L, int pos);
+  void set_value(Object* obj, void* value) const;
+  void get_value(Object* obj, void* value) const;
+  void LCpush_value(Object* obj, lua_State* L) const;
+  void LCset_value(Object* obj, lua_State* L, int pos) const;
 
   TypeInfo* m_type;
   PropertyType* m_propertyType;
@@ -53,28 +53,28 @@ class PropertyInfo {
 
 class PropertyType {
  public:
-  virtual void set_value(PropertyInfo* info, Object* obj, void* value) = 0;
-  virtual void get_value(PropertyInfo* info, Object* obj, void* value) = 0;
+  virtual void set_value(const PropertyInfo* info, Object* obj, void* value) = 0;
+  virtual void get_value(const PropertyInfo* info, Object* obj, void* value) = 0;
 
-  virtual void LCpush_value(PropertyInfo* info, Object* obj, lua_State* L) = 0;
-  virtual void LCset_value(PropertyInfo* info, Object* obj, lua_State* L, int pos) = 0;
+  virtual void LCpush_value(const PropertyInfo* info, Object* obj, lua_State* L) = 0;
+  virtual void LCset_value(const PropertyInfo* info, Object* obj, lua_State* L, int pos) = 0;
 };
 
 template <typename T>
 class PropertyTypeImpl : public PropertyType {
-  virtual void set_value(PropertyInfo* info, Object* obj, void* value) {
+  virtual void set_value(const PropertyInfo* info, Object* obj, void* value) {
     memcpy((char*)obj + info->m_offset, value, sizeof(T));
   }
 
-  virtual void get_value(PropertyInfo* info, Object* obj, void* value) {
+  virtual void get_value(const PropertyInfo* info, Object* obj, void* value) {
     memcpy(value, (char*)obj + info->m_offset, sizeof(T));
   }
 
-  virtual void LCpush_value(PropertyInfo* info, Object* obj, lua_State* L) {
+  virtual void LCpush_value(const PropertyInfo* info, Object* obj, lua_State* L) {
     luaL_error(L, "don't know how to maniplate `%s'", info->name());
   }
 
-  virtual void LCset_value(PropertyInfo* info, Object* obj, lua_State* L, int pos) {
+  virtual void LCset_value(const PropertyInfo* info, Object* obj, lua_State* L, int pos) {
     luaL_error(L, "don't know how to maniplate `%s'", info->name());
   }
 };

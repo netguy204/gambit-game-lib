@@ -9,8 +9,8 @@ void TypeInfo::register_property(PropertyInfo* property) {
   name_to_property.insert(std::make_pair(property->name(), property));
 }
 
-PropertyInfo* TypeInfo::property(const char* name) {
-  NameToProperty::iterator iter = name_to_property.find(name);
+const PropertyInfo* TypeInfo::property(const char* name) const {
+  NameToProperty::const_iterator iter = name_to_property.find(name);
   if(iter == name_to_property.end()) return NULL;
   return iter->second;
 }
@@ -37,49 +37,49 @@ const char* PropertyInfo::name() const {
   return m_name;
 }
 
-void PropertyInfo::set_value(Object* obj, void* value) {
+void PropertyInfo::set_value(Object* obj, void* value) const {
   m_propertyType->set_value(this, obj, value);
 }
 
-void PropertyInfo::get_value(Object* obj, void* value) {
+void PropertyInfo::get_value(Object* obj, void* value) const {
   m_propertyType->get_value(this, obj, value);
 }
 
-void PropertyInfo::LCpush_value(Object* obj, lua_State* L) {
+void PropertyInfo::LCpush_value(Object* obj, lua_State* L) const {
   m_propertyType->LCpush_value(this, obj, L);
 }
 
-void PropertyInfo::LCset_value(Object* obj, lua_State* L, int pos) {
+void PropertyInfo::LCset_value(Object* obj, lua_State* L, int pos) const {
   m_propertyType->LCset_value(this, obj, L, pos);
 }
 
 template<>
-void PropertyTypeImpl<int>::LCpush_value(PropertyInfo* info, Object* obj, lua_State* L) {
+void PropertyTypeImpl<int>::LCpush_value(const PropertyInfo* info, Object* obj, lua_State* L) {
   int val;
   get_value(info, obj, &val);
   lua_pushinteger(L, val);
 }
 
 template<>
-void PropertyTypeImpl<int>::LCset_value(PropertyInfo* info, Object* obj, lua_State* L, int pos) {
+void PropertyTypeImpl<int>::LCset_value(const PropertyInfo* info, Object* obj, lua_State* L, int pos) {
   int val = luaL_checkinteger(L, pos);
   set_value(info, obj, &val);
 }
 
 template<>
-void PropertyTypeImpl<float>::LCpush_value(PropertyInfo* info, Object* obj, lua_State* L) {
+void PropertyTypeImpl<float>::LCpush_value(const PropertyInfo* info, Object* obj, lua_State* L) {
   float val;
   get_value(info, obj, &val);
   lua_pushnumber(L, val);
 }
 
 template<>
-void PropertyTypeImpl<float>::LCset_value(PropertyInfo* info, Object* obj, lua_State* L, int pos) {
+void PropertyTypeImpl<float>::LCset_value(const PropertyInfo* info, Object* obj, lua_State* L, int pos) {
   float val = luaL_checknumber(L, pos);
   set_value(info, obj, &val);
 }
 
-bool cmp_str::operator()(char const *a, char const *b) {
+bool cmp_str::operator()(char const *a, char const *b) const {
   return std::strcmp(a, b) < 0;
 }
 

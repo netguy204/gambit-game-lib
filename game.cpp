@@ -80,14 +80,14 @@ void play_vorbis(const char* filename, float volume) {
 
 // specialize PropertyTypeImpl for SpriteAtlasEntry
 template<>
-void PropertyTypeImpl<SpriteAtlasEntry>::LCpush_value(PropertyInfo* info, Object* obj, lua_State* L) {
+void PropertyTypeImpl<SpriteAtlasEntry>::LCpush_value(const PropertyInfo* info, Object* obj, lua_State* L) {
   SpriteAtlasEntry entry;
   get_value(info, obj, &entry);
   lua_pushlightuserdata(L, entry);
 }
 
 template<>
-void PropertyTypeImpl<SpriteAtlasEntry>::LCset_value(PropertyInfo* info, Object* obj, lua_State* L, int pos) {
+void PropertyTypeImpl<SpriteAtlasEntry>::LCset_value(const PropertyInfo* info, Object* obj, lua_State* L, int pos) {
   if(!lua_islightuserdata(L, pos)) {
     luaL_error(L, "position %d does not contain lightuserdata", pos);
   }
