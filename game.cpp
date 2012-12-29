@@ -45,7 +45,6 @@ struct Random_ rgen;
 GO* player_go;
 GO* camera;
 
-CInput* player_input;
 TileMap background;
 Clock main_clock;
 
@@ -54,11 +53,6 @@ int current_n_bombs = 0;
 
 int max_enemies = 20;
 int current_n_enemies = 0;
-
-enum Tags {
-  TAG_NONE,
-  TAG_PERMANENT
-};
 
 void camera_relative_enqueue(ColoredRect rect) {
   float dy = floorf(camera->_pos.y);
@@ -190,45 +184,6 @@ void CBombBehavior::update(float dt) {
   }
 }
 
-OBJECT_IMPL(CEnemyBehavior, Component);
-
-enum EnemyState {
-  ENEMY_FALLING,
-  ENEMY_LANDED
-};
-
-CEnemyBehavior::CEnemyBehavior(void* go)
-  : Component((GO*)go, PRIORITY_ACT), state(ENEMY_FALLING) {
-}
-
-void CEnemyBehavior::update(float dt) {
-  if(this->state == ENEMY_FALLING && this->go->transform_parent) {
-    // when we land, add the left and right behavior
-    this->state = ENEMY_LANDED;
-
-    CCollidable* coll = (CCollidable*)go->transform_parent->find_component(&CCollidable::Type);
-    this->go->_vel.x = enemy_speed;
-    CLeftAndRight* lnr = go->add_c<CLeftAndRight>();
-    lnr->minx = -coll->w / 2;
-    lnr->maxx = coll->w / 2;
-  } else if(this->state == ENEMY_LANDED && !this->go->transform_parent) {
-    // when our platform disappears, go back to falling
-    this->state = ENEMY_FALLING;
-    this->go->_vel.x = 0;
-    CLeftAndRight* lnr = (CLeftAndRight*)go->find_component(&CLeftAndRight::Type);
-    lnr->delete_me = 1;
-  }
-
-  // see if a bomb went off
-  go->inbox.foreach([this](Message* message) -> int {
-      if(message->kind == MESSAGE_EXPLOSION_NEARBY) {
-        agent_send_terminate(go, message->source);
-        return 1;
-      }
-      return 0;
-    });
-}
-
 OBJECT_IMPL(CLeftAndRight, Component);
 OBJECT_PROPERTY(CLeftAndRight, minx);
 OBJECT_PROPERTY(CLeftAndRight, maxx);
@@ -248,60 +203,6 @@ void CLeftAndRight::update(float dt) {
       go->_pos.x = this->minx;
       go->_vel.x = -go->_vel.x;
     }
-  }
-}
-
-OBJECT_IMPL(CInput, Component);
-
-CInput::CInput(void* go)
-  : Component((GO*)go, PRIORITY_THINK) {
-
-  this->state = NULL;
-  this->fire_pressed = 0;
-  this->facing = 1;
-}
-
-void CInput::update(float dt) {
-  InputState input = this->state;
-
-  if(input->action2) {
-    if(!this->fire_pressed) {
-      this->fire_pressed = 1;
-    }
-  } else if(this->fire_pressed) {
-    //fire
-    this->fire_pressed = 0;
-
-    if(current_n_bombs < max_bombs) {
-      struct Vector_ abs_pos;
-      go->pos(&abs_pos);
-      abs_pos.y += player_height;
-
-      struct Vector_ abs_vel = {this->facing * throw_speed / 3, throw_speed};
-
-      if(go->transform_parent) {
-        struct Vector_ par_vel;
-        go->transform_parent->vel(&par_vel);
-        vector_add(&abs_vel, &abs_vel, &par_vel);
-      }
-
-      play_vorbis("sounds/Jump20.ogg", 0.4);
-      bomb_make(&abs_pos, &abs_vel);
-    }
-  }
-
-  go->_vel.x = input->leftright * player_speed;
-  if(fabs(input->leftright) > 0.01) {
-    this->facing = SIGN(input->leftright);
-  }
-
-  // dangerous conflation? we assume unparented means falling
-  if(input->action1 && go->transform_parent) {
-    go->_vel.y = player_jump_speed;
-  }
-
-  if(!input->action1 && !go->transform_parent) {
-    go->_vel.y = MIN(go->_vel.y, 0);
   }
 }
 
@@ -361,38 +262,6 @@ void CStaticSprite::update(float dt) {
   CStaticSprite::list = frame_spritelist_append(CStaticSprite::list, sprite);
 }
 
-OBJECT_IMPL(CPlayerSprite, Component);
-
-SpriteList CPlayerSprite::list = NULL;
-
-CPlayerSprite::CPlayerSprite(void* go)
-  : Component((GO*)go, PRIORITY_SHOW) {
-}
-
-void CPlayerSprite::update(float dt) {
-  Vector_ pos;
-  go->pos(&pos);
-
-  CInput* ci = (CInput*)go->find_component(&CInput::Type);
-  float dx = floorf(camera->_pos.x);
-  float dy = floorf(camera->_pos.y);
-  float px = pos.x - dx;
-  float py = pos.y - dy;
-  Sprite sprite = frame_make_sprite();
-  if(ci->facing > 0) {
-    sprite_fillfromentry(sprite, go->world->atlas_entry(ATLAS, "guy"));
-  } else {
-    sprite_fillfromentry(sprite, go->world->atlas_entry(ATLAS, "guy-left"));
-  }
-
-  sprite->displayX = px;
-  sprite->displayY = py;
-  sprite->originX = 0.5;
-  sprite->originY = 0.5;
-
-  CStaticSprite::list = frame_spritelist_append(CStaticSprite::list, sprite);
-}
-
 OBJECT_IMPL(CDrawPatch, Component);
 OBJECT_PROPERTY(CDrawPatch, entry);
 
@@ -429,49 +298,33 @@ void CDrawPatch::update(float dt) {
 
 
 OBJECT_IMPL(CCameraFocus, Component);
+OBJECT_PROPERTY(CCameraFocus, focus);
 
 CCameraFocus::CCameraFocus(void* go)
-  : Component((GO*)go, PRIORITY_THINK), camera(NULL)  {
+  : Component((GO*)go, PRIORITY_THINK), focus(NULL)  {
 }
 
 void CCameraFocus::update(float dt) {
-  CInput* input = (CInput*)go->find_component(&CInput::Type);
-  float facing_offset = screen_width / 4.0f * input->facing;
-  float supported_offset = 0;
-
-  if(input->state->updown) {
-    supported_offset = screen_height / 2.0 * input->state->updown;
-  } else {
-    supported_offset = screen_height / 4.0;
-  }
-
-  if(input->state->leftright) {
-    facing_offset = screen_width / 3.0f * input->state->leftright;
-  }
-
-  Vector_ offset = {screen_width / 2.0f, screen_height / 2.0f - supported_offset};
+  if(!focus) return;
+  Vector_ offset = {screen_width / 2.0f, screen_height / 2.0f};
   Vector_ desired;
-  go->pos(&desired);
+  focus->pos(&desired);
   vector_sub(&desired, &desired, &offset);
 
   float max_v = 1600;
-  if(input->state->updown){
-    max_v = 600;
-  }
-
   const float max_dx = max_v * dt;
 
   Vector_ delta;
-  vector_sub(&delta, &desired, &camera->_pos);
+  vector_sub(&delta, &desired, &go->_pos);
   float mag = vector_mag(&delta);
   if(mag < max_dx) {
     // snap
-    camera->_pos = desired;
+    go->_pos = desired;
     return;
   }
 
   vector_scale(&delta, &delta, max_dx / mag);
-  vector_add(&camera->_pos, &camera->_pos, &delta);
+  vector_add(&go->_pos, &go->_pos, &delta);
 }
 
 OBJECT_IMPL(CParticleEmitter, Component);
@@ -580,7 +433,6 @@ GO* platform_make(float x, float y, float w, float h) {
   GO* go = world->create_go();
   go->_pos.x = x;
   go->_pos.y = y;
-  go->ttag = TAG_PERMANENT;
 
   CDrawPatch* patch = go->add_c<CDrawPatch>();
   patch->entry = world->atlas_entry(ATLAS, "platform2");
@@ -600,49 +452,6 @@ GO* slidingplatform_make(float x, float y, float w, float h, float speed,
   lnr->minx = minx;
   lnr->maxx = maxx;
   return go;
-}
-
-GO* enemy_make(float x, float y) {
-  GO* go = world->create_go();
-  go->_pos.x = x;
-  go->_pos.y = y;
-
-  CStaticSprite* ss = go->add_c<CStaticSprite>();
-  ss->entry = world->atlas_entry(ATLAS, "enemy");
-
-  CCollidable* coll = go->add_c<CCollidable>();
-  coll->w = enemy_dim;
-  coll->h = enemy_dim;
-
-  CPlatformer* cp = go->add_c<CPlatformer>();
-  cp->grav_accel = player_gravity_accel;
-
-  go->add_c<CEnemyBehavior>();
-
-  return go;
-}
-
-void player_setup() {
-  camera->_pos.x = 100;
-  camera->_pos.y = 100;
-  vector_zero(&camera->_vel);
-
-  player_go->_pos.x = 100;
-  player_go->_pos.y = 100;
-  player_go->ttag = TAG_PERMANENT;
-
-  player_go->add_c<CPlayerSprite>();
-  CCollidable* coll = player_go->add_c<CCollidable>();
-  coll->w = player_width;
-  coll->h = player_height;
-
-  CPlatformer* cp = player_go->add_c<CPlatformer>();
-  cp->grav_accel = player_gravity_accel;
-
-  CCameraFocus* cam = player_go->add_c<CCameraFocus>();
-  cam->camera = camera;
-
-  player_input = player_go->add_c<CInput>();
 }
 
 GO* bomb_make(Vector pos, Vector vel) {
@@ -695,7 +504,6 @@ void game_support_init() {
 
 void game_init() {
   game_support_init();
-  player_setup();
 
   // background tilemap
   const int tdim = 64;
@@ -726,36 +534,6 @@ typedef enum {
   STATE_LOSE
 } WinState;
 
-WinState win_state = STATE_START;
-const float endgame_delay = 3;
-float endgame_timeout;
-
-void game_end(long delta, InputState state) {
-  float dt = clock_update(main_clock, delta / 1000.0);
-  if(win_state == STATE_WIN) {
-    SpriteList text = spritelist_from_string(NULL, world->atlas(ATLAS), FONT_MEDIUM,
-                                             "WINNER", 400, screen_height/2);
-    spritelist_enqueue_for_screen(text);
-  } else if(win_state == STATE_LOSE) {
-    SpriteList text = spritelist_from_string(NULL, world->atlas(ATLAS), FONT_MEDIUM,
-                                             "LOSER", 400, screen_height/2);
-    spritelist_enqueue_for_screen(text);
-  }
-
-  endgame_timeout -= dt;
-  if(endgame_timeout <= 0) {
-    win_state = STATE_START;
-    struct Vector_ center = {screen_width / 2.0f, screen_height / 2.0f};
-    world_foreach(world, &center, INFINITY, [] (GO* go) -> int {
-        if(go->ttag != TAG_PERMANENT) {
-          agent_send_terminate(go, world);
-        }
-        return 0;
-      });
-    set_game_step(game_step);
-  }
-}
-
 void render_hud() {
   float patch_width = floorf(screen_width / 128) * 128;
   float patch_height = 128;
@@ -770,21 +548,15 @@ void render_hud() {
 }
 
 void game_step(long delta, InputState state) {
-  float dt = clock_update(main_clock, delta / 1000.0);
-  enemy_timer -= dt;
-  if(enemy_timer <= 0 && current_n_enemies < max_enemies) {
-    enemy_timer = enemy_period;
+  world->input_state = state;
 
-    //enemy_make(screen_width / 2, screen_height * 4);
-    // add enemy
-  }
+  float dt = clock_update(main_clock, delta / 1000.0);
 
   SpriteList bg = tilemap_spritelist(background, camera->_pos.x + screen_width,
                                      camera->_pos.y + screen_height,
                                      screen_width, screen_height);
   spritelist_enqueue_for_screen(bg);
 
-  player_input->state = state;
   world_notify_collisions(world);
   world->update(dt);
 
@@ -794,9 +566,6 @@ void game_step(long delta, InputState state) {
   spritelist_enqueue_for_screen(CDrawPatch::list);
   CDrawPatch::list = NULL;
 
-  spritelist_enqueue_for_screen(CPlayerSprite::list);
-  CPlayerSprite::list = NULL;
-
   // render all particles
   spritelist_enqueue_for_screen_colored(CParticleEmitter::list);
   CParticleEmitter::list = NULL;
@@ -805,4 +574,11 @@ void game_step(long delta, InputState state) {
 }
 
 void game_shutdown() {
+}
+
+void print_lstack() {
+  lua_State* L = world->L;
+  for(int ii = 0; ii < lua_gettop(L); ++ii) {
+    printf("pos %d type %d\n", ii, lua_type(L, ii));
+  }
 }

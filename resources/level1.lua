@@ -1,10 +1,24 @@
 -- world and player are globals
+
 function printf(...)
    print(string.format(...))
 end
 
 function accel(init_spd, max_height)
    return (init_spd * init_spd) / (2 * max_height)
+end
+
+function sign(val)
+   if val > 0 then
+      return 1
+   else
+      return -1
+   end
+end
+
+function vector_add(out, a, b)
+   out[1] = a[1] + b[1]
+   out[2] = a[2] + b[2]
 end
 
 ATLAS = "resources/images_default"
@@ -19,7 +33,14 @@ LANDED = 2
 
 enemy_speed = 100
 enemy_dim = 36
-enemy_gravity_accel = accel(1200, 300)
+
+player_width = 28
+player_height = 64
+player_speed = 600
+player_jump_speed = 1200
+player_jump_height = 300
+throw_speed = 1200
+grav_accel = accel(player_jump_speed, player_jump_height)
 
 function plat(pos, w, h)
    local platform = world:create_go()
@@ -37,6 +58,85 @@ function mplat(pos)
 
    platform:add_component("CLeftAndRight", {minx=128, maxx=1024})
    return platform
+end
+
+function thread(fn)
+   local err = false
+   local onerr = function(er)
+      err = er
+      print(debug.traceback(coroutine.running(), err, 2))
+   end
+
+   local threadfn = function(go, dt)
+      local start = function()
+         fn(go, dt)
+      end
+
+      xpcall(start, onerr)
+
+      if err then
+         -- an error on the following line is actually an err in fn,
+         -- see the provided traceback for more detail.
+         error(err)
+      end
+   end
+
+   return coroutine.create(threadfn)
+end
+
+function player_input(go, dt)
+   local fire_pressed = false
+   local facing = 1
+   local left_art = world:atlas_entry(ATLAS, "guy-left")
+   local right_art = world:atlas_entry(ATLAS, "guy")
+
+   while true do
+      coroutine.yield()
+
+      local input = world:input_state()
+      local parent = go:transform_parent()
+      local _vel = go:_vel()
+
+      if input.action2 then
+         if not fire_pressed then
+            fire_pressed = true
+         end
+      elseif fire_pressed then
+         local pos = go:pos()
+         fire_pressed = false
+         local abs_pos = {0,0}
+         vector_add(abs_pos, pos, {0, player_height})
+
+         local abs_vel = {facing * throw_speed / 3, throw_speed}
+         if parent then
+            par_vel = parent:vel()
+            vector_add(abs_vel, abs_vel, par_vel)
+         end
+
+         print "bang"
+      end
+
+      local vel = {0, 0}
+      _vel[1] = input.leftright * player_speed
+      if math.abs(input.leftright) > 0.01 then
+         facing = sign(input.leftright)
+         if facing < 0 then
+            go:find_component("CStaticSprite"):entry(left_art)
+         else
+            go:find_component("CStaticSprite"):entry(right_art)
+         end
+      end
+
+      if input.action1 and parent then
+         _vel[2] = player_jump_speed
+      end
+
+      if not input.action1 and not parent then
+         _vel[2] = math.min(_vel[2], 0)
+      end
+
+      go:_vel(_vel)
+   end
 end
 
 function fuzzy_enemy(go, dt)
@@ -89,14 +189,30 @@ function enemy(pos)
    local art = world:atlas_entry(ATLAS, "enemy")
    go:add_component("CStaticSprite", {entry=art})
    go:add_component("CCollidable", {w=enemy_dim, h=enemy_dim})
-   go:add_component("CPlatformer", {grav_accel=enemy_gravity_accel})
-   go:add_component("CScripted", {thread=coroutine.create(fuzzy_enemy)})
+   go:add_component("CPlatformer", {grav_accel=grav_accel})
+   go:add_component("CScripted", {thread=thread(fuzzy_enemy)})
    return go
 end
 
-function level_init()
+function player_init()
    player:_pos{100, 100}
    player:_vel{0, 0}
+   camera:_pos{100, 100}
+   camera:_vel{0, 0}
+
+   -- make player collidable
+   local art = world:atlas_entry(ATLAS, "guy")
+   player:add_component("CCollidable", {w=player_width, h=player_height})
+   player:add_component("CPlatformer", {grav_accel=grav_accel})
+   player:add_component("CStaticSprite", {entry=art})
+
+   -- link up the camera and input
+   camera:add_component("CCameraFocus", {focus=player})
+   player:add_component("CScripted", {thread=thread(player_input)})
+end
+
+function level_init()
+   player_init()
 
    enemy{100, 300}
 

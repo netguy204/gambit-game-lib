@@ -12,6 +12,7 @@
 FixedAllocator message_allocator;
 
 OBJECT_IMPL(Agent, Object);
+OBJECT_PROPERTY(Agent, ttag);
 
 Agent::Agent() {
   this->subscribers = 0;
@@ -252,7 +253,9 @@ void Collective::update(float dt) {
 
   // update all of our sub-agents
   this->children.foreach([=](Agent* agent) -> int {
-      agent->update(dt);
+      if(!(agent->ttag & TAG_SKIP)) {
+        agent->update(dt);
+      }
       return 0;
     });
 

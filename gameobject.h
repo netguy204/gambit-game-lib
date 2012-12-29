@@ -64,6 +64,13 @@ class CCollidable : public Component {
   int mask;
 };
 
+struct LuaThread {
+  LuaThread();
+
+  lua_State* state;
+  int refid;
+};
+
 class CScripted : public Component {
  public:
   OBJECT_PROTO(CScripted);
@@ -73,7 +80,7 @@ class CScripted : public Component {
 
   virtual void update(float dt);
 
-  lua_State* thread;
+  LuaThread thread;
 };
 
 typedef std::map<const char*, SpriteAtlas, cmp_str> NameToAtlas;
@@ -86,6 +93,8 @@ class World : public Collective {
   World(void*);
   virtual ~World();
 
+  virtual void update(float dt);
+
   void load_level(const char* level);
 
   SpriteAtlas atlas(const char* atlas);
@@ -97,6 +106,7 @@ class World : public Collective {
   GO* camera;
 
   lua_State* L;
+  InputState input_state;
 
   DLL_DECLARE(CCollidable, collidable_node) collidables;
   NameToAtlas name_to_atlas;
@@ -146,17 +156,14 @@ class GO : public Agent {
   void vel(Vector v);
   Component* find_component(const TypeInfo* info);
 
-
   // the world we're a part of
   World* world;
-
-  // type tag, eg. bomb
-  int ttag;
 };
 
 void go_set_parent(GO* child, GO* parent);
 void LCpush_go(lua_State *L, GO* go);
 GO* LCcheck_go(lua_State *L, int pos);
+void LCpush_vector(lua_State *L, Vector vector);
 
 template<typename Func>
 void world_foreach(World* world, Vector pos, float rad, Func func) {

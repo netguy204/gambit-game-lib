@@ -7,30 +7,34 @@
 #include <stdarg.h>
 
 template<>
-void PropertyTypeImpl<lua_State*>::LCpush_value(const PropertyInfo* info, Object* obj, lua_State* L) {
-  luaL_error(L, "cannot read threads");
-}
-
-template<>
-void PropertyTypeImpl<lua_State*>::LCset_value(const PropertyInfo* info, Object* obj, lua_State* L, int pos) {
+void PropertyTypeImpl<LuaThread>::LCset_value(const PropertyInfo* info, Object* obj, lua_State* L, int pos) {
   lua_State* state = lua_tothread(L, pos);
   if(!state) {
     luaL_error(L, "position %d does not contain a thread", pos);
   }
 
-  set_value(info, obj, &state);
+  // need to protect from GC
+  LuaThread thread;
+  thread.state = state;
+  lua_pushvalue(L, pos);
+  thread.refid = luaL_ref(L, LUA_REGISTRYINDEX);
+
+  set_value(info, obj, &thread);
+}
+
+void LCpush_vector(lua_State* L, Vector v) {
+  lua_createtable(L, 2, 0);
+  lua_pushnumber(L, v->x);
+  lua_rawseti(L, -2, 1);
+  lua_pushnumber(L, v->y);
+  lua_rawseti(L, -2, 2);
 }
 
 template<>
 void PropertyTypeImpl<Vector_>::LCpush_value(const PropertyInfo* info, Object* obj, lua_State* L) {
   Vector_ v;
   get_value(info, obj, &v);
-
-  lua_createtable(L, 2, 0);
-  lua_pushnumber(L, v.x);
-  lua_rawseti(L, -2, 1);
-  lua_pushnumber(L, v.y);
-  lua_rawseti(L, -2, 2);
+  LCpush_vector(L, &v);
 }
 
 template<>
@@ -62,8 +66,38 @@ void PropertyTypeImpl<GO*>::LCset_value(const PropertyInfo* info, Object* obj, l
   set_value(info, obj, &go);
 }
 
+template<>
+void PropertyTypeImpl<InputState>::LCpush_value(const PropertyInfo* info, Object* obj, lua_State* L) {
+  InputState state;
+  get_value(info, obj, &state);
+
+  lua_newtable(L);
+  lua_pushliteral(L, "quit_requested");
+  lua_pushinteger(L, state->quit_requested);
+  lua_settable(L, -3);
+
+  lua_pushliteral(L, "updown");
+  lua_pushnumber(L, state->updown);
+  lua_settable(L, -3);
+
+  lua_pushliteral(L, "leftright");
+  lua_pushnumber(L, state->leftright);
+  lua_settable(L, -3);
+
+  lua_pushliteral(L, "action1");
+  lua_pushboolean(L, state->action1);
+  lua_settable(L, -3);
+
+  lua_pushliteral(L, "action2");
+  lua_pushboolean(L, state->action2);
+  lua_settable(L, -3);
+
+  lua_pushliteral(L, "action3");
+  lua_pushboolean(L, state->action3);
+  lua_settable(L, -3);
+}
+
 OBJECT_IMPL(GO, Agent);
-OBJECT_PROPERTY(GO, ttag);
 OBJECT_PROPERTY(GO, _pos);
 OBJECT_PROPERTY(GO, _vel);
 OBJECT_PROPERTY(GO, transform_parent);
@@ -269,29 +303,34 @@ int CCollidable::intersect(CCollidable* b) {
   return rect_intersect(&ra, &rb);
 }
 
+LuaThread::LuaThread()
+  : state(NULL), refid(-1) {
+}
+
 OBJECT_IMPL(CScripted, Component);
 OBJECT_PROPERTY(CScripted, thread);
 
 CScripted::CScripted(void* go)
-  : Component((GO*)go, PRIORITY_ACT), thread(NULL) {
+  : Component((GO*)go, PRIORITY_ACT) {
 }
 
 CScripted::~CScripted() {
-  if(thread) {
-    lua_close(thread);
+  if(thread.state) {
+    // the setter protected this, unprotected it
+    luaL_unref(thread.state, LUA_REGISTRYINDEX, thread.refid);
   }
 }
 
 void CScripted::update(float dt) {
-  if(!thread) return;
+  if(!thread.state) return;
 
-  LCpush_go(thread, go);
-  lua_pushnumber(thread, dt);
-  int status = lua_resume(thread, NULL, 2);
+  LCpush_go(thread.state, go);
+  lua_pushnumber(thread.state, dt);
+  int status = lua_resume(thread.state, NULL, 2);
   if(status != LUA_YIELD) {
     delete_me = 1;
     if(status != LUA_OK) {
-      const char* error = lua_tostring(thread, -1);
+      const char* error = lua_tostring(thread.state, -1);
       fail_exit("lua thread failed: %s", error);
     }
   }
@@ -498,6 +537,22 @@ static int Lgo_send_terminate(lua_State* L) {
   return 0;
 }
 
+static int Lgo_pos(lua_State* L) {
+  GO* go = LCcheck_go(L, 1);
+  Vector_ pos;
+  go->pos(&pos);
+  LCpush_vector(L, &pos);
+  return 1;
+}
+
+static int Lgo_vel(lua_State* L) {
+  GO* go = LCcheck_go(L, 1);
+  Vector_ vel;
+  go->vel(&vel);
+  LCpush_vector(L, &vel);
+  return 1;
+}
+
 static int Lobject_mutate(lua_State* L) {
   const char* name = luaL_checkstring(L, lua_upvalueindex(1));
   Object* obj = LCcheck_object(L, 1);
@@ -546,10 +601,14 @@ void LClink_metatable(lua_State *L, const char* name, const luaL_Reg* table) {
 }
 
 OBJECT_IMPL(World, Collective);
+OBJECT_PROPERTY(World, input_state);
 
 void init_lua(World* world) {
   world->player = world->create_go();
+  world->player->ttag = TAG_SKIP;
+
   world->camera = world->create_go();
+  world->camera->ttag = TAG_SKIP;
 
   lua_State* L = luaL_newstate();
   world->L = L;
@@ -569,6 +628,8 @@ void init_lua(World* world) {
     {"find_component", Lgo_find_component},
     {"has_message", Lgo_has_message},
     {"send_terminate", Lgo_send_terminate},
+    {"pos", Lgo_pos},
+    {"vel", Lgo_vel},
     {"__tostring", Lobject_tostring},
     {NULL, NULL}};
 
@@ -612,6 +673,12 @@ World::~World() {
       iter != name_to_atlas.end(); ++iter) {
     spriteatlas_free(iter->second);
   }
+}
+
+void World::update(float dt) {
+  player->update(dt);
+  camera->update(dt);
+  Collective::update(dt);
 }
 
 void World::load_level(const char* level) {

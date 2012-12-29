@@ -5,19 +5,6 @@
 #include "testlib.h"
 #include "spriteatlas.h"
 
-class CInput : public Component {
- public:
-  OBJECT_PROTO(CInput);
-
-  CInput(void* go);
-
-  virtual void update(float dt);
-
-  InputState state;
-  int fire_pressed;
-  int facing;
-};
-
 class CLeftAndRight : public Component {
  public:
   OBJECT_PROTO(CLeftAndRight);
@@ -52,17 +39,6 @@ class CBombBehavior : public Component {
   int state;
 };
 
-class CEnemyBehavior : public Component {
- public:
-  OBJECT_PROTO(CEnemyBehavior);
-
-  CEnemyBehavior(void* go);
-
-  virtual void update(float dt);
-
-  int state;
-};
-
 class CTestDisplay : public Component {
  public:
   OBJECT_PROTO(CTestDisplay);
@@ -83,17 +59,6 @@ class CStaticSprite : public Component {
   virtual void update(float dt);
 
   SpriteAtlasEntry entry;
-
-  static SpriteList list;
-};
-
-class CPlayerSprite : public Component {
- public:
-  OBJECT_PROTO(CPlayerSprite);
-
-  CPlayerSprite(void* go);
-
-  virtual void update(float dt);
 
   static SpriteList list;
 };
@@ -122,7 +87,7 @@ class CCameraFocus : public Component {
 
   virtual void update(float dt);
 
-  GO* camera;
+  GO* focus;
 };
 
 struct PEntry {

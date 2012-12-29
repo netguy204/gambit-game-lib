@@ -26,6 +26,11 @@ class Message {
 
 typedef DLL_DECLARE(Message, node) MessageDLL;
 
+enum AgentTags {
+  TAG_NONE,
+  TAG_SKIP = 1
+};
+
 class Agent : public Object {
  public:
   OBJECT_PROTO(Agent);
@@ -46,6 +51,7 @@ class Agent : public Object {
   int delta_subscribers; // subscriber count update is deferred
   int subscribers;
   int state;
+  int ttag;
 };
 
 class Dispatcher : public Agent {
