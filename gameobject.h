@@ -35,11 +35,14 @@ class Component : public Object {
   Component(GO* go, ComponentPriority priority);
   virtual ~Component();
 
+  virtual void init();
   virtual void update(float dt);
 
   void set_parent(GO* go);
 
   struct DLLNode_ node;
+  struct DLLNode_ world_node;
+
   GO* go;
   ComponentPriority priority;
   int delete_me;
@@ -78,7 +81,9 @@ class CScripted : public Component {
   CScripted(void* go);
   virtual ~CScripted();
 
+  virtual void init();
   virtual void update(float dt);
+  void resume(int args);
 
   LuaThread thread;
 };
@@ -108,6 +113,7 @@ class World : public Collective {
   lua_State* L;
   InputState input_state;
 
+  DLL_DECLARE(Component, world_node) components;
   DLL_DECLARE(CCollidable, collidable_node) collidables;
   NameToAtlas name_to_atlas;
 };
@@ -141,20 +147,23 @@ class GO : public Agent {
   }
 
   virtual void update(float dt);
+  Message* create_message(int kind);
+  void send_message(Message* message);
+  void pos(Vector p);
+  void vel(Vector v);
+  Component* find_component(const TypeInfo* info);
+  void print_description();
 
   struct DLLNode_ transform_siblings;
   struct GO* transform_parent;
   SimpleDLL transform_children;
 
   DLL_DECLARE(Component, node) components;
+  DLL_DECLARE(Component, node) uninitialized_components;
 
   // pos and vel are always relative to the parent if there is one
   struct Vector_ _pos;
   struct Vector_ _vel;
-
-  void pos(Vector p);
-  void vel(Vector v);
-  Component* find_component(const TypeInfo* info);
 
   // the world we're a part of
   World* world;

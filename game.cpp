@@ -92,18 +92,17 @@ void PropertyTypeImpl<SpriteAtlasEntry>::LCset_value(const PropertyInfo* info, O
 
 OBJECT_IMPL(CTimer, Component);
 OBJECT_PROPERTY(CTimer, time_remaining);
+OBJECT_PROPERTY(CTimer, expire_message);
 
 CTimer::CTimer(void* go)
-  : Component((GO*)go, PRIORITY_THINK), time_remaining(0), expire_payload(NULL) {
+  : Component((GO*)go, PRIORITY_THINK), time_remaining(0), expire_message(NULL) {
 }
 
 void CTimer::update(float dt) {
   this->time_remaining -= dt;
 
   if(this->time_remaining <= 0) {
-    Message* message = message_make(go, MESSAGE_TIMER_EXPIRED, this->expire_payload);
-    // need to add component priorities for this to be effective
-    message_postinbox(go, message);
+    go->send_message(expire_message);
     delete_me = 1;
   }
 }
@@ -120,6 +119,7 @@ CBombBehavior::CBombBehavior(void* go)
   : Component((GO*)go, PRIORITY_ACT), state(BOMB_IDLE) {
   CTimer* timer = this->go->add_c<CTimer>();
   timer->time_remaining = bomb_delay - bomb_explode_start;
+  timer->expire_message = this->go->create_message(MESSAGE_TIMER_EXPIRED);
   this->state = BOMB_IDLE;
 }
 
@@ -149,6 +149,8 @@ void CBombBehavior::update(float dt) {
     // set the next timer and change state
     CTimer* timer = bomb->add_c<CTimer>();
     timer->time_remaining = bomb_explode_start;
+    timer->expire_message = bomb->create_message(MESSAGE_TIMER_EXPIRED);
+
     this->state = BOMB_EXPLODING;
 
     // add explosion particle emitter
@@ -177,8 +179,7 @@ void CBombBehavior::update(float dt) {
     Vector_ pos;
     bomb->pos(&pos);
     world_foreach(bomb->world, &pos, bomb_dim * bomb_chain_factor, [&](GO* item) -> int {
-        Message* message = message_make(bomb, MESSAGE_EXPLOSION_NEARBY, NULL);
-        message_postinbox(item, message);
+        item->send_message(bomb->create_message(MESSAGE_EXPLOSION_NEARBY));
         return 0;
       });
   }
@@ -336,6 +337,8 @@ OBJECT_PROPERTY(CParticleEmitter, max_offset);
 OBJECT_PROPERTY(CParticleEmitter, grav_accel);
 OBJECT_PROPERTY(CParticleEmitter, start_scale);
 OBJECT_PROPERTY(CParticleEmitter, end_scale);
+OBJECT_PROPERTY(CParticleEmitter, nmax);
+OBJECT_PROPERTY(CParticleEmitter, offset);
 
 SpriteList CParticleEmitter::list = NULL;
 

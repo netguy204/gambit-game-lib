@@ -46,9 +46,10 @@ void PropertyTypeImpl<Vector_>::LCset_value(const PropertyInfo* info, Object* ob
   Vector_ v;
   lua_rawgeti(L, pos, 1);
   v.x = luaL_checknumber(L, -1);
+  lua_pop(L, 1);
   lua_rawgeti(L, pos, 2);
   v.y = luaL_checknumber(L, -1);
-  lua_pop(L, 2);
+  lua_pop(L, 1);
   set_value(info, obj, &v);
 }
 
@@ -97,6 +98,13 @@ void PropertyTypeImpl<InputState>::LCpush_value(const PropertyInfo* info, Object
   lua_settable(L, -3);
 }
 
+template<>
+void PropertyTypeImpl<Message*>::LCset_value(const PropertyInfo* info, Object* obj, lua_State* L, int pos) {
+  Message* message = (Message*)lua_touserdata(L, pos);
+  luaL_argcheck(L, message != NULL, pos, "`Message' expected");
+  set_value(info, obj, &message);
+}
+
 OBJECT_IMPL(GO, Agent);
 OBJECT_PROPERTY(GO, _pos);
 OBJECT_PROPERTY(GO, _vel);
@@ -136,19 +144,23 @@ Component* GO::add_component(TypeInfo* type) {
 }
 
 void GO::update(float dt) {
+  // initialize new components
+  uninitialized_components.foreach([this](Component* comp) -> int {
+      comp->init();
+      uninitialized_components.remove(comp);
+      components.insert_before_when(comp, [&comp, this](Component* other) {
+          return comp->priority < other->priority;
+        });
+      world->components.insert_before_when(comp, [&](Component* other) {
+          return comp->priority < other->priority;
+        });
+      return 0;
+    });
+
   // do an integration step
   struct Vector_ dx;
   vector_scale(&dx, &this->_vel, dt);
   vector_add(&this->_pos, &this->_pos, &dx);
-
-  this->components.foreach([=](Component* comp) -> int {
-      if(comp->delete_me) {
-        delete(comp);
-      } else {
-        comp->update(dt);
-      }
-      return 0;
-    });
 
   // clear the inbox and handle terminate messages
   foreach_inboxmessage(this, NULL, NULL);
@@ -186,6 +198,27 @@ Component* GO::find_component(const TypeInfo* info) {
       return 0;
     });
   return result;
+}
+
+void GO::print_description() {
+  fprintf(stderr, "UNINITIALIZED COMPONENTS\n");
+  uninitialized_components.foreach([](Component* c) -> int {
+      fprintf(stderr, "%s\n", c->typeinfo()->name());
+      return 0;
+    });
+  fprintf(stderr, "ACTIVE COMPONENTS\n");
+  components.foreach([](Component* c) -> int {
+      fprintf(stderr, "%s\n", c->typeinfo()->name());
+      return 0;
+    });
+}
+
+Message* GO::create_message(int kind) {
+  return message_make(this, kind, NULL);
+}
+
+void GO::send_message(Message* message) {
+  message_postinbox(this, message);
 }
 
 void go_set_parent(GO* child, GO* parent) {
@@ -249,7 +282,11 @@ Component::Component(GO* go, ComponentPriority priority)
 Component::~Component() {
   if(this->go) {
     this->go->components.remove(this);
+    this->go->world->components.remove(this);
   }
+}
+
+void Component::init() {
 }
 
 void Component::update(float dt) {
@@ -263,9 +300,7 @@ void Component::set_parent(GO* go) {
   this->go = go;
 
   if(go) {
-    this->go->components.insert_before_when(this, [this](Component* other) {
-        return this->priority < other->priority;
-      });
+    go->uninitialized_components.add_head(this);
   }
 }
 
@@ -321,12 +356,25 @@ CScripted::~CScripted() {
   }
 }
 
-void CScripted::update(float dt) {
-  if(!thread.state) return;
+void CScripted::init() {
+  if(!thread.state) {
+    fprintf(stderr, "CScripted initialized with no attached script\n");
+    delete_me = 1;
+    return;
+  }
 
+  // first call passes the GO
   LCpush_go(thread.state, go);
-  lua_pushnumber(thread.state, dt);
-  int status = lua_resume(thread.state, NULL, 2);
+  resume(1);
+}
+
+void CScripted::update(float dt) {
+  // init guaranteed that we always have a script
+  resume(0);
+}
+
+void CScripted::resume(int args) {
+  int status = lua_resume(thread.state, NULL, args);
   if(status != LUA_YIELD) {
     delete_me = 1;
     if(status != LUA_OK) {
@@ -509,21 +557,52 @@ static int Lgo_add_component(lua_State *L) {
   return 1;
 }
 
+static int Lgo_create_message(lua_State *L) {
+  GO* go = LCcheck_go(L, 1);
+  int kind = luaL_checkinteger(L, 2);
+  Message* message = go->create_message(kind);
+  lua_pushlightuserdata(L, message);
+  return 1;
+}
+
+static int Lgo_send_message(lua_State *L) {
+  GO* go = LCcheck_go(L, 1);
+  Message* message = (Message*)lua_touserdata(L, 2);
+  go->send_message(message);
+  return NULL;
+}
+
+static int Lgo_broadcast_message(lua_State *L) {
+  GO* go = LCcheck_go(L, 1);
+  float range = luaL_checknumber(L, 2);
+  int kind = luaL_checkinteger(L, 3);
+
+  Vector_ pos;
+  go->pos(&pos);
+  world_foreach(go->world, &pos, range, [&](GO* item) -> int {
+      if(item != go) {
+        item->send_message(go->create_message(kind));
+      }
+      return 0;
+    });
+  return 0;
+}
+
 static int Lgo_has_message(lua_State *L) {
   GO* go = LCcheck_go(L, 1);
   int type = luaL_checkinteger(L, 2);
 
-  int result = 0;
+  Message* found = NULL;
   go->inbox.foreach([&] (Message* msg) -> int {
       if(msg->kind == type) {
-        result = 1;
+        found = msg;
         return 1;
       }
       return 0;
     });
 
-  if(result) {
-    lua_pushinteger(L, 1);
+  if(found) {
+    lua_pushlightuserdata(L, found);
   } else {
     lua_pushnil(L);
   }
@@ -605,10 +684,7 @@ OBJECT_PROPERTY(World, input_state);
 
 void init_lua(World* world) {
   world->player = world->create_go();
-  world->player->ttag = TAG_SKIP;
-
   world->camera = world->create_go();
-  world->camera->ttag = TAG_SKIP;
 
   lua_State* L = luaL_newstate();
   world->L = L;
@@ -627,6 +703,9 @@ void init_lua(World* world) {
     {"add_component", Lgo_add_component},
     {"find_component", Lgo_find_component},
     {"has_message", Lgo_has_message},
+    {"create_message", Lgo_create_message},
+    {"send_message", Lgo_send_message},
+    {"broadcast_message", Lgo_broadcast_message},
     {"send_terminate", Lgo_send_terminate},
     {"pos", Lgo_pos},
     {"vel", Lgo_vel},
@@ -676,8 +755,17 @@ World::~World() {
 }
 
 void World::update(float dt) {
-  player->update(dt);
-  camera->update(dt);
+  // update the comonents
+  this->components.foreach([=](Component* comp) -> int {
+      if(comp->delete_me) {
+        delete(comp);
+      } else {
+        comp->update(dt);
+      }
+      return 0;
+    });
+
+  // update the game objects
   Collective::update(dt);
 }
 

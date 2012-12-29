@@ -253,9 +253,7 @@ void Collective::update(float dt) {
 
   // update all of our sub-agents
   this->children.foreach([=](Agent* agent) -> int {
-      if(!(agent->ttag & TAG_SKIP)) {
-        agent->update(dt);
-      }
+      agent->update(dt);
       return 0;
     });
 
