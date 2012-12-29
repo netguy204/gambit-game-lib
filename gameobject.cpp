@@ -681,6 +681,7 @@ void LClink_metatable(lua_State *L, const char* name, const luaL_Reg* table) {
 
 OBJECT_IMPL(World, Collective);
 OBJECT_PROPERTY(World, input_state);
+OBJECT_PROPERTY(World, dt);
 
 void init_lua(World* world) {
   world->player = world->create_go();
@@ -755,6 +756,8 @@ World::~World() {
 }
 
 void World::update(float dt) {
+  this->dt = dt;
+
   // update the comonents
   this->components.foreach([=](Component* comp) -> int {
       if(comp->delete_me) {

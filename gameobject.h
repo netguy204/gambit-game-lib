@@ -112,6 +112,7 @@ class World : public Collective {
 
   lua_State* L;
   InputState input_state;
+  float dt;
 
   DLL_DECLARE(Component, world_node) components;
   DLL_DECLARE(CCollidable, collidable_node) collidables;

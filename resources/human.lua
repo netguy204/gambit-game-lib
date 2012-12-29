@@ -12,6 +12,8 @@ THROW_SPEED = 1200
 
 function input_thread(go)
    local fire_pressed = false
+   local interrupt_pressed = false
+
    local facing = 1
    local left_art = world:atlas_entry(constant.ATLAS, "guy-left")
    local right_art = world:atlas_entry(constant.ATLAS, "guy")
@@ -62,6 +64,15 @@ function input_thread(go)
       end
 
       go:_vel(_vel)
+
+      if input.action3 then
+         if not interrupt_pressed then
+            interrupt_pressed = true
+         end
+      elseif interrupt_pressed then
+         interrupt_pressed = false
+         util.printf('Memory: %d KB', collectgarbage("count"))
+      end
    end
 end
 
