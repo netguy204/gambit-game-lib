@@ -136,11 +136,6 @@ Component* GO::add_component(TypeInfo* type) {
 }
 
 void GO::update(float dt) {
-  // do an integration step
-  struct Vector_ dx;
-  vector_scale(&dx, &this->_vel, dt);
-  vector_add(&this->_pos, &this->_pos, &dx);
-
   // initialize new components
   uninitialized_components.foreach([this](Component* comp) -> int {
       comp->init();
@@ -148,17 +143,16 @@ void GO::update(float dt) {
       components.insert_before_when(comp, [&comp, this](Component* other) {
           return comp->priority < other->priority;
         });
+      world->components.insert_before_when(comp, [&](Component* other) {
+          return comp->priority < other->priority;
+        });
       return 0;
     });
 
-  this->components.foreach([=](Component* comp) -> int {
-      if(comp->delete_me) {
-        delete(comp);
-      } else {
-        comp->update(dt);
-      }
-      return 0;
-    });
+  // do an integration step
+  struct Vector_ dx;
+  vector_scale(&dx, &this->_vel, dt);
+  vector_add(&this->_pos, &this->_pos, &dx);
 
   // clear the inbox and handle terminate messages
   foreach_inboxmessage(this, NULL, NULL);
@@ -267,6 +261,7 @@ Component::Component(GO* go, ComponentPriority priority)
 Component::~Component() {
   if(this->go) {
     this->go->components.remove(this);
+    this->go->world->components.remove(this);
   }
 }
 
@@ -639,10 +634,7 @@ OBJECT_PROPERTY(World, input_state);
 
 void init_lua(World* world) {
   world->player = world->create_go();
-  world->player->ttag = TAG_SKIP;
-
   world->camera = world->create_go();
-  world->camera->ttag = TAG_SKIP;
 
   lua_State* L = luaL_newstate();
   world->L = L;
@@ -710,8 +702,17 @@ World::~World() {
 }
 
 void World::update(float dt) {
-  player->update(dt);
-  camera->update(dt);
+  // update the comonents
+  this->components.foreach([=](Component* comp) -> int {
+      if(comp->delete_me) {
+        delete(comp);
+      } else {
+        comp->update(dt);
+      }
+      return 0;
+    });
+
+  // update the game objects
   Collective::update(dt);
 }
 

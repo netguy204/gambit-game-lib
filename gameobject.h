@@ -41,6 +41,8 @@ class Component : public Object {
   void set_parent(GO* go);
 
   struct DLLNode_ node;
+  struct DLLNode_ world_node;
+
   GO* go;
   ComponentPriority priority;
   int delete_me;
@@ -109,6 +111,7 @@ class World : public Collective {
   lua_State* L;
   InputState input_state;
 
+  DLL_DECLARE(Component, world_node) components;
   DLL_DECLARE(CCollidable, collidable_node) collidables;
   NameToAtlas name_to_atlas;
 };
