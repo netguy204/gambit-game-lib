@@ -336,6 +336,8 @@ OBJECT_PROPERTY(CParticleEmitter, max_offset);
 OBJECT_PROPERTY(CParticleEmitter, grav_accel);
 OBJECT_PROPERTY(CParticleEmitter, start_scale);
 OBJECT_PROPERTY(CParticleEmitter, end_scale);
+OBJECT_PROPERTY(CParticleEmitter, nmax);
+OBJECT_PROPERTY(CParticleEmitter, offset);
 
 SpriteList CParticleEmitter::list = NULL;
 

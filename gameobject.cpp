@@ -46,9 +46,10 @@ void PropertyTypeImpl<Vector_>::LCset_value(const PropertyInfo* info, Object* ob
   Vector_ v;
   lua_rawgeti(L, pos, 1);
   v.x = luaL_checknumber(L, -1);
+  lua_pop(L, 1);
   lua_rawgeti(L, pos, 2);
   v.y = luaL_checknumber(L, -1);
-  lua_pop(L, 2);
+  lua_pop(L, 1);
   set_value(info, obj, &v);
 }
 
