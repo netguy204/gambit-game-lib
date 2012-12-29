@@ -87,7 +87,7 @@ void PropertyTypeImpl<float>::LCset_value(const PropertyInfo* info, Object* obj,
 }
 
 bool cmp_str::operator()(char const *a, char const *b) const {
-  return std::strcmp(a, b) < 0;
+  return strcmp(a, b) < 0;
 }
 
 TypeRegistry& TypeRegistry::instance() {
