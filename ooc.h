@@ -3,6 +3,7 @@
 
 #include <lua.hpp>
 #include <stdio.h>
+#include <string.h>
 #include <map>
 
 class Object;
