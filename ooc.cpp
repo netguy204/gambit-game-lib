@@ -1,7 +1,7 @@
 #include "ooc.h"
 
-TypeInfo::TypeInfo(const char* name, CtorFn ctor)
-  : m_name(name), m_ctor(ctor) {
+TypeInfo::TypeInfo(const char* name, CtorFn ctor, TypeInfo* parent)
+  : m_name(name), m_ctor(ctor), m_parent(parent) {
   TypeRegistry::instance().register_type(this);
 }
 
@@ -11,12 +11,19 @@ void TypeInfo::register_property(PropertyInfo* property) {
 
 const PropertyInfo* TypeInfo::property(const char* name) const {
   NameToProperty::const_iterator iter = name_to_property.find(name);
-  if(iter == name_to_property.end()) return NULL;
+  if(iter == name_to_property.end()) {
+    if(m_parent) return m_parent->property(name);
+    return NULL;
+  }
   return iter->second;
 }
 
 const char* TypeInfo::name() const {
   return m_name;
+}
+
+const TypeInfo* TypeInfo::parent() const {
+  return m_parent;
 }
 
 Object* TypeInfo::makeInstance(void* init) const {
@@ -98,7 +105,7 @@ TypeInfo* TypeRegistry::find_type(const char* name) {
   return iter->second;
 }
 
-OBJECT_BIMPL(Object);
+OBJECT_BIMPL(Object, NULL);
 
 Object* Object::CreateInstance(void* init) {
   return new Object();

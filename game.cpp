@@ -96,7 +96,7 @@ void PropertyTypeImpl<SpriteAtlasEntry>::LCset_value(const PropertyInfo* info, O
   set_value(info, obj, &entry);
 }
 
-OBJECT_IMPL(CTimer);
+OBJECT_IMPL(CTimer, Component);
 OBJECT_PROPERTY(CTimer, time_remaining);
 
 CTimer::CTimer(void* go)
@@ -120,7 +120,7 @@ enum BombStates {
   BOMB_DONE
 };
 
-OBJECT_IMPL(CBombBehavior);
+OBJECT_IMPL(CBombBehavior, Component);
 
 CBombBehavior::CBombBehavior(void* go)
   : Component((GO*)go, PRIORITY_ACT), state(BOMB_IDLE) {
@@ -190,7 +190,7 @@ void CBombBehavior::update(float dt) {
   }
 }
 
-OBJECT_IMPL(CEnemyBehavior);
+OBJECT_IMPL(CEnemyBehavior, Component);
 
 enum EnemyState {
   ENEMY_FALLING,
@@ -229,7 +229,7 @@ void CEnemyBehavior::update(float dt) {
     });
 }
 
-OBJECT_IMPL(CLeftAndRight);
+OBJECT_IMPL(CLeftAndRight, Component);
 OBJECT_PROPERTY(CLeftAndRight, minx);
 OBJECT_PROPERTY(CLeftAndRight, maxx);
 
@@ -251,7 +251,7 @@ void CLeftAndRight::update(float dt) {
   }
 }
 
-OBJECT_IMPL(CInput);
+OBJECT_IMPL(CInput, Component);
 
 CInput::CInput(void* go)
   : Component((GO*)go, PRIORITY_THINK) {
@@ -305,7 +305,7 @@ void CInput::update(float dt) {
   }
 }
 
-OBJECT_IMPL(CTestDisplay);
+OBJECT_IMPL(CTestDisplay, Component);
 OBJECT_PROPERTY(CTestDisplay, r);
 OBJECT_PROPERTY(CTestDisplay, g);
 OBJECT_PROPERTY(CTestDisplay, b);
@@ -330,7 +330,7 @@ void CTestDisplay::update(float dt) {
   camera_relative_enqueue(&rect);
 }
 
-OBJECT_IMPL(CStaticSprite);
+OBJECT_IMPL(CStaticSprite, Component);
 OBJECT_PROPERTY(CStaticSprite, entry);
 
 SpriteList CStaticSprite::list = NULL;
@@ -361,7 +361,7 @@ void CStaticSprite::update(float dt) {
   CStaticSprite::list = frame_spritelist_append(CStaticSprite::list, sprite);
 }
 
-OBJECT_IMPL(CPlayerSprite);
+OBJECT_IMPL(CPlayerSprite, Component);
 
 SpriteList CPlayerSprite::list = NULL;
 
@@ -393,7 +393,7 @@ void CPlayerSprite::update(float dt) {
   CStaticSprite::list = frame_spritelist_append(CStaticSprite::list, sprite);
 }
 
-OBJECT_IMPL(CDrawPatch);
+OBJECT_IMPL(CDrawPatch, Component);
 OBJECT_PROPERTY(CDrawPatch, entry);
 
 SpriteList CDrawPatch::list = NULL;
@@ -428,7 +428,7 @@ void CDrawPatch::update(float dt) {
 }
 
 
-OBJECT_IMPL(CCameraFocus);
+OBJECT_IMPL(CCameraFocus, Component);
 
 CCameraFocus::CCameraFocus(void* go)
   : Component((GO*)go, PRIORITY_THINK), camera(NULL)  {
@@ -474,7 +474,7 @@ void CCameraFocus::update(float dt) {
   vector_add(&camera->_pos, &camera->_pos, &delta);
 }
 
-OBJECT_IMPL(CParticleEmitter);
+OBJECT_IMPL(CParticleEmitter, Component);
 OBJECT_PROPERTY(CParticleEmitter, entry);
 OBJECT_PROPERTY(CParticleEmitter, active);
 OBJECT_PROPERTY(CParticleEmitter, max_life);

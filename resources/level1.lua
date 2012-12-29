@@ -1,4 +1,7 @@
 -- world and player are globals
+function printf(...)
+   print(string.format(...))
+end
 
 function accel(init_spd, max_height)
    return (init_spd * init_spd) / (2 * max_height)
@@ -37,7 +40,8 @@ function mplat(pos)
 end
 
 function fuzzy_enemy(go, dt)
-   state = FALLING
+   local state = FALLING
+   local old_vel = go:_vel()
 
    while true do
       coroutine.yield()
@@ -46,33 +50,36 @@ function fuzzy_enemy(go, dt)
          return
       end
 
-      if state == FALLING and go:transform_parent() then
+      local parented = go:transform_parent()
+      if state == FALLING and parented then
+         print('changed to LANDED')
          state = LANDED
 
-         coll = go:find_component("CCollidable")
          go:_vel{enemy_speed, 0}
 
-         w = coll:w()
+         local w = parented:find_component("CCollidable"):w()
+         printf("width is %d", w)
          go:add_component("CLeftAndRight", {minx=-w/2, maxx=w/2})
-      elseif state == LANDED and not go:transform_parent() then
+      elseif state == LANDED and not parented then
+         print('changed to FALLING')
          state = FALLING
          go:_vel{0, 0}
-         go:find_component("CCollidable"):delete_me(1)
+         go:find_component("CLeftAndRight"):delete_me(1)
+      elseif state == LANDED and go:has_message(COLLIDING) then
+         -- bounce on collisions
+         old_vel[1] = -old_vel[1]
+         go:_vel(old_vel)
       end
+
+      -- kill ourselves when we're falling out of the world
+      if state == FALLING and go:_pos()[2] < -100 then
+         go:send_terminate()
+         return
+      end
+
+      old_vel = go:_vel()
    end
 
-end
-
-function player_coroutine(go, dt)
-   timer = 5
-   while true do
-      timer = timer - dt
-      if timer <= 0 then
-         timer = 5
-         print("hello from bubba", dt)
-      end
-      go, dt = coroutine.yield()
-   end
 end
 
 function enemy(pos)
@@ -91,7 +98,7 @@ function level_init()
    player:_pos{100, 100}
    player:_vel{0, 0}
 
-   enemy{200, 100}
+   enemy{100, 300}
 
    plat({screen_width / 2, 32}, screen_width, 64)
    mplat{300, 300}

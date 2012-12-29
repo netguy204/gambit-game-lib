@@ -51,7 +51,7 @@ void rect_resolve_interpenetration(Vector resolution, Rect minor, Rect major) {
   }
 }
 
-OBJECT_IMPL(CPlatformer);
+OBJECT_IMPL(CPlatformer, Component);
 OBJECT_PROPERTY(CPlatformer, grav_accel);
 OBJECT_PROPERTY(CPlatformer, max_speed);
 OBJECT_PROPERTY(CPlatformer, platform_mask);

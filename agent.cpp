@@ -11,7 +11,7 @@
 
 FixedAllocator message_allocator;
 
-OBJECT_IMPL(Agent);
+OBJECT_IMPL(Agent, Object);
 
 Agent::Agent() {
   this->subscribers = 0;
@@ -40,7 +40,7 @@ void Agent::update(float dt) {
 
 // dispatcher methods
 
-OBJECT_IMPL(Dispatcher);
+OBJECT_IMPL(Dispatcher, Agent);
 
 Dispatcher::Dispatcher() {
   this->dispatchees = NULL;
@@ -70,7 +70,7 @@ void Dispatcher::update(float dt) {
 
 void collective_add(Collective* collective, Agent* agent);
 
-OBJECT_IMPL(Collective);
+OBJECT_IMPL(Collective, Agent);
 
 Collective::Collective() {
   this->sub_dispatchers = heapvector_make();

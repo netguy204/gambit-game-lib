@@ -42,7 +42,7 @@ class Component : public Object {
   struct DLLNode_ node;
   GO* go;
   ComponentPriority priority;
-  char delete_me;
+  int delete_me;
 };
 
 // registers a GO with the collidables section of the world. GO

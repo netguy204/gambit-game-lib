@@ -62,7 +62,7 @@ void PropertyTypeImpl<GO*>::LCset_value(const PropertyInfo* info, Object* obj, l
   set_value(info, obj, &go);
 }
 
-OBJECT_IMPL(GO);
+OBJECT_IMPL(GO, Agent);
 OBJECT_PROPERTY(GO, ttag);
 OBJECT_PROPERTY(GO, _pos);
 OBJECT_PROPERTY(GO, _vel);
@@ -197,7 +197,7 @@ void go_set_parent(GO* child, GO* parent) {
   }
 }
 
-OBJECT_IMPL(Component);
+OBJECT_IMPL(Component, Object);
 OBJECT_PROPERTY(Component, delete_me);
 
 Component::Component(void* p)
@@ -235,7 +235,7 @@ void Component::set_parent(GO* go) {
   }
 }
 
-OBJECT_IMPL(CCollidable);
+OBJECT_IMPL(CCollidable, Component);
 OBJECT_PROPERTY(CCollidable, w);
 OBJECT_PROPERTY(CCollidable, h);
 OBJECT_PROPERTY(CCollidable, mask);
@@ -269,7 +269,7 @@ int CCollidable::intersect(CCollidable* b) {
   return rect_intersect(&ra, &rb);
 }
 
-OBJECT_IMPL(CScripted);
+OBJECT_IMPL(CScripted, Component);
 OBJECT_PROPERTY(CScripted, thread);
 
 CScripted::CScripted(void* go)
@@ -545,7 +545,7 @@ void LClink_metatable(lua_State *L, const char* name, const luaL_Reg* table) {
   lua_setmetatable(L, -2);
 }
 
-OBJECT_IMPL(World);
+OBJECT_IMPL(World, Collective);
 
 void init_lua(World* world) {
   world->player = world->create_go();

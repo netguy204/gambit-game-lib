@@ -18,11 +18,12 @@ typedef std::map<const char*, PropertyInfo*, cmp_str> NameToProperty;
 
 class TypeInfo {
 public:
-  TypeInfo(const char* name, CtorFn ctor);
+  TypeInfo(const char* name, CtorFn ctor, TypeInfo* parent);
   void register_property(PropertyInfo* property);
   const PropertyInfo* property(const char* name) const;
 
   const char* name() const;
+  const TypeInfo* parent() const;
   Object* makeInstance(void*) const;
   bool isInstanceOf(const TypeInfo* other) const;
 
@@ -30,6 +31,7 @@ private:
   NameToProperty name_to_property;
   const char* m_name;
   CtorFn m_ctor;
+  TypeInfo* m_parent;
 };
 
 class PropertyType;
@@ -97,17 +99,17 @@ class TypeRegistry {
   static Object* CreateInstance(void*)
 
 
-#define OBJECT_BIMPL(name)                              \
-  TypeInfo name::Type(#name, name::CreateInstance);     \
-  const TypeInfo* name::typeinfo() {                    \
-    return &(name::Type);                               \
+#define OBJECT_BIMPL(name, ptype)                               \
+  TypeInfo name::Type(#name, name::CreateInstance, ptype);      \
+  const TypeInfo* name::typeinfo() {                            \
+    return &(name::Type);                                       \
   }
 
-#define OBJECT_IMPL(name)                               \
+#define OBJECT_IMPL(name, pname)                        \
   Object* name::CreateInstance(void* init) {            \
     return new name(init);                              \
   }                                                     \
-  OBJECT_BIMPL(name)
+  OBJECT_BIMPL(name, &pname::Type)
 
 #define OPMTYPE(name, member_name) name ## _ ## member_name ## _ ## MemberType
 #define OPTYPE(name, member_name) name ## _ ## member_name ## _ ## Type
