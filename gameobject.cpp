@@ -803,10 +803,17 @@ World::World()
 }
 
 World::~World() {
+  game_objects.foreach([](GO* go) -> int {
+      delete go;
+      return 0;
+    });
+
   for(NameToAtlas::iterator iter = name_to_atlas.begin();
       iter != name_to_atlas.end(); ++iter) {
     spriteatlas_free(iter->second);
   }
+
+  lua_close(L);
 }
 
 void World::update(float dt) {

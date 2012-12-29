@@ -321,9 +321,9 @@ void spritelist_render_to_screen(SpriteList list) {
 
   int nverts = spritelist_set_texs_and_verts(list);
 
-  if(list->sprite->resource->texture != last_texture) {
-    glBindTexture(GL_TEXTURE_2D, list->sprite->resource->texture);
-    last_texture = list->sprite->resource->texture;
+  if(list->sprite->texture != last_texture) {
+    glBindTexture(GL_TEXTURE_2D, list->sprite->texture);
+    last_texture = list->sprite->texture;
   }
 
   glUniform1i(tex0_uniform_location, 0);
@@ -389,9 +389,9 @@ void spritelist_render_to_screen_colored(SpriteList list) {
   glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 4 * nverts, colors, GL_DYNAMIC_DRAW);
   glVertexAttribPointer(GLPARAM_OTHER0, 4, GL_FLOAT, GL_FALSE, 0, 0);
 
-  if(list->sprite->resource->texture != last_texture) {
-    glBindTexture(GL_TEXTURE_2D, list->sprite->resource->texture);
-    last_texture = list->sprite->resource->texture;
+  if(list->sprite->texture != last_texture) {
+    glBindTexture(GL_TEXTURE_2D, list->sprite->texture);
+    last_texture = list->sprite->texture;
   }
 
   glUniform1i(color_tex0_uniform_location, 0);

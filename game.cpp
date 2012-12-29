@@ -20,24 +20,6 @@
 
 #define ATLAS "resources/images_default"
 
-float bomb_delay = 6.0f;
-float player_speed = 600;
-float player_jump_speed = 1200;
-float player_width = 28;
-float player_height = 64;
-float player_jump_height = 300;
-float bomb_max_height = 400;
-float bomb_dim = 48;
-float player_gravity_accel;
-float bomb_gravity_accel;
-float throw_speed = 1200;
-float ground_level = 100;
-float charge_delay = 0.2;
-float bomb_explode_start = 0.3;
-float bomb_chain_factor = 2.0;
-float enemy_speed = 100;
-float enemy_dim = 36;
-
 World* world;
 struct Random_ rgen;
 
@@ -46,12 +28,6 @@ GO* camera;
 
 TileMap background;
 Clock main_clock;
-
-int max_bombs = 50;
-int current_n_bombs = 0;
-
-int max_enemies = 20;
-int current_n_enemies = 0;
 
 void camera_relative_enqueue(ColoredRect rect) {
   float dy = floorf(camera->_pos.y);
@@ -355,27 +331,29 @@ void CParticleEmitter::update(float dt) {
 
 void game_step(long delta, InputState state);
 
-void game_support_init() {
-  color_init();
-  random_init(&rgen, 1234);
+int world_reset_requested = 0;
+int reset_world(lua_State* L);
 
-  main_clock = clock_make();
-
-  player_gravity_accel = (player_jump_speed * player_jump_speed) / (2 * player_jump_height);
-  bomb_gravity_accel = (throw_speed * throw_speed) / (2 * bomb_max_height);
+void init_world() {
+  World* old_world = world;
 
   world = new World();
   player_go = world->player;
   camera = world->camera;
-}
 
-void game_init() {
-  game_support_init();
+  lua_register(world->L, "reset_world", reset_world);
+  world->load_level("resources/level1.lua");
+
+  if(background) {
+    free(background->tile_specs);
+    tilemap_free(background);
+  }
 
   // background tilemap
   const int tdim = 64;
   const int world_width = screen_width * 3;
   const int world_height = screen_height * 6;
+
   background = tilemap_make(world_width / tdim, world_height / tdim, tdim, tdim);
   memset(background->tiles, 0, tilemap_size(background));
   TileSpec spec = (TileSpec)malloc(sizeof(struct TileSpec_));
@@ -383,10 +361,28 @@ void game_init() {
   spec[0].image = world->atlas_entry(ATLAS, "back1");
   spec[0].bitmask = TILESPEC_VISIBLE;
 
-  world->load_level("resources/level1.lua");
+  if(old_world) delete old_world;
+  world_reset_requested = 0;
+}
+
+int reset_world(lua_State* L) {
+  world_reset_requested = 1;
+  return 0;
+}
+
+void game_support_init() {
+  color_init();
+  random_init(&rgen, 1234);
+  main_clock = clock_make();
+}
+
+void game_init() {
+  game_support_init();
 
   play_vorbis("sounds/DST-2ndBallad.ogg", 0.7);
   //audio_enqueue(sinsampler_make(audio_current_sample(), SAMPLE_FREQ * 10, C_(1), 8000, 0.0));
+
+  init_world();
 
   set_game_step(game_step);
 }
@@ -415,6 +411,10 @@ void render_hud() {
 }
 
 void game_step(long delta, InputState state) {
+  if(world_reset_requested) {
+    init_world();
+  }
+
   world->input_state = state;
 
   float dt = clock_update(main_clock, delta / 1000.0);

@@ -72,6 +72,7 @@ function input_thread(go)
       elseif interrupt_pressed then
          interrupt_pressed = false
          util.printf('Memory: %d KB', collectgarbage("count"))
+         reset_world()
       end
    end
 end

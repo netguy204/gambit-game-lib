@@ -91,7 +91,7 @@ void image_free(ImageResource resource);
 void images_free();
 
 typedef struct Sprite_ {
-  ImageResource resource;
+  unsigned int texture;
   float angle;
   float originX;
   float originY;
