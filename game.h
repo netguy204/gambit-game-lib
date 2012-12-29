@@ -28,17 +28,6 @@ class CTimer : public Component {
   float time_remaining;
 };
 
-class CBombBehavior : public Component {
- public:
-  OBJECT_PROTO(CBombBehavior);
-
-  CBombBehavior(void* go);
-
-  virtual void update(float dt);
-
-  int state;
-};
-
 class CTestDisplay : public Component {
  public:
   OBJECT_PROTO(CTestDisplay);
@@ -76,7 +65,6 @@ class CDrawPatch : public Component {
   static SpriteList list;
 
 };
-
 
 // probably want all renders to happen after this has done its update
 class CCameraFocus : public Component {

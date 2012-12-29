@@ -1,10 +1,10 @@
 #ifndef GAMEOBJECT_H
 #define GAMEOBJECT_H
 
-#include "agent.h"
 #include "vector.h"
 #include "rect.h"
 #include "spriteatlas.h"
+#include "ooc.h"
 
 #include <lua.hpp>
 #include <map>
@@ -16,8 +16,35 @@ typedef enum {
   MASK_ENEMY_PLATFORM = 4
 } CollisionMask;
 
-
 class GO;
+
+// FIXME: reduce to relevant set
+enum MessageKind {
+  COLLECTIVE_ADD_AGENT,   // collective should own agent
+  MESSAGE_MAX0,
+  MESSAGE_TERMINATE,      // command agent to terminate
+  MESSAGE_TERMINATING,    // agent is terminating
+  MESSAGE_COLLIDING,      // agent is colliding with other (cother, cself)
+  MESSAGE_TIMER_EXPIRED,  // args (payload)
+  MESSAGE_EXPLOSION_NEARBY,
+  MESSAGE_MAX1,
+  AGENT_TAKE_DAMAGE,      // command agent to take damage
+  AGENT_START_ATTACK,
+  AGENT_FLEE,
+  MESSAGE_MAX2
+};
+
+class Message {
+ public:
+  Message(GO* source, int kind, void* data);
+
+  struct DLLNode_ node;
+  GO* source;
+  void* data;
+  void* data2;
+  int kind;
+  int read_count;
+};
 
 enum ComponentPriority {
   PRIORITY_THINK,
@@ -37,6 +64,7 @@ class Component : public Object {
 
   virtual void init();
   virtual void update(float dt);
+  virtual void messages_received();
 
   void set_parent(GO* go);
 
@@ -87,6 +115,7 @@ class CScripted : public Component {
 
   virtual void init();
   virtual void update(float dt);
+  virtual void messages_received();
 
   void free_thread(LuaThread* thread);
   void step_thread(LuaThread* thread);
@@ -96,9 +125,73 @@ class CScripted : public Component {
   LuaThread message_thread;
 };
 
+class World;
+
+/* GO: GameObject
+ *
+ * This is an agent that makes all of its messgaes available to its
+ * components. If a component ever cares about messages it should
+ * search the list of messages in its parent object for whatever its
+ * interested in. The parent will clear its message list and handle
+ * terminations at the end of the component update cycle.
+ */
+
+class GO : public Object {
+ public:
+  OBJECT_PROTO(GO);
+
+  GO();
+  GO(void*);
+  virtual ~GO();
+
+  Component* add_component(TypeInfo* type);
+
+  template<typename T>
+  T* add_c() {
+    return (T*)add_component(&T::Type);
+  }
+
+  virtual void update(float dt);
+  void messages_received();
+
+  Message* create_message(int kind);
+  void send_message(Message* message);
+  void pos(Vector p);
+  void vel(Vector v);
+  Component* find_component(const TypeInfo* info);
+  void print_description();
+
+  struct DLLNode_ messages_waiting_node;
+  struct DLLNode_ world_node;
+
+  struct DLLNode_ transform_siblings;
+  struct GO* transform_parent;
+  SimpleDLL transform_children;
+
+  DLL_DECLARE(Component, node) components;
+  DLL_DECLARE(Component, node) uninitialized_components;
+  DLL_DECLARE(Message, node) inbox;
+  DLL_DECLARE(Message, node) inbox_pending;
+
+  // pos and vel are always relative to the parent if there is one
+  struct Vector_ _pos;
+  struct Vector_ _vel;
+
+  // the world we're a part of
+  World* world;
+
+  int delete_me;
+};
+
+void go_set_parent(GO* child, GO* parent);
+
+void LCpush_go(lua_State *L, GO* go);
+GO* LCcheck_go(lua_State *L, int pos);
+void LCpush_vector(lua_State *L, Vector vector);
+
 typedef std::map<const char*, SpriteAtlas, cmp_str> NameToAtlas;
 
-class World : public Collective {
+class World : public Object {
  public:
   OBJECT_PROTO(World);
 
@@ -122,6 +215,9 @@ class World : public Collective {
   InputState input_state;
   float dt;
 
+  DLL_DECLARE(GO, world_node) game_objects;
+  DLL_DECLARE(GO, messages_waiting_node) have_waiting_messages;
+
   DLL_DECLARE(Component, world_node) components;
   DLL_DECLARE(CCollidable, collidable_node) collidables;
   NameToAtlas name_to_atlas;
@@ -131,64 +227,12 @@ int LCpush_world(lua_State *L, World* world);
 void world_notify_collisions(World* world);
 
 
-/* GO: GameObject
- *
- * This is an agent that makes all of its messgaes available to its
- * components. If a component ever cares about messages it should
- * search the list of messages in its parent object for whatever its
- * interested in. The parent will clear its message list and handle
- * terminations at the end of the component update cycle.
- */
-
-class GO : public Agent {
- public:
-  OBJECT_PROTO(GO);
-
-  GO();
-  GO(void*);
-  virtual ~GO();
-
-  Component* add_component(TypeInfo* type);
-
-  template<typename T>
-  T* add_c() {
-    return (T*)add_component(&T::Type);
-  }
-
-  virtual void update(float dt);
-  Message* create_message(int kind);
-  void send_message(Message* message);
-  void pos(Vector p);
-  void vel(Vector v);
-  Component* find_component(const TypeInfo* info);
-  void print_description();
-
-  struct DLLNode_ transform_siblings;
-  struct GO* transform_parent;
-  SimpleDLL transform_children;
-
-  DLL_DECLARE(Component, node) components;
-  DLL_DECLARE(Component, node) uninitialized_components;
-
-  // pos and vel are always relative to the parent if there is one
-  struct Vector_ _pos;
-  struct Vector_ _vel;
-
-  // the world we're a part of
-  World* world;
-};
-
-void go_set_parent(GO* child, GO* parent);
-void LCpush_go(lua_State *L, GO* go);
-GO* LCcheck_go(lua_State *L, int pos);
-void LCpush_vector(lua_State *L, Vector vector);
-
 template<typename Func>
 void world_foreach(World* world, Vector pos, float rad, Func func) {
-  DLLNode node = world->children.head;
+  DLLNode node = world->game_objects.head;
   float rad2 = rad * rad;
   while(node) {
-    GO* go = (GO*)world->children.to_element(node);
+    GO* go = world->game_objects.to_element(node);
     Vector_ p;
     go->pos(&p);
     if(vector_dist2(&p, pos) < rad2 &&  func(go)) {

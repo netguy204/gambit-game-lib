@@ -5,7 +5,6 @@
 #include "particle.h"
 #include "rect.h"
 #include "controls.h"
-#include "agent.h"
 #include "steering.h"
 #include "tiles.h"
 #include "random.h"
@@ -104,84 +103,6 @@ void CTimer::update(float dt) {
   if(this->time_remaining <= 0) {
     go->send_message(expire_message);
     delete_me = 1;
-  }
-}
-
-enum BombStates {
-  BOMB_IDLE,
-  BOMB_EXPLODING,
-  BOMB_DONE
-};
-
-OBJECT_IMPL(CBombBehavior, Component);
-
-CBombBehavior::CBombBehavior(void* go)
-  : Component((GO*)go, PRIORITY_ACT), state(BOMB_IDLE) {
-  CTimer* timer = this->go->add_c<CTimer>();
-  timer->time_remaining = bomb_delay - bomb_explode_start;
-  timer->expire_message = this->go->create_message(MESSAGE_TIMER_EXPIRED);
-  this->state = BOMB_IDLE;
-}
-
-void CBombBehavior::update(float dt) {
-  GO* bomb = this->go;
-
-  // if we're supported then zero our x so that we're sticky
-  if(bomb->transform_parent) {
-    bomb->_vel.x = 0;
-  }
-
-  // nothing to do if a timer hasn't gone off
-  int timer_expired = 0;
-  bomb->inbox.foreach([&](Message* message) -> int {
-      // look for an expired timer message or an explosion
-      if(message->kind == MESSAGE_TIMER_EXPIRED
-         || message->kind == MESSAGE_EXPLOSION_NEARBY) {
-        timer_expired = 1;
-        return 1;
-      }
-      return 0;
-    });
-
-  if(!timer_expired) return;
-
-  if(this->state == BOMB_IDLE) {
-    // set the next timer and change state
-    CTimer* timer = bomb->add_c<CTimer>();
-    timer->time_remaining = bomb_explode_start;
-    timer->expire_message = bomb->create_message(MESSAGE_TIMER_EXPIRED);
-
-    this->state = BOMB_EXPLODING;
-
-    // add explosion particle emitter
-    CParticleEmitter* cp = go->add_c<CParticleEmitter>();
-    cp->entry = go->world->atlas_entry(ATLAS, "expl1");
-    cp->offset.x = 0;
-    cp->offset.y = 0;
-    cp->nmax = 10;
-    cp->start_scale = 0.7;
-    cp->max_life = bomb_explode_start;
-    cp->grav_accel = -30;
-    cp->init();
-
-    // stop displaying the sprite
-    CStaticSprite* spr = (CStaticSprite*)go->find_component(&CStaticSprite::Type);
-    spr->delete_me = 1;
-
-    // play the sound
-    play_vorbis("sounds/Explosion6.ogg", 0.5);
-  } else if(this->state == BOMB_EXPLODING) {
-    // destroy the bomb
-    this->state = BOMB_DONE;
-    agent_send_terminate(bomb, bomb->world);
-
-    // notify our neighbors
-    Vector_ pos;
-    bomb->pos(&pos);
-    world_foreach(bomb->world, &pos, bomb_dim * bomb_chain_factor, [&](GO* item) -> int {
-        item->send_message(bomb->create_message(MESSAGE_EXPLOSION_NEARBY));
-        return 0;
-      });
   }
 }
 
@@ -430,63 +351,6 @@ void CParticleEmitter::update(float dt) {
 
     CParticleEmitter::list = frame_spritelist_append(CParticleEmitter::list, sprite);
   }
-}
-
-GO* platform_make(float x, float y, float w, float h) {
-  GO* go = world->create_go();
-  go->_pos.x = x;
-  go->_pos.y = y;
-
-  CDrawPatch* patch = go->add_c<CDrawPatch>();
-  patch->entry = world->atlas_entry(ATLAS, "platform2");
-
-  CCollidable* coll = go->add_c<CCollidable>();
-  coll->w = w;
-  coll->h = h;
-  return go;
-}
-
-GO* slidingplatform_make(float x, float y, float w, float h, float speed,
-                         float minx, float maxx) {
-  GO* go = platform_make(x, y, w, h);
-  go->_vel.x = speed;
-
-  CLeftAndRight* lnr = go->add_c<CLeftAndRight>();
-  lnr->minx = minx;
-  lnr->maxx = maxx;
-  return go;
-}
-
-GO* bomb_make(Vector pos, Vector vel) {
-  GO* go = world->create_go();
-
-  go->_pos = *pos;
-  go->_vel = *vel;
-
-  CStaticSprite* ss = go->add_c<CStaticSprite>();
-  ss->entry = world->atlas_entry(ATLAS, "bomb");
-
-  CCollidable* coll = go->add_c<CCollidable>();
-  coll->w = bomb_dim;
-  coll->h = bomb_dim;
-
-  CPlatformer* plat = go->add_c<CPlatformer>();
-  plat->grav_accel = bomb_gravity_accel;
-
-  go->add_c<CBombBehavior>();
-
-  // sparks
-  Vector_ offset = {0.0f, 16.0f};
-  CParticleEmitter* pe = go->add_c<CParticleEmitter>();
-  pe->entry = world->atlas_entry(ATLAS, "spark");
-  pe->offset.x = 0.0f;
-  pe->offset.y = 16.0f;
-  pe->nmax = 10;
-  pe->grav_accel = 80;
-  pe->start_scale = 0.0;
-  pe->init();
-
-  return go;
 }
 
 void game_step(long delta, InputState state);

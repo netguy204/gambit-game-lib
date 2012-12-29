@@ -9,18 +9,33 @@ SPEED = 100
 DIM = 36
 
 
-function behavior_thread(go)
+function behavior_thread(go, component)
    local state = FALLING
-   local old_vel = go:_vel()
+   local old_dir = 1
+
+   local message_thread = function()
+      while true do
+         coroutine.yield()
+         if go:has_message(constant.EXPLOSION_NEARBY) then
+            print('explosion')
+            go:delete_me(1)
+            return
+         end
+
+         if state == LANDED and go:has_message(constant.COLLIDING) then
+            -- bounce on collisions
+            old_dir = -old_dir
+            vel = go:_vel()
+            vel[1] = old_dir * SPEED
+            go:_vel(vel)
+         end
+      end
+   end
+
+   component:message_thread(util.thread(message_thread))
 
    while true do
       coroutine.yield()
-
-      if go:has_message(constant.EXPLOSION_NEARBY) then
-         print('explosion')
-         go:send_terminate()
-         return
-      end
 
       local parented = go:transform_parent()
       if state == FALLING and parented then
@@ -37,19 +52,13 @@ function behavior_thread(go)
          state = FALLING
          go:_vel{0, 0}
          go:find_component("CLeftAndRight"):delete_me(1)
-      elseif state == LANDED and go:has_message(constant.COLLIDING) then
-         -- bounce on collisions
-         old_vel[1] = -old_vel[1]
-         go:_vel(old_vel)
       end
 
       -- kill ourselves when we're falling out of the world
       if state == FALLING and go:_pos()[2] < -100 then
-         go:send_terminate()
+         go:delete_me(1)
          return
       end
-
-      old_vel = go:_vel()
    end
 
 end

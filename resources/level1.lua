@@ -35,21 +35,20 @@ end
 IDLE = 1
 EXPLODING = 2
 
-function bomb_thread(go)
+function bomb_message_thread(go, component)
    local set_timer = function(delay)
       local message = go:create_message(constant.TIMER_EXPIRED)
       go:add_component("CTimer", {expire_message=message, time_remaining=delay})
    end
 
-   local state = IDLE
    set_timer(bomb_delay - bomb_explode_start)
 
+   local state = IDLE
    while true do
       coroutine.yield()
 
-      local parent = go:transform_parent()
-
       -- sticky if landed
+      local parent = go:transform_parent()
       if parent then
          local vel = go:_vel()
          vel[1] = 0
@@ -70,7 +69,7 @@ function bomb_thread(go)
             go:add_component("CParticleEmitter", system)
             go:find_component("CStaticSprite"):delete_me(1)
          elseif state == EXPLODING then
-            go:send_terminate()
+            go:delete_me(1)
             go:broadcast_message(bomb_dim * bomb_chain_factor, constant.EXPLOSION_NEARBY)
             return
          end
@@ -97,7 +96,7 @@ function bomb(pos, vel)
                    start_scale=0}
 
    go:add_component("CParticleEmitter", system)
-   go:add_component("CScripted", {update_thread=util.thread(bomb_thread)})
+   go:add_component("CScripted", {message_thread=util.thread(bomb_message_thread)})
    return go
 end
 

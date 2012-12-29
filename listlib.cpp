@@ -96,7 +96,7 @@ void SimpleDLL::add_head_node(DLLNode addition) {
 void SimpleDLL::add_tail_node(DLLNode addition) {
   if(this->tail == NULL) {
     addition->next = NULL;
-    addition->next = NULL;
+    addition->prev = NULL;
     this->head = addition;
     this->tail = addition;
     ++this->nelems;

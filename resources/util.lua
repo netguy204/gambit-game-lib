@@ -22,6 +22,10 @@ function vector_add(out, a, b)
 end
 
 function thread(fn)
+   if not fn then
+      error('thread called with null function')
+   end
+
    local err = false
    local onerr = function(er)
       err = er

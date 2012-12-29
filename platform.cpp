@@ -57,7 +57,7 @@ OBJECT_PROPERTY(CPlatformer, max_speed);
 OBJECT_PROPERTY(CPlatformer, platform_mask);
 
 CPlatformer::CPlatformer(void* go)
-  : Component((GO*)go, PRIORITY_ACT), grav_accel(0), platform_mask(MASK_PLATFORMER) {
+  : Component((GO*)go, PRIORITY_THINK), grav_accel(0), platform_mask(MASK_PLATFORMER) {
   this->max_speed = 64 / .1;
 }
 
@@ -96,7 +96,7 @@ void CPlatformer::resolve_interpenetration() {
 
           // zero our velocity in the collision direction
           if(fabs(resolution.x) > 0) {
-            //go->_vel.x = 0;
+            go->_vel.x = 0;
           } else {
             go->_vel.y = 0;
           }
@@ -128,13 +128,18 @@ void CPlatformer::look_for_support() {
     });
 }
 
+void CPlatformer::messages_received() {
+  resolve_interpenetration();
+  if(!go->transform_parent) {
+    look_for_support();
+  }
+}
+
 void CPlatformer::update(float dt) {
   // apply gravity and look for support if not supported
-  resolve_interpenetration();
 
   if(!go->transform_parent) {
     go->_vel.y = MAX(-this->max_speed, go->_vel.y - this->grav_accel * dt);
-    look_for_support();
   } else if(!is_supported()) {
     go_set_parent(go, NULL);
   }

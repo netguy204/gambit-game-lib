@@ -112,25 +112,26 @@ void PropertyTypeImpl<Message*>::LCset_value(const PropertyInfo* info, Object* o
   set_value(info, obj, &message);
 }
 
-OBJECT_IMPL(GO, Agent);
+Message::Message(GO* source, int kind, void* data)
+  : source(source), kind(kind), data(data) {
+}
+
+OBJECT_IMPL(GO, Object);
 OBJECT_PROPERTY(GO, _pos);
 OBJECT_PROPERTY(GO, _vel);
 OBJECT_PROPERTY(GO, transform_parent);
+OBJECT_PROPERTY(GO, delete_me);
 
-GO::GO() {
-  this->transform_parent = NULL;
+GO::GO()
+  : transform_parent(NULL), delete_me(0) {
   vector_zero(&this->_pos);
   vector_zero(&this->_vel);
-  this->ttag = 0;
 }
 
 GO::GO(void* p) {
   throw std::exception();
 }
 
-// removal from the world is handled by the terminate message. Users
-// shouldn't write "delete go;" as this won't handle world cleanup
-// correctly
 GO::~GO() {
   this->components.foreach([](Component* comp) -> int {
       delete comp;
@@ -143,7 +144,26 @@ GO::~GO() {
       return 0;
     });
 
+  // unparent ourselves
   go_set_parent(this, NULL);
+
+  world->game_objects.remove(this);
+
+  // if we had pending messages we need to leave the world pending
+  // list
+  if(inbox_pending.head) {
+    world->have_waiting_messages.remove(this);
+  }
+
+  // free all messages
+  inbox.foreach([](Message* msg) -> int {
+      delete msg;
+      return 0;
+    });
+  inbox_pending.foreach([](Message* msg) -> int {
+      delete msg;
+      return 0;
+    });
 }
 
 Component* GO::add_component(TypeInfo* type) {
@@ -168,9 +188,21 @@ void GO::update(float dt) {
   struct Vector_ dx;
   vector_scale(&dx, &this->_vel, dt);
   vector_add(&this->_pos, &this->_pos, &dx);
+}
 
-  // clear the inbox and handle terminate messages
-  foreach_inboxmessage(this, NULL, NULL);
+void GO::messages_received() {
+  // notify components
+  components.foreach([](Component* comp) -> int {
+      comp->messages_received();
+      return 0;
+    });
+
+  // clear the inbox
+  inbox.foreach([](Message* msg) -> int {
+      delete msg;
+      return 0;
+    });
+  inbox.zero();
 }
 
 void GO::pos(Vector pos) {
@@ -221,11 +253,15 @@ void GO::print_description() {
 }
 
 Message* GO::create_message(int kind) {
-  return message_make(this, kind, NULL);
+  return new Message(this, kind, NULL);
 }
 
 void GO::send_message(Message* message) {
-  message_postinbox(this, message);
+  if(inbox_pending.is_empty()) {
+    world->have_waiting_messages.add_head(this);
+  }
+
+  inbox_pending.add_tail(message);
 }
 
 void go_set_parent(GO* child, GO* parent) {
@@ -297,6 +333,9 @@ void Component::init() {
 }
 
 void Component::update(float dt) {
+}
+
+void Component::messages_received() {
 }
 
 void Component::set_parent(GO* go) {
@@ -397,6 +436,10 @@ void CScripted::update(float dt) {
   step_thread(&update_thread);
 }
 
+void CScripted::messages_received() {
+  step_thread(&message_thread);
+}
+
 void CScripted::resume(LuaThread* thread, int args) {
   int status = lua_resume(thread->state, NULL, args);
   if(status != LUA_YIELD) {
@@ -440,13 +483,13 @@ void world_notify_collisions(World* world) {
           GO* g1 = c1->go;
           GO* g2 = c2->go;
 
-          Message* m1 = message_make(g2, MESSAGE_COLLIDING, c2);
+          Message* m1 = new Message(g2, MESSAGE_COLLIDING, c2);
           m1->data2 = c1;
-          message_postinbox(g1, m1);
+          g1->send_message(m1);
 
-          Message* m2 = message_make(g1, MESSAGE_COLLIDING, c1);
+          Message* m2 = new Message(g1, MESSAGE_COLLIDING, c1);
           m2->data2 = c2;
-          message_postinbox(g2, m2);
+          g2->send_message(m2);
         }
       }
     }
@@ -640,12 +683,6 @@ static int Lgo_has_message(lua_State *L) {
   return 1;
 }
 
-static int Lgo_send_terminate(lua_State* L) {
-  GO* go = LCcheck_go(L, 1);
-  agent_send_terminate(go, go->world);
-  return 0;
-}
-
 static int Lgo_pos(lua_State* L) {
   GO* go = LCcheck_go(L, 1);
   Vector_ pos;
@@ -709,7 +746,7 @@ void LClink_metatable(lua_State *L, const char* name, const luaL_Reg* table) {
   lua_setmetatable(L, -2);
 }
 
-OBJECT_IMPL(World, Collective);
+OBJECT_IMPL(World, Object);
 OBJECT_PROPERTY(World, input_state);
 OBJECT_PROPERTY(World, dt);
 
@@ -737,7 +774,6 @@ void init_lua(World* world) {
     {"create_message", Lgo_create_message},
     {"send_message", Lgo_send_message},
     {"broadcast_message", Lgo_broadcast_message},
-    {"send_terminate", Lgo_send_terminate},
     {"pos", Lgo_pos},
     {"vel", Lgo_vel},
     {"__tostring", Lobject_tostring},
@@ -788,6 +824,16 @@ World::~World() {
 void World::update(float dt) {
   this->dt = dt;
 
+  // let the game objects do their integration step
+  game_objects.foreach([=](GO* go) -> int {
+      if(go->delete_me) {
+        delete go;
+      } else {
+        go->update(dt);
+      }
+      return 0;
+    });
+
   // update the comonents
   this->components.foreach([=](Component* comp) -> int {
       if(comp->delete_me) {
@@ -798,8 +844,20 @@ void World::update(float dt) {
       return 0;
     });
 
-  // update the game objects
-  Collective::update(dt);
+  // run go messages until all messages have been handled
+  while(have_waiting_messages.head) {
+    have_waiting_messages.foreach([this](GO* go) -> int {
+        // move the pending messages into the inbox and remove from
+        // waiting list
+        go->inbox = go->inbox_pending;
+        go->inbox_pending.zero();
+        have_waiting_messages.remove(go);
+
+        // tell GO to consume messages
+        go->messages_received();
+        return 0;
+      });
+  }
 }
 
 void World::load_level(const char* level) {
@@ -819,8 +877,7 @@ void World::load_level(const char* level) {
 
 GO* World::create_go() {
   GO* go = new GO();
-  Message* message = message_make(NULL, COLLECTIVE_ADD_AGENT, go);
-  message_postinbox(this, message);
+  game_objects.add_head(go);
   go->world = this;
   return go;
 }

@@ -1,7 +1,7 @@
 CPP_SRC+= \
 	threadlib.cpp memory.cpp listlib.cpp testlib.cpp \
 	sampler.cpp audio.cpp game.cpp vector.cpp \
-	rect.cpp controls.cpp agent.cpp steering.cpp spriteatlas.cpp \
+	rect.cpp controls.cpp steering.cpp spriteatlas.cpp \
 	realmain.cpp stb_image.cpp tiles.cpp random.cpp \
 	perlin.cpp heapvector.cpp xmltools.cpp \
 	pathfinder.cpp utils.cpp matrix.cpp ooc.cpp \

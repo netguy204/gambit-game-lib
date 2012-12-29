@@ -10,6 +10,7 @@ class CPlatformer : public Component {
 
   CPlatformer(void* go);
 
+  virtual void messages_received();
   virtual void update(float dt);
   void look_for_support();
   void resolve_interpenetration();
