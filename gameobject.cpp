@@ -98,6 +98,13 @@ void PropertyTypeImpl<InputState>::LCpush_value(const PropertyInfo* info, Object
   lua_settable(L, -3);
 }
 
+template<>
+void PropertyTypeImpl<Message*>::LCset_value(const PropertyInfo* info, Object* obj, lua_State* L, int pos) {
+  Message* message = (Message*)lua_touserdata(L, pos);
+  luaL_argcheck(L, message != NULL, pos, "`Message' expected");
+  set_value(info, obj, &message);
+}
+
 OBJECT_IMPL(GO, Agent);
 OBJECT_PROPERTY(GO, _pos);
 OBJECT_PROPERTY(GO, _vel);
@@ -539,6 +546,20 @@ static int Lgo_send_message(lua_State *L) {
   return NULL;
 }
 
+static int Lgo_broadcast_message(lua_State *L) {
+  GO* go = LCcheck_go(L, 1);
+  float range = luaL_checknumber(L, 2);
+  int kind = luaL_checkinteger(L, 3);
+
+  Vector_ pos;
+  go->pos(&pos);
+  world_foreach(go->world, &pos, range, [&](GO* item) -> int {
+      item->send_message(go->create_message(kind));
+      return 0;
+    });
+  return 0;
+}
+
 static int Lgo_has_message(lua_State *L) {
   GO* go = LCcheck_go(L, 1);
   int type = luaL_checkinteger(L, 2);
@@ -654,6 +675,9 @@ void init_lua(World* world) {
     {"add_component", Lgo_add_component},
     {"find_component", Lgo_find_component},
     {"has_message", Lgo_has_message},
+    {"create_message", Lgo_create_message},
+    {"send_message", Lgo_send_message},
+    {"broadcast_message", Lgo_broadcast_message},
     {"send_terminate", Lgo_send_terminate},
     {"pos", Lgo_pos},
     {"vel", Lgo_vel},

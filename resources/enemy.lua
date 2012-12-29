@@ -1,5 +1,6 @@
 module(..., package.seeall)
 
+require 'constant'
 
 FALLING = 1
 LANDED = 2
@@ -14,7 +15,9 @@ function behavior_thread(go, dt)
 
    while true do
       coroutine.yield()
+
       if go:has_message(constant.EXPLOSION_NEARBY) then
+         print('explosion')
          go:send_terminate()
          return
       end

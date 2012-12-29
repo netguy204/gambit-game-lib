@@ -73,11 +73,11 @@ class PropertyTypeImpl : public PropertyType {
   }
 
   virtual void LCpush_value(const PropertyInfo* info, Object* obj, lua_State* L) {
-    luaL_error(L, "don't know how to maniplate `%s'", info->name());
+    luaL_error(L, "don't know how to read `%s'", info->name());
   }
 
   virtual void LCset_value(const PropertyInfo* info, Object* obj, lua_State* L, int pos) {
-    luaL_error(L, "don't know how to maniplate `%s'", info->name());
+    luaL_error(L, "don't know how to write `%s'", info->name());
   }
 };
 

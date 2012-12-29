@@ -92,6 +92,7 @@ void PropertyTypeImpl<SpriteAtlasEntry>::LCset_value(const PropertyInfo* info, O
 
 OBJECT_IMPL(CTimer, Component);
 OBJECT_PROPERTY(CTimer, time_remaining);
+OBJECT_PROPERTY(CTimer, expire_message);
 
 CTimer::CTimer(void* go)
   : Component((GO*)go, PRIORITY_THINK), time_remaining(0), expire_message(NULL) {
