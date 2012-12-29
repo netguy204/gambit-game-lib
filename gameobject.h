@@ -81,7 +81,9 @@ class CScripted : public Component {
   CScripted(void* go);
   virtual ~CScripted();
 
+  virtual void init();
   virtual void update(float dt);
+  void resume(int args);
 
   LuaThread thread;
 };
@@ -150,6 +152,7 @@ class GO : public Agent {
   void pos(Vector p);
   void vel(Vector v);
   Component* find_component(const TypeInfo* info);
+  void print_description();
 
   struct DLLNode_ transform_siblings;
   struct GO* transform_parent;

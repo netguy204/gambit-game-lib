@@ -200,6 +200,19 @@ Component* GO::find_component(const TypeInfo* info) {
   return result;
 }
 
+void GO::print_description() {
+  fprintf(stderr, "UNINITIALIZED COMPONENTS\n");
+  uninitialized_components.foreach([](Component* c) -> int {
+      fprintf(stderr, "%s\n", c->typeinfo()->name());
+      return 0;
+    });
+  fprintf(stderr, "ACTIVE COMPONENTS\n");
+  components.foreach([](Component* c) -> int {
+      fprintf(stderr, "%s\n", c->typeinfo()->name());
+      return 0;
+    });
+}
+
 Message* GO::create_message(int kind) {
   return message_make(this, kind, NULL);
 }
@@ -343,12 +356,25 @@ CScripted::~CScripted() {
   }
 }
 
-void CScripted::update(float dt) {
-  if(!thread.state) return;
+void CScripted::init() {
+  if(!thread.state) {
+    fprintf(stderr, "CScripted initialized with no attached script\n");
+    delete_me = 1;
+    return;
+  }
 
+  // first call passes the GO
   LCpush_go(thread.state, go);
-  lua_pushnumber(thread.state, dt);
-  int status = lua_resume(thread.state, NULL, 2);
+  resume(1);
+}
+
+void CScripted::update(float dt) {
+  // init guaranteed that we always have a script
+  resume(0);
+}
+
+void CScripted::resume(int args) {
+  int status = lua_resume(thread.state, NULL, args);
   if(status != LUA_YIELD) {
     delete_me = 1;
     if(status != LUA_OK) {
@@ -554,7 +580,9 @@ static int Lgo_broadcast_message(lua_State *L) {
   Vector_ pos;
   go->pos(&pos);
   world_foreach(go->world, &pos, range, [&](GO* item) -> int {
-      item->send_message(go->create_message(kind));
+      if(item != go) {
+        item->send_message(go->create_message(kind));
+      }
       return 0;
     });
   return 0;

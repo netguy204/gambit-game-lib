@@ -10,7 +10,7 @@ WIDTH = 28
 HEIGHT = 64
 THROW_SPEED = 1200
 
-function input_thread(go, dt)
+function input_thread(go)
    local fire_pressed = false
    local facing = 1
    local left_art = world:atlas_entry(constant.ATLAS, "guy-left")

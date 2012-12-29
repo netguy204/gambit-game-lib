@@ -35,7 +35,7 @@ end
 IDLE = 1
 EXPLODING = 2
 
-function bomb_thread(go, dt)
+function bomb_thread(go)
    local set_timer = function(delay)
       local message = go:create_message(constant.TIMER_EXPIRED)
       go:add_component("CTimer", {expire_message=message, time_remaining=delay})
