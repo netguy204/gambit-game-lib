@@ -64,6 +64,18 @@ class CCollidable : public Component {
   int mask;
 };
 
+class CScripted : public Component {
+ public:
+  OBJECT_PROTO(CScripted);
+
+  CScripted(void* go);
+  virtual ~CScripted();
+
+  virtual void update(float dt);
+
+  lua_State* thread;
+};
+
 typedef std::map<const char*, SpriteAtlas, cmp_str> NameToAtlas;
 
 class World : public Collective {
@@ -144,6 +156,7 @@ class GO : public Agent {
 
 void go_set_parent(GO* child, GO* parent);
 void LCpush_go(lua_State *L, GO* go);
+GO* LCcheck_go(lua_State *L, int pos);
 
 template<typename Func>
 void world_foreach(World* world, Vector pos, float rad, Func func) {

@@ -775,7 +775,7 @@ void game_step(long delta, InputState state) {
   if(enemy_timer <= 0 && current_n_enemies < max_enemies) {
     enemy_timer = enemy_period;
 
-    enemy_make(screen_width / 2, screen_height * 4);
+    //enemy_make(screen_width / 2, screen_height * 4);
     // add enemy
   }
 

@@ -2,11 +2,71 @@
 #include "memory.h"
 #include "config.h"
 #include "testlib.h"
+#include "utils.h"
 
 #include <stdarg.h>
 
+template<>
+void PropertyTypeImpl<lua_State*>::LCpush_value(const PropertyInfo* info, Object* obj, lua_State* L) {
+  luaL_error(L, "cannot read threads");
+}
+
+template<>
+void PropertyTypeImpl<lua_State*>::LCset_value(const PropertyInfo* info, Object* obj, lua_State* L, int pos) {
+  lua_State* state = lua_tothread(L, pos);
+  if(!state) {
+    luaL_error(L, "position %d does not contain a thread", pos);
+  }
+
+  set_value(info, obj, &state);
+}
+
+template<>
+void PropertyTypeImpl<Vector_>::LCpush_value(const PropertyInfo* info, Object* obj, lua_State* L) {
+  Vector_ v;
+  get_value(info, obj, &v);
+
+  lua_createtable(L, 2, 0);
+  lua_pushnumber(L, v.x);
+  lua_rawseti(L, -2, 1);
+  lua_pushnumber(L, v.y);
+  lua_rawseti(L, -2, 2);
+}
+
+template<>
+void PropertyTypeImpl<Vector_>::LCset_value(const PropertyInfo* info, Object* obj, lua_State* L, int pos) {
+  if(!lua_istable(L, pos)) {
+    luaL_argerror(L, pos, "`table' expected");
+  }
+
+  Vector_ v;
+  lua_rawgeti(L, pos, 1);
+  v.x = luaL_checknumber(L, -1);
+  lua_rawgeti(L, pos, 2);
+  v.y = luaL_checknumber(L, -1);
+  lua_pop(L, 2);
+  set_value(info, obj, &v);
+}
+
+template<>
+void PropertyTypeImpl<GO*>::LCpush_value(const PropertyInfo* info, Object* obj, lua_State* L) {
+  GO* go;
+  get_value(info, obj, &go);
+  LCpush_go(L, go);
+}
+
+
+template<>
+void PropertyTypeImpl<GO*>::LCset_value(const PropertyInfo* info, Object* obj, lua_State* L, int pos) {
+  GO* go = LCcheck_go(L, pos);
+  set_value(info, obj, &go);
+}
+
 OBJECT_IMPL(GO);
 OBJECT_PROPERTY(GO, ttag);
+OBJECT_PROPERTY(GO, _pos);
+OBJECT_PROPERTY(GO, _vel);
+OBJECT_PROPERTY(GO, transform_parent);
 
 GO::GO() {
   this->transform_parent = NULL;
@@ -209,6 +269,34 @@ int CCollidable::intersect(CCollidable* b) {
   return rect_intersect(&ra, &rb);
 }
 
+OBJECT_IMPL(CScripted);
+OBJECT_PROPERTY(CScripted, thread);
+
+CScripted::CScripted(void* go)
+  : Component((GO*)go, PRIORITY_ACT), thread(NULL) {
+}
+
+CScripted::~CScripted() {
+  if(thread) {
+    lua_close(thread);
+  }
+}
+
+void CScripted::update(float dt) {
+  if(!thread) return;
+
+  LCpush_go(thread, go);
+  lua_pushnumber(thread, dt);
+  int status = lua_resume(thread, NULL, 2);
+  if(status != LUA_YIELD) {
+    delete_me = 1;
+    if(status != LUA_OK) {
+      const char* error = lua_tostring(thread, -1);
+      fail_exit("lua thread failed: %s", error);
+    }
+  }
+}
+
 struct CollisionRecord {
   Rect_ rect;
   CCollidable* collidable;
@@ -253,13 +341,21 @@ void world_notify_collisions(World* world) {
 #define LUT_COMPONENT "Component"
 
 static void LCpush_lut(lua_State *L, const char* metatable, void* ut) {
-  void** p = (void**)lua_newuserdata(L, sizeof(void*));
-  luaL_setmetatable(L, metatable);
-  *p = ut;
+  if(!ut) {
+    lua_pushnil(L);
+  } else {
+    void** p = (void**)lua_newuserdata(L, sizeof(void*));
+    luaL_setmetatable(L, metatable);
+    *p = ut;
+  }
 }
 
 static void* LCcheck_lut(lua_State *L, const char* metatable, int pos) {
   static char error_msg[256];
+
+  if(lua_isnil(L, pos)) {
+    return NULL;
+  }
 
   void **ud;
   if(metatable) {
@@ -284,7 +380,7 @@ int LCpush_world(lua_State *L, World* world) {
   return 1;
 }
 
-static GO* LCcheck_go(lua_State *L, int pos) {
+GO* LCcheck_go(lua_State *L, int pos) {
   return (GO*)LCcheck_lut(L, LUT_GO, pos);
 }
 
@@ -341,24 +437,6 @@ static int Lgo_find_component(lua_State *L) {
   return 1;
 }
 
-static int Lgo_pos(lua_State *L) {
-  GO* go = LCcheck_go(L, 1);
-  int x = luaL_checkint(L, 2);
-  int y = luaL_checkint(L, 3);
-  go->_pos.x = x;
-  go->_pos.y = y;
-  return 0;
-}
-
-static int Lgo_vel(lua_State *L) {
-  GO* go = LCcheck_go(L, 1);
-  int x = luaL_checkint(L, 2);
-  int y = luaL_checkint(L, 3);
-  go->_vel.x = x;
-  go->_vel.y = y;
-  return 0;
-}
-
 static int Lgo_add_component(lua_State *L) {
   GO* go = LCcheck_go(L, 1);
   TypeInfo* type = LCcheck_type(L, 2);
@@ -390,6 +468,34 @@ static int Lgo_add_component(lua_State *L) {
 
   LCpush_component(L, comp);
   return 1;
+}
+
+static int Lgo_has_message(lua_State *L) {
+  GO* go = LCcheck_go(L, 1);
+  int type = luaL_checkinteger(L, 2);
+
+  int result = 0;
+  go->inbox.foreach([&] (Message* msg) -> int {
+      if(msg->kind == type) {
+        result = 1;
+        return 1;
+      }
+      return 0;
+    });
+
+  if(result) {
+    lua_pushinteger(L, 1);
+  } else {
+    lua_pushnil(L);
+  }
+
+  return 1;
+}
+
+static int Lgo_send_terminate(lua_State* L) {
+  GO* go = LCcheck_go(L, 1);
+  agent_send_terminate(go, go->world);
+  return 0;
 }
 
 static int Lobject_mutate(lua_State* L) {
@@ -461,8 +567,8 @@ void init_lua(World* world) {
   static const luaL_Reg go_m[] = {
     {"add_component", Lgo_add_component},
     {"find_component", Lgo_find_component},
-    {"pos", Lgo_pos},
-    {"vel", Lgo_vel},
+    {"has_message", Lgo_has_message},
+    {"send_terminate", Lgo_send_terminate},
     {"__tostring", Lobject_tostring},
     {NULL, NULL}};
 
@@ -509,9 +615,18 @@ World::~World() {
 }
 
 void World::load_level(const char* level) {
-  luaL_dofile(L, level);
-  lua_getglobal(L, "level_init");
-  lua_call(L, 0, 0);
+  if(!luaL_dofile(L, level)) {
+    lua_getglobal(L, "level_init");
+    if(!lua_isnil(L, -1)) {
+      lua_call(L, 0, 0);
+    } else {
+      lua_pop(L, 1);
+      fail_exit("`level_init' was not defined after loading %s", level);
+    }
+  } else {
+    const char* error = lua_tostring(L, -1);
+    fail_exit("level loading failed: %s", error);
+  }
 }
 
 GO* World::create_go() {
