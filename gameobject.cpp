@@ -274,20 +274,6 @@ void go_set_parent(GO* child, GO* parent) {
   }
 
   if(parent) {
-    // make sure the parent isn't already a child
-    int child_abort = 0;
-    child->transform_children.foreach_node([&](DLLNode node) -> int {
-        GO* current_child = container_of(node, GO, transform_siblings);
-        if(current_child == parent) {
-          child_abort = 1;
-          return 1;
-        }
-        return 0;
-      });
-
-    // don't allow the parenting
-    if(child_abort) return;
-
     child->pos(&cpos);
     parent->pos(&ppos);
     vector_sub(&child->_pos, &cpos, &ppos);
@@ -305,6 +291,8 @@ void go_set_parent(GO* child, GO* parent) {
     child->_vel = cvel;
     child->transform_parent = NULL;
   }
+
+  child->send_message(child->create_message(MESSAGE_PARENT_CHANGE));
 }
 
 OBJECT_IMPL(Component, Object);

@@ -18,20 +18,11 @@ typedef enum {
 
 class GO;
 
-// FIXME: reduce to relevant set
 enum MessageKind {
-  COLLECTIVE_ADD_AGENT,   // collective should own agent
-  MESSAGE_MAX0,
-  MESSAGE_TERMINATE,      // command agent to terminate
-  MESSAGE_TERMINATING,    // agent is terminating
   MESSAGE_COLLIDING,      // agent is colliding with other (cother, cself)
   MESSAGE_TIMER_EXPIRED,  // args (payload)
   MESSAGE_EXPLOSION_NEARBY,
-  MESSAGE_MAX1,
-  AGENT_TAKE_DAMAGE,      // command agent to take damage
-  AGENT_START_ATTACK,
-  AGENT_FLEE,
-  MESSAGE_MAX2
+  MESSAGE_PARENT_CHANGE,
 };
 
 class Message {

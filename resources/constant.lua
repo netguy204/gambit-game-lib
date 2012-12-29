@@ -1,8 +1,7 @@
 module(..., package.seeall)
 
 ATLAS = "resources/images_default"
-TERMINATE = 2
-TERMINATING = 3
-COLLIDING = 4
-TIMER_EXPIRED = 5
-EXPLOSION_NEARBY = 6
+COLLIDING = 0
+TIMER_EXPIRED = 1
+EXPLOSION_NEARBY = 2
+PARENT_CHANGE = 3

@@ -13,30 +13,25 @@ function behavior_thread(go, component)
    local state = FALLING
    local old_dir = 1
 
-   local message_thread = function()
-      while true do
-         coroutine.yield()
-         if go:has_message(constant.EXPLOSION_NEARBY) then
-            print('explosion')
-            go:delete_me(1)
-            return
-         end
-
-         if state == LANDED and go:has_message(constant.COLLIDING) then
-            -- bounce on collisions
-            old_dir = -old_dir
-            vel = go:_vel()
-            vel[1] = old_dir * SPEED
-            go:_vel(vel)
-         end
-      end
-   end
-
-   component:message_thread(util.thread(message_thread))
-
    while true do
       coroutine.yield()
 
+      if go:has_message(constant.EXPLOSION_NEARBY) then
+         print('explosion')
+         go:delete_me(1)
+         return
+      end
+
+      if state == LANDED and go:has_message(constant.COLLIDING) then
+         -- bounce on collisions
+         old_dir = -old_dir
+         vel = go:_vel()
+         vel[1] = old_dir * SPEED
+         go:_vel(vel)
+      end
+
+      -- the change parent message ensures we'll get to check these
+      -- conditions at appropriate times
       local parented = go:transform_parent()
       if state == FALLING and parented then
          print('changed to LANDED')
@@ -54,7 +49,8 @@ function behavior_thread(go, component)
          go:find_component("CLeftAndRight"):delete_me(1)
       end
 
-      -- kill ourselves when we're falling out of the world
+      -- kill ourselves when we're falling out of the world. FIXME:
+      -- won't work message driven unless i add a timer
       if state == FALLING and go:_pos()[2] < -100 then
          go:delete_me(1)
          return
@@ -71,6 +67,6 @@ function make(pos)
    go:add_component("CStaticSprite", {entry=art})
    go:add_component("CCollidable", {w=DIM, h=DIM})
    go:add_component("CPlatformer", {grav_accel=human.GRAV_ACCEL})
-   go:add_component("CScripted", {update_thread=util.thread(behavior_thread)})
+   go:add_component("CScripted", {message_thread=util.thread(behavior_thread)})
    return go
 end
