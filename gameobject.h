@@ -48,6 +48,8 @@ class Component : public Object {
   int delete_me;
 };
 
+void LCpush_component(lua_State *L, Component *comp);
+
 // registers a GO with the collidables section of the world. GO
 // components will get COLLIDED messages letting them known when they
 // hit other GOs that have a collidable component
@@ -72,6 +74,8 @@ struct LuaThread {
 
   lua_State* state;
   int refid;
+  int is_initialized;
+  int is_valid;
 };
 
 class CScripted : public Component {
@@ -83,9 +87,13 @@ class CScripted : public Component {
 
   virtual void init();
   virtual void update(float dt);
-  void resume(int args);
 
-  LuaThread thread;
+  void free_thread(LuaThread* thread);
+  void step_thread(LuaThread* thread);
+  void resume(LuaThread* thread, int args);
+
+  LuaThread update_thread;
+  LuaThread message_thread;
 };
 
 typedef std::map<const char*, SpriteAtlas, cmp_str> NameToAtlas;

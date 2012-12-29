@@ -97,7 +97,7 @@ function bomb(pos, vel)
                    start_scale=0}
 
    go:add_component("CParticleEmitter", system)
-   go:add_component("CScripted", {thread=util.thread(bomb_thread)})
+   go:add_component("CScripted", {update_thread=util.thread(bomb_thread)})
    return go
 end
 

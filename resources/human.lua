@@ -90,5 +90,5 @@ function init()
 
    -- link up the camera and input
    camera:add_component("CCameraFocus", {focus=player})
-   player:add_component("CScripted", {thread=util.thread(input_thread)})
+   player:add_component("CScripted", {update_thread=util.thread(input_thread)})
 end

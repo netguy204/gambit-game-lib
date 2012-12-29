@@ -13,12 +13,19 @@ void PropertyTypeImpl<LuaThread>::LCset_value(const PropertyInfo* info, Object* 
     luaL_error(L, "position %d does not contain a thread", pos);
   }
 
-  // need to protect from GC
   LuaThread thread;
+
+  // first, may need to release what we already have
+  get_value(info, obj, &thread);
+  if(thread.state) {
+    luaL_unref(thread.state, LUA_REGISTRYINDEX, thread.refid);
+  }
+
+  // now get the new thread and protect from GC
   thread.state = state;
   lua_pushvalue(L, pos);
   thread.refid = luaL_ref(L, LUA_REGISTRYINDEX);
-
+  thread.is_initialized = 0;
   set_value(info, obj, &thread);
 }
 
@@ -343,43 +350,66 @@ LuaThread::LuaThread()
 }
 
 OBJECT_IMPL(CScripted, Component);
-OBJECT_PROPERTY(CScripted, thread);
+OBJECT_PROPERTY(CScripted, update_thread);
+OBJECT_PROPERTY(CScripted, message_thread);
 
 CScripted::CScripted(void* go)
   : Component((GO*)go, PRIORITY_ACT) {
 }
 
 CScripted::~CScripted() {
-  if(thread.state) {
-    // the setter protected this, unprotected it
-    luaL_unref(thread.state, LUA_REGISTRYINDEX, thread.refid);
-  }
+  // can't do this in the LuaThread destructor because we need to make
+  // temporaries
+  free_thread(&update_thread);
+  free_thread(&message_thread);
 }
 
 void CScripted::init() {
-  if(!thread.state) {
+  if(!update_thread.state && !message_thread.state) {
     fprintf(stderr, "CScripted initialized with no attached script\n");
     delete_me = 1;
     return;
   }
+}
 
-  // first call passes the GO
-  LCpush_go(thread.state, go);
-  resume(1);
+void CScripted::free_thread(LuaThread* thread) {
+  if(thread->state) {
+    luaL_unref(thread->state, LUA_REGISTRYINDEX, thread->refid);
+    thread->state = NULL;
+  }
+}
+
+void CScripted::step_thread(LuaThread* thread) {
+  if(thread->state) {
+    if(!thread->is_initialized) {
+      thread->is_initialized = 1;
+      LCpush_go(thread->state, go);
+      LCpush_component(thread->state, this);
+      resume(thread, 2);
+    }
+
+    resume(thread, 0);
+  }
 }
 
 void CScripted::update(float dt) {
   // init guaranteed that we always have a script
-  resume(0);
+  step_thread(&update_thread);
 }
 
-void CScripted::resume(int args) {
-  int status = lua_resume(thread.state, NULL, args);
+void CScripted::resume(LuaThread* thread, int args) {
+  int status = lua_resume(thread->state, NULL, args);
   if(status != LUA_YIELD) {
-    delete_me = 1;
+    free_thread(thread);
+
     if(status != LUA_OK) {
-      const char* error = lua_tostring(thread.state, -1);
+      const char* error = lua_tostring(thread->state, -1);
       fail_exit("lua thread failed: %s", error);
+    }
+
+    // when both threads exit, remove ourselves
+    if(!message_thread.state && !update_thread.state) {
+      delete_me = 1;
     }
   }
 }
@@ -507,7 +537,7 @@ static Object* LCcheck_object(lua_State *L, int pos) {
   return (Object*)LCcheck_lut(L, NULL, pos);
 }
 
-static void LCpush_component(lua_State *L, Component *comp) {
+void LCpush_component(lua_State *L, Component *comp) {
   LCpush_lut(L, LUT_COMPONENT, comp);
 }
 

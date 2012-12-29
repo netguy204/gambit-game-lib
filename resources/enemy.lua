@@ -62,6 +62,6 @@ function make(pos)
    go:add_component("CStaticSprite", {entry=art})
    go:add_component("CCollidable", {w=DIM, h=DIM})
    go:add_component("CPlatformer", {grav_accel=human.GRAV_ACCEL})
-   go:add_component("CScripted", {thread=util.thread(behavior_thread)})
+   go:add_component("CScripted", {update_thread=util.thread(behavior_thread)})
    return go
 end
