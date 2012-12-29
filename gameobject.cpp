@@ -141,6 +141,16 @@ void GO::update(float dt) {
   vector_scale(&dx, &this->_vel, dt);
   vector_add(&this->_pos, &this->_pos, &dx);
 
+  // initialize new components
+  uninitialized_components.foreach([this](Component* comp) -> int {
+      comp->init();
+      uninitialized_components.remove(comp);
+      components.insert_before_when(comp, [&comp, this](Component* other) {
+          return comp->priority < other->priority;
+        });
+      return 0;
+    });
+
   this->components.foreach([=](Component* comp) -> int {
       if(comp->delete_me) {
         delete(comp);
@@ -186,6 +196,14 @@ Component* GO::find_component(const TypeInfo* info) {
       return 0;
     });
   return result;
+}
+
+Message* GO::create_message(int kind) {
+  return message_make(this, kind, NULL);
+}
+
+void GO::send_message(Message* message) {
+  message_postinbox(this, message);
 }
 
 void go_set_parent(GO* child, GO* parent) {
@@ -252,6 +270,9 @@ Component::~Component() {
   }
 }
 
+void Component::init() {
+}
+
 void Component::update(float dt) {
 }
 
@@ -263,9 +284,7 @@ void Component::set_parent(GO* go) {
   this->go = go;
 
   if(go) {
-    this->go->components.insert_before_when(this, [this](Component* other) {
-        return this->priority < other->priority;
-      });
+    go->uninitialized_components.add_head(this);
   }
 }
 
@@ -509,21 +528,36 @@ static int Lgo_add_component(lua_State *L) {
   return 1;
 }
 
+static int Lgo_create_message(lua_State *L) {
+  GO* go = LCcheck_go(L, 1);
+  int kind = luaL_checkinteger(L, 2);
+  Message* message = go->create_message(kind);
+  lua_pushlightuserdata(L, message);
+  return 1;
+}
+
+static int Lgo_send_message(lua_State *L) {
+  GO* go = LCcheck_go(L, 1);
+  Message* message = (Message*)lua_touserdata(L, 2);
+  go->send_message(message);
+  return NULL;
+}
+
 static int Lgo_has_message(lua_State *L) {
   GO* go = LCcheck_go(L, 1);
   int type = luaL_checkinteger(L, 2);
 
-  int result = 0;
+  Message* found = NULL;
   go->inbox.foreach([&] (Message* msg) -> int {
       if(msg->kind == type) {
-        result = 1;
+        found = msg;
         return 1;
       }
       return 0;
     });
 
-  if(result) {
-    lua_pushinteger(L, 1);
+  if(found) {
+    lua_pushlightuserdata(L, found);
   } else {
     lua_pushnil(L);
   }

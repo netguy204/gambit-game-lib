@@ -166,6 +166,7 @@ function fuzzy_enemy(go, dt)
          go:_vel{0, 0}
          go:find_component("CLeftAndRight"):delete_me(1)
       elseif state == LANDED and go:has_message(COLLIDING) then
+         print('colliding')
          -- bounce on collisions
          old_vel[1] = -old_vel[1]
          go:_vel(old_vel)

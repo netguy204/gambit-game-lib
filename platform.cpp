@@ -96,7 +96,7 @@ void CPlatformer::resolve_interpenetration() {
 
           // zero our velocity in the collision direction
           if(fabs(resolution.x) > 0) {
-            go->_vel.x = 0;
+            //go->_vel.x = 0;
           } else {
             go->_vel.y = 0;
           }

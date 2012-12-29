@@ -24,7 +24,7 @@ class CTimer : public Component {
 
   virtual void update(float dt);
 
-  void* expire_payload;
+  Message* expire_message;
   float time_remaining;
 };
 
