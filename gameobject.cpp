@@ -6,6 +6,39 @@
 
 #include <math.h>
 
+void LCpush_entry(lua_State* L, SpriteAtlasEntry entry) {
+  lua_newtable(L);
+  lua_pushlightuserdata(L, entry);
+  lua_setfield(L, -2, "entry");
+  lua_pushinteger(L, entry->w);
+  lua_setfield(L, -2, "w");
+  lua_pushinteger(L, entry->h);
+  lua_setfield(L, -2, "h");
+}
+
+template<>
+void PropertyTypeImpl<SpriteAtlasEntry>::LCpush_value(const PropertyInfo* info, Object* obj, lua_State* L) {
+  SpriteAtlasEntry entry;
+  get_value(info, obj, &entry);
+  LCpush_entry(L, entry);
+}
+
+template<>
+void PropertyTypeImpl<SpriteAtlasEntry>::LCset_value(const PropertyInfo* info, Object* obj, lua_State* L, int pos) {
+  if(!lua_istable(L, pos)) {
+    luaL_error(L, "position %d does not contain a table", pos);
+  }
+
+  lua_getfield(L, pos, "entry");
+  SpriteAtlasEntry entry = (SpriteAtlasEntry)lua_touserdata(L, -1);
+  if(!entry) {
+    luaL_error(L, "table at position %d does not have lightuserdata at `entry'", pos);
+  }
+
+  lua_pop(L, 1);
+  set_value(info, obj, &entry);
+}
+
 template<>
 void PropertyTypeImpl<LuaThread>::LCset_value(const PropertyInfo* info, Object* obj, lua_State* L, int pos) {
   lua_State* state = lua_tothread(L, pos);
@@ -280,6 +313,23 @@ Component* GO::find_component(const TypeInfo* info) {
       }
       return 0;
     });
+
+  if(result) {
+    return result;
+  }
+
+  // try the uninitialized components
+  this->uninitialized_components.foreach([&](Component* comp) -> int {
+      if(comp->typeinfo()->isInstanceOf(info)) {
+        if(comp->delete_me) {
+          result = NULL;
+        } else {
+          result = comp;
+        }
+        return 1;
+      }
+      return 0;
+    });
   return result;
 }
 
@@ -372,6 +422,14 @@ void Component::messages_received() {
 
 Scene* Component::scene() {
   return &go->world->scene;
+}
+
+GO* Component::player() {
+  return go->world->player;
+}
+
+GO* Component::camera() {
+  return go->world->camera;
 }
 
 void Component::set_parent(GO* go) {
@@ -595,7 +653,11 @@ static int Lworld_atlas_entry(lua_State *L) {
   const char* atlas = luaL_checkstring(L, 2);
   const char* entry = luaL_checkstring(L, 3);
   SpriteAtlasEntry result = world->atlas_entry(atlas, entry);
-  lua_pushlightuserdata(L, result);
+  if(!result) {
+    luaL_error(L, "`%s' is not a valid entry in `%s'", entry, atlas);
+  }
+
+  LCpush_entry(L, result);
   return 1;
 }
 
@@ -789,6 +851,7 @@ OBJECT_PROPERTY(World, dt);
 void init_lua(World* world) {
   world->player = world->create_go();
   world->camera = world->create_go();
+  world->stage = world->create_go();
 
   lua_State* L = luaL_newstate();
   world->L = L;
@@ -831,6 +894,9 @@ void init_lua(World* world) {
 
   LCpush_go(L, world->camera);
   lua_setglobal(L, "camera");
+
+  LCpush_go(L, world->stage);
+  lua_setglobal(L, "stage");
 
   lua_pushnumber(L, screen_width);
   lua_setglobal(L, "screen_width");

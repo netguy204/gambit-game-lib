@@ -12,7 +12,7 @@ function plat(pos, w, h)
    platform:_pos(pos)
 
    local art = world:atlas_entry(constant.ATLAS, "platform2")
-   platform:add_component("CDrawHPatch", {entry=art})
+   platform:add_component("CDrawHPatch", {entry=art, w=w})
    platform:add_component("CCollidable", {w=w, h=h})
    return platform
 end
@@ -25,19 +25,116 @@ function mplat(pos)
    return platform
 end
 
+function background_floor(minx, maxx, topy, art)
+   local go = world:create_go()
+   local midx = (minx + maxx) / 2
+   local midy = topy - art.h / 2
+   local w = maxx - minx
+
+   go:_pos{midx, midy}
+   go:_vel{0, 0}
+
+   go:add_component("CDrawHPatch", {entry=art, w=w, layer=constant.BACKGROUND})
+   return go
+end
+
+function background_wall(miny, maxy, midx, art)
+   local go = world:create_go()
+   local midy = (miny + maxy) / 2
+   local h = maxy - miny
+
+   go:_pos{midx, midy}
+
+   go:add_component("CDrawVPatch", {entry=art, h=h, layer=constant.BACKGROUND})
+   return go
+end
+
+function floor(minx, maxx, topy, art)
+   local go = background_floor(minx, maxx, topy, art)
+   local w = maxx - minx
+   go:add_component("CCollidable", {w=w, h=art.h})
+   return go
+end
+
+function wall(miny, maxy, midx, art)
+   local go = background_wall(miny, maxy, midx, art)
+   local h = maxy - miny
+   go:add_component("CCollidable", {w=art.w, h=h})
+   return go
+end
+
+function round_to(val, nearest)
+   return nearest * math.floor(val/nearest)
+end
+
+function dirt(minx, maxx, y)
+   local _dirt = world:atlas_entry(constant.ATLAS, "dirt")
+   return floor(round_to(minx, _dirt.w), round_to(maxx, _dirt.w), y, _dirt)
+end
+
+function grass(minx, maxx, y)
+   local _grass = world:atlas_entry(constant.ATLAS, "grass")
+   local base = dirt(minx, maxx, y)
+   local overlay = background_floor(round_to(minx, _grass.w),
+                                    round_to(maxx, _grass.w),
+                                    y + _grass.h/2, _grass)
+   overlay:find_component("CDrawHPatch"):layer(constant.FOREGROUND)
+
+   return base
+end
+
+
+function door_behavior(go)
+   CLOSED = 1
+   OPEN = 2
+
+   state = CLOSED
+
+   local _door = world:atlas_entry(constant.ATLAS, "door")
+   local _door_open = world:atlas_entry(constant.ATLAS, "door_open")
+   local sprite = go:find_component("CStaticSprite")
+
+   while true do
+      coroutine.yield()
+
+      local dist = util.vector_dist(go:pos(), player:pos())
+      if state == CLOSED and dist < 100 then
+         state = OPEN
+         sprite:entry(_door_open)
+      elseif state == OPEN and dist > 120 then
+         state = CLOSED
+         sprite:entry(_door)
+      end
+   end
+end
+
+function left_door(maxx, miny)
+   local _door = world:atlas_entry(constant.ATLAS, "door")
+   local go = world:create_go()
+   go:_pos{maxx - _door.w / 2, miny + _door.h / 2}
+
+   go:add_component("CStaticSprite", {entry=_door})
+   go:add_component("CScripted", {update_thread=util.thread(door_behavior)})
+   return go
+end
 
 function level_init()
-   human.init()
+   local _wood = world:atlas_entry(constant.ATLAS, "wood1")
+   local _wall = world:atlas_entry(constant.ATLAS, "outside_wall")
+   local _pillar = world:atlas_entry(constant.ATLAS, "pillar")
 
-   enemy.make{100, 300}
+   human.init{32, 100}
 
-   plat({screen_width / 2, 32}, screen_width, 64)
-   mplat{300, 300}
-   mplat{600, 600}
-   mplat{300, 900}
-   mplat{600, 1200}
-   mplat{300, 1500}
-   mplat{600, 1800}
-   mplat{300, 2100}
-   mplat{600, 2400}
+   grass(-64*20, 128, 0)
+   dirt(-64*20, 1000, -64)
+   dirt(-64*20, 1000, -64*2)
+   dirt(-64*20, 1000, -64*3)
+   dirt(-64*20, 1000, -64*4)
+   dirt(-64*20, 1000, -64*5)
+
+   floor(128, 1000, 0, _wood)
+
+   background_wall(0, 64*8, 128 + 32, _pillar)
+   wall(64*2, 64*8, 128 + (64-12), _wall)
+   left_door(128 + 64, 0)
 end

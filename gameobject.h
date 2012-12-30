@@ -38,6 +38,7 @@ class Message {
 };
 
 enum RenderLayers {
+  LAYER_BACKDROP,
   LAYER_BACKGROUND,
   LAYER_PLAYER,
   LAYER_FOREGROUND,
@@ -85,6 +86,8 @@ class Component : public Object {
   virtual void messages_received();
 
   Scene* scene();
+  GO* player();
+  GO* camera();
 
   void set_parent(GO* go);
 
@@ -228,6 +231,8 @@ class World : public Object {
 
   GO* player;
   GO* camera;
+  GO* stage;
+
   Scene scene;
 
   lua_State* L;

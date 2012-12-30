@@ -21,6 +21,12 @@ function vector_add(out, a, b)
    out[2] = a[2] + b[2]
 end
 
+function vector_dist(a, b)
+   local dx = a[1] - b[1]
+   local dy = a[2] - b[2]
+   return math.sqrt(dx * dx + dy * dy)
+end
+
 function thread(fn)
    if not fn then
       error('thread called with null function')

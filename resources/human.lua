@@ -77,8 +77,8 @@ function input_thread(go)
    end
 end
 
-function init()
-   player:_pos{100, 100}
+function init(pos)
+   player:_pos(pos)
    player:_vel{0, 0}
    camera:_pos{100, 100}
    camera:_vel{0, 0}
@@ -87,7 +87,7 @@ function init()
    local art = world:atlas_entry(constant.ATLAS, "guy")
    player:add_component("CCollidable", {w=WIDTH, h=HEIGHT})
    player:add_component("CPlatformer", {grav_accel=GRAV_ACCEL})
-   player:add_component("CStaticSprite", {entry=art})
+   player:add_component("CStaticSprite", {entry=art, layer=constant.PLAYER})
 
    -- link up the camera and input
    camera:add_component("CCameraFocus", {focus=player})

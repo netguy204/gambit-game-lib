@@ -47,6 +47,7 @@ class CStaticSprite : public Component {
 
   virtual void update(float dt);
 
+  Vector_ offset;
   SpriteAtlasEntry entry;
   int layer;
 };
@@ -59,7 +60,9 @@ class CDrawHPatch : public Component {
 
   virtual void update(float dt);
 
+  Vector_ offset;
   SpriteAtlasEntry entry;
+  float w;
   int layer;
 };
 
@@ -71,7 +74,9 @@ class CDrawVPatch : public Component {
 
   virtual void update(float dt);
 
+  Vector_ offset;
   SpriteAtlasEntry entry;
+  float h;
   int layer;
 };
 

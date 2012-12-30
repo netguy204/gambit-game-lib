@@ -36,3 +36,10 @@ f_26.png
 platform2.png
 back1.png
 expl1.png
+wood1.png
+pillar.png
+outside_wall.png
+door.png
+door_open.png
+dirt.png
+grass.png

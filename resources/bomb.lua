@@ -41,7 +41,6 @@ function behavior_thread(go, component)
             state = EXPLODING
             set_timer(EXPLODE_START)
             local system = {entry=world:atlas_entry(constant.ATLAS, "expl1"),
-                            offset={0,0},
                             nmax=10,
                             start_scale=0.7,
                             max_life=EXPLODE_START,
@@ -65,7 +64,7 @@ function make(pos, vel)
    local bomb_art = world:atlas_entry(constant.ATLAS, "bomb")
    local spark_art = world:atlas_entry(constant.ATLAS, "spark")
 
-   go:add_component("CStaticSprite", {entry=bomb_art})
+   go:add_component("CStaticSprite", {entry=bomb_art, layer=constant.PLAYER})
    go:add_component("CCollidable", {w=DIM, h=DIM})
    go:add_component("CPlatformer", {grav_accel=GRAV_ACCEL})
 

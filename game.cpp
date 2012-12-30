@@ -23,46 +23,10 @@
 World* world;
 struct Random_ rgen;
 
-GO* player_go;
-GO* camera;
-
-TileMap background;
 Clock main_clock;
-
-void camera_relative_enqueue(ColoredRect rect) {
-  float dy = floorf(camera->_pos.y);
-  rect->miny -= dy;
-  rect->maxy -= dy;
-  if(rect->miny > screen_height || rect->maxy < 0) return;
-
-  float dx = floorf(camera->_pos.x);
-  rect->minx -= dx;
-  rect->maxx -= dx;
-  if(rect->minx > screen_width || rect->maxx < 0) return;
-
-  filledrect_enqueue_for_screen(rect);
-}
 
 void play_vorbis(const char* filename, float volume) {
   audio_enqueue(oggsampler_make(filename, audio_current_sample(), volume));
-}
-
-// specialize PropertyTypeImpl for SpriteAtlasEntry
-template<>
-void PropertyTypeImpl<SpriteAtlasEntry>::LCpush_value(const PropertyInfo* info, Object* obj, lua_State* L) {
-  SpriteAtlasEntry entry;
-  get_value(info, obj, &entry);
-  lua_pushlightuserdata(L, entry);
-}
-
-template<>
-void PropertyTypeImpl<SpriteAtlasEntry>::LCset_value(const PropertyInfo* info, Object* obj, lua_State* L, int pos) {
-  if(!lua_islightuserdata(L, pos)) {
-    luaL_error(L, "position %d does not contain lightuserdata", pos);
-  }
-
-  SpriteAtlasEntry entry = (SpriteAtlasEntry)lua_touserdata(L, pos);
-  set_value(info, obj, &entry);
 }
 
 OBJECT_IMPL(CTimer, Component);
@@ -126,20 +90,33 @@ void CTestDisplay::update(float dt) {
   rect.color[2] = b;
   rect.color[3] = 1.0f;
 
-  camera_relative_enqueue(&rect);
+  float dy = floorf(camera()->_pos.y);
+  rect.miny -= dy;
+  rect.maxy -= dy;
+  if(rect.miny > screen_height || rect.maxy < 0) return;
+
+  float dx = floorf(camera()->_pos.x);
+  rect.minx -= dx;
+  rect.maxx -= dx;
+  if(rect.minx > screen_width || rect.maxx < 0) return;
+
+  filledrect_enqueue_for_screen(&rect);
 }
 
 OBJECT_IMPL(CStaticSprite, Component);
 OBJECT_PROPERTY(CStaticSprite, entry);
 OBJECT_PROPERTY(CStaticSprite, layer);
+OBJECT_PROPERTY(CStaticSprite, offset);
 
 CStaticSprite::CStaticSprite(void* go)
   : Component((GO*)go, PRIORITY_SHOW), entry(NULL), layer(LAYER_BACKGROUND) {
+  vector_zero(&offset);
 }
 
 void CStaticSprite::update(float dt) {
   Vector_ pos;
   go->pos(&pos);
+  vector_add(&pos, &pos, &offset);
 
   Sprite sprite = frame_make_sprite();
   sprite_fillfromentry(sprite, entry);
@@ -154,26 +131,27 @@ void CStaticSprite::update(float dt) {
 OBJECT_IMPL(CDrawHPatch, Component);
 OBJECT_PROPERTY(CDrawHPatch, entry);
 OBJECT_PROPERTY(CDrawHPatch, layer);
+OBJECT_PROPERTY(CDrawHPatch, w);
+OBJECT_PROPERTY(CDrawHPatch, offset);
 
 CDrawHPatch::CDrawHPatch(void* go)
   : Component((GO*)go, PRIORITY_SHOW), entry(NULL), layer(LAYER_BACKGROUND) {
+  vector_zero(&offset);
 }
 
 void CDrawHPatch::update(float dt) {
-  CCollidable* coll = (CCollidable*)go->find_component(&CCollidable::Type);
-  assert(coll);
-
   Vector_ pos;
   go->pos(&pos);
+  vector_add(&pos, &pos, &offset);
 
   Rect_ patch_rect;
-  rect_centered(&patch_rect, &pos, coll->w, coll->h);
+  rect_centered(&patch_rect, &pos, w, entry->h);
   if(!rect_intersect(&scene()->camera_rect, &patch_rect)) return;
 
   int basex = pos.x;
   int basey = pos.y;
-  int offset = -coll->w / 2 + entry->w / 2;
-  while(offset < coll->w / 2 - entry->w / 2) {
+  int offset = -w / 2 + entry->w / 2;
+  while(offset <= w / 2 - entry->w / 2) {
     Sprite sprite = frame_make_sprite();
     sprite_fillfromentry(sprite, entry);
     sprite->displayX = basex + offset;
@@ -190,26 +168,27 @@ void CDrawHPatch::update(float dt) {
 OBJECT_IMPL(CDrawVPatch, Component);
 OBJECT_PROPERTY(CDrawVPatch, entry);
 OBJECT_PROPERTY(CDrawVPatch, layer);
+OBJECT_PROPERTY(CDrawVPatch, h);
+OBJECT_PROPERTY(CDrawVPatch, offset);
 
 CDrawVPatch::CDrawVPatch(void* go)
   : Component((GO*)go, PRIORITY_SHOW), entry(NULL), layer(LAYER_BACKGROUND) {
+  vector_zero(&offset);
 }
 
 void CDrawVPatch::update(float dt) {
-  CCollidable* coll = (CCollidable*)go->find_component(&CCollidable::Type);
-  assert(coll);
-
   Vector_ pos;
   go->pos(&pos);
+  vector_add(&pos, &pos, &offset);
 
   Rect_ patch_rect;
-  rect_centered(&patch_rect, &pos, coll->w, coll->h);
+  rect_centered(&patch_rect, &pos, entry->w, h);
   if(!rect_intersect(&scene()->camera_rect, &patch_rect)) return;
 
   int basex = pos.x;
   int basey = pos.y;
-  int offset = -coll->h / 2 + entry->h / 2;
-  while(offset < coll->h / 2 - entry->h / 2) {
+  int offset = -h / 2 + entry->h / 2;
+  while(offset <= h / 2 - entry->h / 2) {
     Sprite sprite = frame_make_sprite();
     sprite_fillfromentry(sprite, entry);
     sprite->displayX = basex;
@@ -282,6 +261,7 @@ CParticleEmitter::CParticleEmitter(void* go)
   : Component((GO*)go, PRIORITY_ACT), entry(NULL), nmax(0), entries(NULL),
     max_life(1), max_speed(100), max_offset(3), active(1), grav_accel(0),
     start_scale(1), end_scale(1), layer(LAYER_BACKGROUND) {
+  vector_zero(&offset);
 }
 
 void CParticleEmitter::init() {
@@ -362,28 +342,9 @@ void init_world() {
   World* old_world = world;
 
   world = new World();
-  player_go = world->player;
-  camera = world->camera;
 
   lua_register(world->L, "reset_world", reset_world);
   world->load_level("resources/level1.lua");
-
-  if(background) {
-    free(background->tile_specs);
-    tilemap_free(background);
-  }
-
-  // background tilemap
-  const int tdim = 64;
-  const int world_width = screen_width * 3;
-  const int world_height = screen_height * 6;
-
-  background = tilemap_make(world_width / tdim, world_height / tdim, tdim, tdim);
-  memset(background->tiles, 0, tilemap_size(background));
-  TileSpec spec = (TileSpec)malloc(sizeof(struct TileSpec_));
-  background->tile_specs = spec;
-  spec[0].image = world->atlas_entry(ATLAS, "back1");
-  spec[0].bitmask = TILESPEC_VISIBLE;
 
   if(old_world) delete old_world;
   world_reset_requested = 0;
@@ -403,7 +364,7 @@ void game_support_init() {
 void game_init() {
   game_support_init();
 
-  play_vorbis("sounds/DST-2ndBallad.ogg", 0.7);
+  //play_vorbis("sounds/DST-2ndBallad.ogg", 0.7);
   //audio_enqueue(sinsampler_make(audio_current_sample(), SAMPLE_FREQ * 10, C_(1), 8000, 0.0));
 
   init_world();
@@ -442,11 +403,6 @@ void game_step(long delta, InputState state) {
   world->input_state = state;
 
   float dt = clock_update(main_clock, delta / 1000.0);
-
-  SpriteList bg = tilemap_spritelist(background, camera->_pos.x + screen_width,
-                                     camera->_pos.y + screen_height,
-                                     screen_width, screen_height);
-  spritelist_enqueue_for_screen(bg);
 
   world_notify_collisions(world);
   world->update(dt);

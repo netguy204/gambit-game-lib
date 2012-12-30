@@ -71,6 +71,7 @@ def mk_sheet(filenames, outbase, tgt_dims, notrimg):
 
     current_x = 0
     current_y = 0
+    pad = 1
 
     max_row_h = 0
 
@@ -90,7 +91,7 @@ def mk_sheet(filenames, outbase, tgt_dims, notrimg):
             if max_row_h == 0:
                 raise Exception('%s: nothing fits' % state_str())
 
-            current_y += max_row_h
+            current_y += max_row_h + pad
             current_x = 0
 
             max_row_h = 0
@@ -112,7 +113,7 @@ def mk_sheet(filenames, outbase, tgt_dims, notrimg):
         packed = struct.pack(packing, *struct_tuple)
         outdat.write(packed)
 
-        current_x += img_w
+        current_x += img_w + pad
 
     tgt.save(outimagename)
     outdat.close()
