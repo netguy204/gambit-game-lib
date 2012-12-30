@@ -131,42 +131,32 @@ void CTestDisplay::update(float dt) {
 
 OBJECT_IMPL(CStaticSprite, Component);
 OBJECT_PROPERTY(CStaticSprite, entry);
-
-SpriteList CStaticSprite::list = NULL;
+OBJECT_PROPERTY(CStaticSprite, layer);
 
 CStaticSprite::CStaticSprite(void* go)
-  : Component((GO*)go, PRIORITY_SHOW), entry(NULL) {
+  : Component((GO*)go, PRIORITY_SHOW), entry(NULL), layer(LAYER_BACKGROUND) {
 }
 
 void CStaticSprite::update(float dt) {
   Vector_ pos;
   go->pos(&pos);
 
-  float dx = floorf(camera->_pos.x);
-  float dy = floorf(camera->_pos.y);
-  float px = pos.x - dx;
-  float py = pos.y - dy;
-
-  if(px + entry->w < 0 || px - entry->w > screen_width) return;
-  if(py + entry->h < 0 || py - entry->h > screen_height) return;
-
   Sprite sprite = frame_make_sprite();
   sprite_fillfromentry(sprite, entry);
-  sprite->displayX = px;
-  sprite->displayY = py;
+  sprite->displayX = pos.x;
+  sprite->displayY = pos.y;
   sprite->originX = 0.5;
   sprite->originY = 0.5;
 
-  CStaticSprite::list = frame_spritelist_append(CStaticSprite::list, sprite);
+  scene()->addRelative(&scene()->layers[layer], sprite);
 }
 
 OBJECT_IMPL(CDrawPatch, Component);
 OBJECT_PROPERTY(CDrawPatch, entry);
-
-SpriteList CDrawPatch::list = NULL;
+OBJECT_PROPERTY(CDrawPatch, layer);
 
 CDrawPatch::CDrawPatch(void* go)
-  : Component((GO*)go, PRIORITY_SHOW), entry(NULL) {
+  : Component((GO*)go, PRIORITY_SHOW), entry(NULL), layer(LAYER_BACKGROUND) {
 }
 
 void CDrawPatch::update(float dt) {
@@ -176,10 +166,12 @@ void CDrawPatch::update(float dt) {
   Vector_ pos;
   go->pos(&pos);
 
-  float dx = floorf(camera->_pos.x);
-  float dy = floorf(camera->_pos.y);
-  int basex = pos.x - dx;
-  int basey = pos.y - dy;
+  Rect_ patch_rect;
+  rect_centered(&patch_rect, &pos, coll->w, coll->h);
+  if(!rect_intersect(&scene()->camera_rect, &patch_rect)) return;
+
+  int basex = pos.x;
+  int basey = pos.y;
   int offset = -coll->w / 2 + entry->w / 2;
   while(offset < coll->w / 2 - entry->w / 2) {
     Sprite sprite = frame_make_sprite();
@@ -189,7 +181,7 @@ void CDrawPatch::update(float dt) {
     sprite->originX = 0.5;
     sprite->originY = 0.5;
 
-    CDrawPatch::list = frame_spritelist_append(CDrawPatch::list, sprite);
+    scene()->addRelative(&scene()->layers[layer], sprite);
     offset += entry->w;
   }
 }
@@ -236,8 +228,7 @@ OBJECT_PROPERTY(CParticleEmitter, start_scale);
 OBJECT_PROPERTY(CParticleEmitter, end_scale);
 OBJECT_PROPERTY(CParticleEmitter, nmax);
 OBJECT_PROPERTY(CParticleEmitter, offset);
-
-SpriteList CParticleEmitter::list = NULL;
+OBJECT_PROPERTY(CParticleEmitter, layer);
 
 void vector_random(Vector v, float scale) {
   float mag = 0;
@@ -254,7 +245,7 @@ void vector_random(Vector v, float scale) {
 CParticleEmitter::CParticleEmitter(void* go)
   : Component((GO*)go, PRIORITY_ACT), entry(NULL), nmax(0), entries(NULL),
     max_life(1), max_speed(100), max_offset(3), active(1), grav_accel(0),
-    start_scale(1), end_scale(1) {
+    start_scale(1), end_scale(1), layer(LAYER_BACKGROUND) {
 }
 
 void CParticleEmitter::init() {
@@ -290,9 +281,6 @@ void CParticleEmitter::update(float dt) {
   const float temp_slope = (max_temp - min_temp) / max_life;
   const float scale_slope = (start_scale - end_scale) / max_life;
 
-  float dx = floorf(camera->_pos.x);
-  float dy = floorf(camera->_pos.y);
-
   for(int ii = 0; ii < nmax; ++ii) {
     PEntry* e = &entries[ii];
     if(active && e->life <= 0) {
@@ -313,8 +301,8 @@ void CParticleEmitter::update(float dt) {
     // draw
     Sprite sprite = frame_make_sprite();
     sprite_fillfromentry(sprite, entry);
-    sprite->displayX = e->pos.x - dx;
-    sprite->displayY = e->pos.y - dy;
+    sprite->displayX = e->pos.x;
+    sprite->displayY = e->pos.y;
     sprite->originX = 0.5;
     sprite->originY = 0.5;
     sprite->w *= scale;
@@ -325,7 +313,7 @@ void CParticleEmitter::update(float dt) {
     color_for_temp(temp, sprite->color);
     sprite->color[3] = e->life / max_life;
 
-    CParticleEmitter::list = frame_spritelist_append(CParticleEmitter::list, sprite);
+    scene()->addRelative(&scene()->particles[layer], sprite);
   }
 }
 
@@ -426,16 +414,7 @@ void game_step(long delta, InputState state) {
 
   world_notify_collisions(world);
   world->update(dt);
-
-  spritelist_enqueue_for_screen(CStaticSprite::list);
-  CStaticSprite::list = NULL;
-
-  spritelist_enqueue_for_screen(CDrawPatch::list);
-  CDrawPatch::list = NULL;
-
-  // render all particles
-  spritelist_enqueue_for_screen_colored(CParticleEmitter::list);
-  CParticleEmitter::list = NULL;
+  world->scene.enqueue();
 
   render_hud();
 }

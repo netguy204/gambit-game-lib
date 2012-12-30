@@ -4,7 +4,7 @@
 #include "testlib.h"
 #include "utils.h"
 
-#include <stdarg.h>
+#include <math.h>
 
 template<>
 void PropertyTypeImpl<LuaThread>::LCset_value(const PropertyInfo* info, Object* obj, lua_State* L, int pos) {
@@ -114,6 +114,50 @@ void PropertyTypeImpl<Message*>::LCset_value(const PropertyInfo* info, Object* o
 
 Message::Message(GO* source, int kind, void* data)
   : source(source), kind(kind), data(data) {
+}
+
+Scene::Scene(World* world)
+  : world(world) {
+  memset(layers, 0, sizeof(layers));
+  memset(particles, 0, sizeof(particles));
+}
+
+void Scene::addRelative(SpriteList* list, Sprite sprite) {
+  sprite->displayX -= dx;
+  sprite->displayY -= dy;
+  addAbsolute(list, sprite);
+}
+
+void Scene::addAbsolute(SpriteList* list, Sprite sprite) {
+  if(sprite->displayX + sprite->w < 0
+     || sprite->displayX - sprite->w > screen_width) return;
+
+  if(sprite->displayY + sprite->h < 0
+     || sprite->displayY - sprite->h > screen_height) return;
+
+  *list = frame_spritelist_append(*list, sprite);
+}
+
+void Scene::start() {
+  dx = floorf(world->camera->_pos.x);
+  dy = floorf(world->camera->_pos.y);
+  camera_rect.minx = world->camera->_pos.x;
+  camera_rect.miny = world->camera->_pos.y;
+  camera_rect.maxx = world->camera->_pos.x + screen_width;
+  camera_rect.maxy = world->camera->_pos.y + screen_height;
+}
+
+void Scene::enqueue() {
+  for(int ii = 0; ii < LAYER_MAX; ++ii) {
+    if(layers[ii]) {
+      spritelist_enqueue_for_screen(layers[ii]);
+    }
+    if(particles[ii]) {
+      spritelist_enqueue_for_screen_colored(particles[ii]);
+    }
+    layers[ii] = NULL;
+    particles[ii] = NULL;
+  }
 }
 
 OBJECT_IMPL(GO, Object);
@@ -324,6 +368,10 @@ void Component::update(float dt) {
 }
 
 void Component::messages_received() {
+}
+
+Scene* Component::scene() {
+  return &go->world->scene;
 }
 
 void Component::set_parent(GO* go) {
@@ -794,11 +842,11 @@ void init_lua(World* world) {
 }
 
 World::World(void*p)
-  : L(NULL) {
+  : L(NULL), scene(this) {
   init_lua(this);
 }
 World::World()
-  : L(NULL) {
+  : L(NULL), scene(this) {
   init_lua(this);
 }
 
@@ -818,6 +866,7 @@ World::~World() {
 
 void World::update(float dt) {
   this->dt = dt;
+  scene.start();
 
   // let the game objects do their integration step
   game_objects.foreach([=](GO* go) -> int {

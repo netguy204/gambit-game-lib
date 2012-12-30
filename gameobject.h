@@ -37,6 +37,33 @@ class Message {
   int read_count;
 };
 
+enum RenderLayers {
+  LAYER_BACKGROUND,
+  LAYER_PLAYER,
+  LAYER_FOREGROUND,
+  LAYER_MAX,
+};
+
+class World;
+
+class Scene {
+ public:
+  SpriteList layers[LAYER_MAX];
+  SpriteList particles[LAYER_MAX];
+
+  int dx, dy;
+  Rect_ camera_rect;
+  World* world;
+
+  Scene(World* world);
+
+  void addRelative(SpriteList* list, Sprite sprite);
+  void addAbsolute(SpriteList* list, Sprite sprite);
+
+  void start(); // after the camera is ready
+  void enqueue();
+};
+
 enum ComponentPriority {
   PRIORITY_THINK,
   PRIORITY_ACT,
@@ -56,6 +83,8 @@ class Component : public Object {
   virtual void init();
   virtual void update(float dt);
   virtual void messages_received();
+
+  Scene* scene();
 
   void set_parent(GO* go);
 
@@ -115,8 +144,6 @@ class CScripted : public Component {
   LuaThread update_thread;
   LuaThread message_thread;
 };
-
-class World;
 
 /* GO: GameObject
  *
@@ -201,6 +228,7 @@ class World : public Object {
 
   GO* player;
   GO* camera;
+  Scene scene;
 
   lua_State* L;
   InputState input_state;

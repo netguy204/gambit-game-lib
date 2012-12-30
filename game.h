@@ -48,8 +48,7 @@ class CStaticSprite : public Component {
   virtual void update(float dt);
 
   SpriteAtlasEntry entry;
-
-  static SpriteList list;
+  int layer;
 };
 
 class CDrawPatch : public Component {
@@ -61,10 +60,21 @@ class CDrawPatch : public Component {
   virtual void update(float dt);
 
   SpriteAtlasEntry entry;
-
-  static SpriteList list;
-
+  int layer;
 };
+
+/*
+class CDrawVPatch : public Component {
+ public:
+  OBJECT_PROTO(CDrawVPatch);
+
+  CDrawVPatch(void* go);
+
+  virtual void update(float dt);
+
+  SpriteAtlasEntry entry;
+};
+*/
 
 // probably want all renders to happen after this has done its update
 class CCameraFocus : public Component {
@@ -99,6 +109,7 @@ class CParticleEmitter : public Component {
   SpriteAtlasEntry entry;
   int nmax;
   int active;
+  int layer;
   float max_life;
   float max_speed;
   float max_offset;
@@ -106,8 +117,6 @@ class CParticleEmitter : public Component {
   float start_scale;
   float end_scale;
   PEntry* entries;
-
-  static SpriteList list;
 };
 
 void game_init();
