@@ -115,6 +115,7 @@ class CCollidable : public Component {
   int intersect(CCollidable* other);
 
   struct DLLNode_ collidable_node;
+  Vector_ offset;
   float w;
   float h;
   int mask;

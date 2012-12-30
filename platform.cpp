@@ -68,7 +68,7 @@ int CPlatformer::is_supported() {
   CCollidable* c1 = (CCollidable*)go->find_component(&CCollidable::Type);
   if(!c1) return 0;
 
-  CCollidable* c2 = (CCollidable*)go2->find_component(&CCollidable::Type);
+  CCollidable* c2 = other_collidable;
 
   struct Rect_ r1, r2;
   c1->rect(&r1);
@@ -120,6 +120,7 @@ void CPlatformer::look_for_support() {
       // check for support
       if(rect_is_supported(&rself, &rother)) {
         // parent this object to the supporter
+        other_collidable = cother;
         go_set_parent(go, other_go);
       }
 
@@ -141,6 +142,7 @@ void CPlatformer::update(float dt) {
   if(!go->transform_parent) {
     go->_vel.y = MAX(-this->max_speed, go->_vel.y - this->grav_accel * dt);
   } else if(!is_supported()) {
+    other_collidable = NULL;
     go_set_parent(go, NULL);
   }
 }

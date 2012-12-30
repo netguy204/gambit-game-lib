@@ -7,60 +7,59 @@ require 'constant'
 require 'util'
 require 'enemy'
 
-function plat(pos, w, h)
-   local platform = world:create_go()
-   platform:_pos(pos)
+function merge_into(target, source)
+   if not source then
+      return target
+   end
 
-   local art = world:atlas_entry(constant.ATLAS, "platform2")
-   platform:add_component("CDrawHPatch", {entry=art, w=w})
-   platform:add_component("CCollidable", {w=w, h=h})
-   return platform
+   for k, v in pairs(source) do
+      target[k] = v
+   end
+   return target
 end
 
-function mplat(pos)
-   local platform = plat(pos, 257, 64)
-   platform:_vel{100, 0}
-
-   platform:add_component("CLeftAndRight", {minx=128, maxx=1024})
-   return platform
-end
-
-function background_floor(minx, maxx, topy, art)
-   local go = world:create_go()
+function background_floor(minx, maxx, topy, art, opts)
    local midx = (minx + maxx) / 2
    local midy = topy - art.h / 2
    local w = maxx - minx
 
-   go:_pos{midx, midy}
-   go:_vel{0, 0}
+   local defaults = {entry=art, w=w,
+                     layer=constant.BACKGROUND,
+                     offset={midx, midy}}
 
-   go:add_component("CDrawHPatch", {entry=art, w=w, layer=constant.BACKGROUND})
-   return go
+   c = stage:add_component("CDrawHPatch", merge_into(defaults, opts))
+   return {c}
 end
 
-function background_wall(miny, maxy, midx, art)
-   local go = world:create_go()
+function background_wall(miny, maxy, midx, art, opts)
    local midy = (miny + maxy) / 2
    local h = maxy - miny
 
-   go:_pos{midx, midy}
+   local defaults = {entry=art, h=h,
+                     layer=constant.BACKGROUND,
+                     offset={midx, midy}}
 
-   go:add_component("CDrawVPatch", {entry=art, h=h, layer=constant.BACKGROUND})
-   return go
+   c = stage:add_component("CDrawVPatch", merge_into(defaults, opts))
+   return {c}
 end
 
 function floor(minx, maxx, topy, art)
-   local go = background_floor(minx, maxx, topy, art)
+   local midx = (minx + maxx) / 2
+   local midy = topy - art.h / 2
+   local c = background_floor(minx, maxx, topy, art)
    local w = maxx - minx
-   go:add_component("CCollidable", {w=w, h=art.h})
-   return go
+   table.insert(c, stage:add_component("CCollidable", {w=w, h=art.h,
+                                                       offset={midx, midy}}))
+   return c
 end
 
 function wall(miny, maxy, midx, art)
-   local go = background_wall(miny, maxy, midx, art)
+   local midy = (miny + maxy) / 2
+   local c = background_wall(miny, maxy, midx, art)
    local h = maxy - miny
-   go:add_component("CCollidable", {w=art.w, h=h})
-   return go
+   table.insert(c, stage:add_component("CCollidable", {w=art.w, h=h,
+                                                       offset={midx, midy}}))
+   return c
 end
 
 function round_to(val, nearest)
@@ -77,8 +76,8 @@ function grass(minx, maxx, y)
    local base = dirt(minx, maxx, y)
    local overlay = background_floor(round_to(minx, _grass.w),
                                     round_to(maxx, _grass.w),
-                                    y + _grass.h/2, _grass)
-   overlay:find_component("CDrawHPatch"):layer(constant.FOREGROUND)
+                                    y + _grass.h/2, _grass,
+                                    {layer=constant.FOREGROUND})
 
    return base
 end

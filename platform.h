@@ -16,6 +16,9 @@ class CPlatformer : public Component {
   void resolve_interpenetration();
   int is_supported();
 
+  // valid if parent is set
+  CCollidable* other_collidable;
+
   float grav_accel;
   float max_speed;
   int platform_mask;

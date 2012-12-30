@@ -448,12 +448,14 @@ OBJECT_IMPL(CCollidable, Component);
 OBJECT_PROPERTY(CCollidable, w);
 OBJECT_PROPERTY(CCollidable, h);
 OBJECT_PROPERTY(CCollidable, mask);
+OBJECT_PROPERTY(CCollidable, offset);
 
 CCollidable::CCollidable(void* go)
   : Component((GO*)go, PRIORITY_LEAST), w(0), h(0), mask(MASK_PLATFORMER) {
   if(this->go) {
     this->go->world->collidables.add_head(this);
   }
+  vector_zero(&offset);
 }
 
 CCollidable::~CCollidable() {
@@ -468,6 +470,8 @@ void CCollidable::rect(Rect rect) {
 
   struct Vector_ pos;
   go->pos(&pos);
+  vector_add(&pos, &pos, &offset);
+
   rect_centered(rect, &pos, this->w, this->h);
 }
 
