@@ -7,6 +7,8 @@
 #include "ooc.h"
 
 #include <lua.hpp>
+#include <Box2D/Box2D.h>
+
 #include <map>
 
 typedef enum {
@@ -141,6 +143,12 @@ class CScripted : public Component {
   virtual void update(float dt);
   virtual void messages_received();
 
+  void set_thread(LuaThread* target, lua_State* thread);
+  void set_update_thread(lua_State* thread);
+  void set_message_thread(lua_State* thread);
+  lua_State* get_update_thread();
+  lua_State* get_message_thread();
+
   void free_thread(LuaThread* thread);
   void step_thread(LuaThread* thread);
   void resume(LuaThread* thread, int args);
@@ -162,7 +170,6 @@ class GO : public Object {
  public:
   OBJECT_PROTO(GO);
 
-  GO();
   GO(void*);
   virtual ~GO();
 
@@ -201,6 +208,7 @@ class GO : public Object {
 
   // the world we're a part of
   World* world;
+  b2Body* body;
 
   int delete_me;
 };
@@ -237,6 +245,8 @@ class World : public Object {
   Scene scene;
 
   lua_State* L;
+  b2World bWorld;
+
   InputState input_state;
   float dt;
 

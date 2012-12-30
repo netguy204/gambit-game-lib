@@ -1,3 +1,13 @@
+B2D_BASE=vender/Box2D_v2.2.1/
+B2D_SRC=\
+	$(wildcard $(B2D_BASE)/Box2D/Collision/*.cpp) \
+	$(wildcard $(B2D_BASE)/Box2D/Collision/Shapes/*.cpp) \
+	$(wildcard $(B2D_BASE)/Box2D/Common/*.cpp) \
+	$(wildcard $(B2D_BASE)/Box2D/Dynamics/*.cpp) \
+	$(wildcard $(B2D_BASE)/Box2D/Dynamics/Joints/*.cpp) \
+	$(wildcard $(B2D_BASE)/Box2D/Dynamics/Contacts/*.cpp) \
+	$(wildcard $(B2D_BASE)/Box2D/Rope/*.cpp)
+
 CPP_SRC+= \
 	threadlib.cpp memory.cpp listlib.cpp testlib.cpp \
 	sampler.cpp audio.cpp game.cpp vector.cpp \
@@ -5,7 +15,8 @@ CPP_SRC+= \
 	realmain.cpp stb_image.cpp tiles.cpp random.cpp \
 	perlin.cpp heapvector.cpp xmltools.cpp \
 	pathfinder.cpp utils.cpp matrix.cpp ooc.cpp \
-	game_ui.cpp platform.cpp gameobject.cpp color.cpp
+	game_ui.cpp platform.cpp gameobject.cpp color.cpp \
+	$(B2D_SRC)
 
 TREMOR_SRC=$(wildcard vender/tremor/*.c)
 OGG_SRC=$(wildcard vender/libogg-1.3.0/src/*.c)
@@ -19,7 +30,7 @@ C_SRC+= \
 XML_INCLUDE:=-I/usr/include/libxml2
 
 CFLAGS+=$(XML_INCLUDE) -Isfmt/ -Ivender/tremor/ -Ivender/libogg-1.3.0/include/ -Ivender/lua-5.2.1/src
-CXXFLAGS+=$(CFLAGS) -std=c++0x -Wno-invalid-offsetof
+CXXFLAGS+=$(CFLAGS) -std=c++0x -Wno-invalid-offsetof -I$(B2D_BASE)
 
 LDFLAGS+=-lpthread -ldl -lxml2 $(LUA_LIB)
 C_OBJS=\

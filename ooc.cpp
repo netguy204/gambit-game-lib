@@ -35,8 +35,8 @@ bool TypeInfo::isInstanceOf(const TypeInfo* other) const {
   return this == other;
 }
 
-PropertyInfo::PropertyInfo(TypeInfo* type, PropertyType* ptype, const char* name, size_t offset)
-  : m_type(type), m_propertyType(ptype), m_name(name), m_offset(offset) {
+PropertyInfo::PropertyInfo(TypeInfo* type, const char* name)
+  : m_type(type), m_name(name) {
   m_type->register_property(this);
 }
 
@@ -44,46 +44,30 @@ const char* PropertyInfo::name() const {
   return m_name;
 }
 
-void PropertyInfo::set_value(Object* obj, void* value) const {
-  m_propertyType->set_value(this, obj, value);
-}
-
-void PropertyInfo::get_value(Object* obj, void* value) const {
-  m_propertyType->get_value(this, obj, value);
-}
-
-void PropertyInfo::LCpush_value(Object* obj, lua_State* L) const {
-  m_propertyType->LCpush_value(this, obj, L);
-}
-
-void PropertyInfo::LCset_value(Object* obj, lua_State* L, int pos) const {
-  m_propertyType->LCset_value(this, obj, L, pos);
-}
-
 template<>
-void PropertyTypeImpl<int>::LCpush_value(const PropertyInfo* info, Object* obj, lua_State* L) {
+void PropertyTypeImpl<int>::LCpush_value(Object* obj, lua_State* L) const {
   int val;
-  get_value(info, obj, &val);
+  get_value(obj, &val);
   lua_pushinteger(L, val);
 }
 
 template<>
-void PropertyTypeImpl<int>::LCset_value(const PropertyInfo* info, Object* obj, lua_State* L, int pos) {
+void PropertyTypeImpl<int>::LCset_value(Object* obj, lua_State* L, int pos) const {
   int val = luaL_checkinteger(L, pos);
-  set_value(info, obj, &val);
+  set_value(obj, &val);
 }
 
 template<>
-void PropertyTypeImpl<float>::LCpush_value(const PropertyInfo* info, Object* obj, lua_State* L) {
+void PropertyTypeImpl<float>::LCpush_value(Object* obj, lua_State* L) const {
   float val;
-  get_value(info, obj, &val);
+  get_value(obj, &val);
   lua_pushnumber(L, val);
 }
 
 template<>
-void PropertyTypeImpl<float>::LCset_value(const PropertyInfo* info, Object* obj, lua_State* L, int pos) {
+void PropertyTypeImpl<float>::LCset_value(Object* obj, lua_State* L, int pos) const {
   float val = luaL_checknumber(L, pos);
-  set_value(info, obj, &val);
+  set_value(obj, &val);
 }
 
 bool cmp_str::operator()(char const *a, char const *b) const {

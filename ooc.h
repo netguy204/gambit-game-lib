@@ -39,47 +39,73 @@ class PropertyType;
 
 class PropertyInfo {
  public:
-  PropertyInfo(TypeInfo* type, PropertyType* ptype, const char* name, size_t offset);
+  PropertyInfo(TypeInfo* type, const char* name);
 
   const char* name() const;
 
-  void set_value(Object* obj, void* value) const;
-  void get_value(Object* obj, void* value) const;
-  void LCpush_value(Object* obj, lua_State* L) const;
-  void LCset_value(Object* obj, lua_State* L, int pos) const;
+  virtual void set_value(Object* obj, void* value) const = 0;
+  virtual void get_value(Object* obj, void* value) const = 0;
+  virtual void LCpush_value(Object* obj, lua_State* L) const = 0;
+  virtual void LCset_value(Object* obj, lua_State* L, int pos) const = 0;
 
   TypeInfo* m_type;
-  PropertyType* m_propertyType;
   const char* m_name;
-  size_t m_offset;
-};
-
-class PropertyType {
- public:
-  virtual void set_value(const PropertyInfo* info, Object* obj, void* value) = 0;
-  virtual void get_value(const PropertyInfo* info, Object* obj, void* value) = 0;
-
-  virtual void LCpush_value(const PropertyInfo* info, Object* obj, lua_State* L) = 0;
-  virtual void LCset_value(const PropertyInfo* info, Object* obj, lua_State* L, int pos) = 0;
 };
 
 template <typename T>
-class PropertyTypeImpl : public PropertyType {
-  virtual void set_value(const PropertyInfo* info, Object* obj, void* value) {
-    memcpy((char*)obj + info->m_offset, value, sizeof(T));
+class PropertyTypeImpl : public PropertyInfo {
+public:
+  PropertyTypeImpl(TypeInfo* type, const char* name, size_t offset)
+    : PropertyInfo(type, name), m_offset(offset) {
   }
 
-  virtual void get_value(const PropertyInfo* info, Object* obj, void* value) {
-    memcpy(value, (char*)obj + info->m_offset, sizeof(T));
+  virtual void set_value(Object* obj, void* value) const {
+    memcpy((char*)obj + m_offset, value, sizeof(T));
   }
 
-  virtual void LCpush_value(const PropertyInfo* info, Object* obj, lua_State* L) {
-    luaL_error(L, "don't know how to read `%s'", info->name());
+  virtual void get_value(Object* obj, void* value) const {
+    memcpy(value, (char*)obj + m_offset, sizeof(T));
   }
 
-  virtual void LCset_value(const PropertyInfo* info, Object* obj, lua_State* L, int pos) {
-    luaL_error(L, "don't know how to write `%s'", info->name());
+  virtual void LCpush_value(Object* obj, lua_State* L) const {
+    luaL_error(L, "don't know how to read `%s'", name());
   }
+
+  virtual void LCset_value(Object* obj, lua_State* L, int pos) const {
+    luaL_error(L, "don't know how to write `%s'", name());
+  }
+
+  size_t m_offset;
+};
+
+template <typename Sig>
+class PropertyMethodImpl;
+
+template <typename CLASS, typename T>
+class PropertyMethodImpl<void (CLASS::*)(T)> : public PropertyTypeImpl<T> {
+public:
+  typedef T (CLASS::*Getter)();
+  typedef void (CLASS::*Setter)(T);
+
+  PropertyMethodImpl(TypeInfo* type, const char* name,
+                     Getter getter, Setter setter)
+    : PropertyTypeImpl<T>(type, name, 0), m_setter(setter), m_getter(getter) {
+  }
+
+  virtual void set_value(Object* _obj, void* _value) const {
+    CLASS* obj = (CLASS*)_obj;
+    T* value = (T*)_value;
+    (obj->*m_setter)(*value);
+  }
+
+  virtual void get_value(Object* _obj, void* _value) const {
+    CLASS* obj = (CLASS*)_obj;
+    T* value = (T*)_value;
+    *value = (obj->*m_getter)();
+  }
+
+  Getter m_getter;
+  Setter m_setter;
 };
 
 typedef std::map<const char*, TypeInfo*, cmp_str> NameToType;
@@ -112,19 +138,22 @@ class TypeRegistry {
   }                                                     \
   OBJECT_BIMPL(name, &pname::Type)
 
-#define OPMTYPE(name, member_name) name ## _ ## member_name ## _ ## MemberType
-#define OPTYPE(name, member_name) name ## _ ## member_name ## _ ## Type
 #define OP(name, member_name) name ## _ ## member_name ## _ ## Property
 
 #define OBJECT_PROPERTY(name, member_name)                              \
   static PropertyTypeImpl<decltype(((name*)0)->member_name)>            \
-    OPTYPE(name, member_name);                                          \
-                                                                        \
-  static PropertyInfo OP(name, member_name)(                            \
-    &name::Type,                                                        \
-    &OPTYPE(name, member_name),                                         \
-    #member_name,                                                       \
-    offsetof(name, member_name));
+    OP(name, member_name)(                                              \
+      &name::Type,                                                      \
+      #member_name,                                                     \
+      offsetof(name, member_name));
+
+#define OBJECT_ACCESSOR(name, member_name, getter, setter)           \
+  static PropertyMethodImpl<decltype(&name::setter)>                 \
+    OP(name, member_name)(                                           \
+      &name::Type,                                                   \
+      #member_name,                                                  \
+      &name::getter,                                                 \
+      &name::setter)
 
 class Object {
 public:

@@ -6,6 +6,8 @@
 
 #include <math.h>
 
+#define BSCALE 64.0f
+
 void LCpush_entry(lua_State* L, SpriteAtlasEntry entry) {
   lua_newtable(L);
   lua_pushlightuserdata(L, entry);
@@ -17,14 +19,14 @@ void LCpush_entry(lua_State* L, SpriteAtlasEntry entry) {
 }
 
 template<>
-void PropertyTypeImpl<SpriteAtlasEntry>::LCpush_value(const PropertyInfo* info, Object* obj, lua_State* L) {
+void PropertyTypeImpl<SpriteAtlasEntry>::LCpush_value(Object* obj, lua_State* L) const {
   SpriteAtlasEntry entry;
-  get_value(info, obj, &entry);
+  get_value(obj, &entry);
   LCpush_entry(L, entry);
 }
 
 template<>
-void PropertyTypeImpl<SpriteAtlasEntry>::LCset_value(const PropertyInfo* info, Object* obj, lua_State* L, int pos) {
+void PropertyTypeImpl<SpriteAtlasEntry>::LCset_value(Object* obj, lua_State* L, int pos) const {
   if(!lua_istable(L, pos)) {
     luaL_error(L, "position %d does not contain a table", pos);
   }
@@ -36,30 +38,25 @@ void PropertyTypeImpl<SpriteAtlasEntry>::LCset_value(const PropertyInfo* info, O
   }
 
   lua_pop(L, 1);
-  set_value(info, obj, &entry);
+  set_value(obj, &entry);
 }
 
 template<>
-void PropertyTypeImpl<LuaThread>::LCset_value(const PropertyInfo* info, Object* obj, lua_State* L, int pos) {
+void PropertyTypeImpl<lua_State*>::LCset_value(Object* obj, lua_State* L, int pos) const {
   lua_State* state = lua_tothread(L, pos);
   if(!state) {
     luaL_error(L, "position %d does not contain a thread", pos);
   }
 
-  LuaThread thread;
-
-  // first, may need to release what we already have
-  get_value(info, obj, &thread);
-  if(thread.state) {
-    luaL_unref(thread.state, LUA_REGISTRYINDEX, thread.refid);
-  }
-
-  // now get the new thread and protect from GC
-  thread.state = state;
+  // special arrangement with our possible set_value client says that
+  // we leave the refid on the thread's stack (and clean it off in
+  // case it's a trivial client... which will leak since it can't
+  // un-retain the thread)
   lua_pushvalue(L, pos);
-  thread.refid = luaL_ref(L, LUA_REGISTRYINDEX);
-  thread.is_initialized = 0;
-  set_value(info, obj, &thread);
+  int refid = luaL_ref(L, LUA_REGISTRYINDEX);
+  lua_pushinteger(state, refid);
+  set_value(obj, &state);
+  lua_pop(state, 1);
 }
 
 void LCpush_vector(lua_State* L, Vector v) {
@@ -71,14 +68,14 @@ void LCpush_vector(lua_State* L, Vector v) {
 }
 
 template<>
-void PropertyTypeImpl<Vector_>::LCpush_value(const PropertyInfo* info, Object* obj, lua_State* L) {
+void PropertyTypeImpl<Vector_>::LCpush_value(Object* obj, lua_State* L) const {
   Vector_ v;
-  get_value(info, obj, &v);
+  get_value(obj, &v);
   LCpush_vector(L, &v);
 }
 
 template<>
-void PropertyTypeImpl<Vector_>::LCset_value(const PropertyInfo* info, Object* obj, lua_State* L, int pos) {
+void PropertyTypeImpl<Vector_>::LCset_value(Object* obj, lua_State* L, int pos) const {
   if(!lua_istable(L, pos)) {
     luaL_argerror(L, pos, "`table' expected");
   }
@@ -90,27 +87,27 @@ void PropertyTypeImpl<Vector_>::LCset_value(const PropertyInfo* info, Object* ob
   lua_rawgeti(L, pos, 2);
   v.y = luaL_checknumber(L, -1);
   lua_pop(L, 1);
-  set_value(info, obj, &v);
+  set_value(obj, &v);
 }
 
 template<>
-void PropertyTypeImpl<GO*>::LCpush_value(const PropertyInfo* info, Object* obj, lua_State* L) {
+void PropertyTypeImpl<GO*>::LCpush_value(Object* obj, lua_State* L) const {
   GO* go;
-  get_value(info, obj, &go);
+  get_value(obj, &go);
   LCpush_go(L, go);
 }
 
 
 template<>
-void PropertyTypeImpl<GO*>::LCset_value(const PropertyInfo* info, Object* obj, lua_State* L, int pos) {
+void PropertyTypeImpl<GO*>::LCset_value(Object* obj, lua_State* L, int pos) const {
   GO* go = LCcheck_go(L, pos);
-  set_value(info, obj, &go);
+  set_value(obj, &go);
 }
 
 template<>
-void PropertyTypeImpl<InputState>::LCpush_value(const PropertyInfo* info, Object* obj, lua_State* L) {
+void PropertyTypeImpl<InputState>::LCpush_value(Object* obj, lua_State* L) const {
   InputState state;
-  get_value(info, obj, &state);
+  get_value(obj, &state);
 
   lua_newtable(L);
   lua_pushliteral(L, "quit_requested");
@@ -139,10 +136,10 @@ void PropertyTypeImpl<InputState>::LCpush_value(const PropertyInfo* info, Object
 }
 
 template<>
-void PropertyTypeImpl<Message*>::LCset_value(const PropertyInfo* info, Object* obj, lua_State* L, int pos) {
+void PropertyTypeImpl<Message*>::LCset_value(Object* obj, lua_State* L, int pos) const {
   Message* message = (Message*)lua_touserdata(L, pos);
   luaL_argcheck(L, message != NULL, pos, "`Message' expected");
-  set_value(info, obj, &message);
+  set_value(obj, &message);
 }
 
 Message::Message(GO* source, int kind, void* data)
@@ -199,14 +196,11 @@ OBJECT_PROPERTY(GO, _vel);
 OBJECT_PROPERTY(GO, transform_parent);
 OBJECT_PROPERTY(GO, delete_me);
 
-GO::GO()
-  : transform_parent(NULL), delete_me(0) {
+GO::GO(void* _world)
+  : transform_parent(NULL), world((World*)_world), delete_me(0) {
   vector_zero(&this->_pos);
   vector_zero(&this->_vel);
-}
-
-GO::GO(void* p) {
-  throw std::exception();
+  world->game_objects.add_head(this);
 }
 
 GO::~GO() {
@@ -487,8 +481,8 @@ LuaThread::LuaThread()
 }
 
 OBJECT_IMPL(CScripted, Component);
-OBJECT_PROPERTY(CScripted, update_thread);
-OBJECT_PROPERTY(CScripted, message_thread);
+OBJECT_ACCESSOR(CScripted, update_thread, get_update_thread, set_update_thread);
+OBJECT_ACCESSOR(CScripted, message_thread, get_message_thread, set_message_thread);
 
 CScripted::CScripted(void* go)
   : Component((GO*)go, PRIORITY_ACT) {
@@ -514,6 +508,36 @@ void CScripted::free_thread(LuaThread* thread) {
     luaL_unref(thread->state, LUA_REGISTRYINDEX, thread->refid);
     thread->state = NULL;
   }
+}
+
+void CScripted::set_thread(LuaThread* target, lua_State* thread) {
+  // release old reference
+  if(target->state) {
+    luaL_unref(target->state, LUA_REGISTRYINDEX, target->refid);
+  }
+
+  // our special arrangement with LCset_value
+  // ensures that the top of the lua thread stack contains the thread's
+  // refid
+  target->state = thread;
+  target->refid = lua_tointeger(thread, -1);
+  target->is_initialized = 0;
+}
+
+void CScripted::set_update_thread(lua_State* thread) {
+  set_thread(&update_thread, thread);
+}
+
+void CScripted::set_message_thread(lua_State* thread) {
+  set_thread(&message_thread, thread);
+}
+
+lua_State* CScripted::get_update_thread() {
+  return NULL;
+}
+
+lua_State* CScripted::get_message_thread() {
+  return NULL;
 }
 
 void CScripted::step_thread(LuaThread* thread) {
@@ -912,11 +936,11 @@ void init_lua(World* world) {
 }
 
 World::World(void*p)
-  : L(NULL), scene(this) {
+  : L(NULL), scene(this), bWorld(b2Vec2(0, -10)) {
   init_lua(this);
 }
 World::World()
-  : L(NULL), scene(this) {
+  : L(NULL), scene(this), bWorld(b2Vec2(0, -10)) {
   init_lua(this);
 }
 
@@ -990,9 +1014,7 @@ void World::load_level(const char* level) {
 }
 
 GO* World::create_go() {
-  GO* go = new GO();
-  game_objects.add_head(go);
-  go->world = this;
+  GO* go = new GO(this);
   return go;
 }
 
