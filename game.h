@@ -51,11 +51,11 @@ class CStaticSprite : public Component {
   int layer;
 };
 
-class CDrawPatch : public Component {
+class CDrawHPatch : public Component {
  public:
-  OBJECT_PROTO(CDrawPatch);
+  OBJECT_PROTO(CDrawHPatch);
 
-  CDrawPatch(void* go);
+  CDrawHPatch(void* go);
 
   virtual void update(float dt);
 
@@ -63,7 +63,6 @@ class CDrawPatch : public Component {
   int layer;
 };
 
-/*
 class CDrawVPatch : public Component {
  public:
   OBJECT_PROTO(CDrawVPatch);
@@ -73,8 +72,8 @@ class CDrawVPatch : public Component {
   virtual void update(float dt);
 
   SpriteAtlasEntry entry;
+  int layer;
 };
-*/
 
 // probably want all renders to happen after this has done its update
 class CCameraFocus : public Component {

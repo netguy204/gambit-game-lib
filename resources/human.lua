@@ -1,6 +1,7 @@
 module(..., package.seeall)
 
 require 'util'
+require 'bomb'
 
 SPEED = 600
 JUMP_SPEED = 1200
@@ -8,7 +9,6 @@ JUMP_HEIGHT = 300
 GRAV_ACCEL = util.accel(JUMP_SPEED, JUMP_HEIGHT)
 WIDTH = 28
 HEIGHT = 64
-THROW_SPEED = 1200
 
 function input_thread(go)
    local fire_pressed = false
@@ -35,13 +35,13 @@ function input_thread(go)
          local abs_pos = {0,0}
          util.vector_add(abs_pos, pos, {0, HEIGHT})
 
-         local abs_vel = {facing * THROW_SPEED / 3, THROW_SPEED}
+         local abs_vel = {facing * bomb.THROW_SPEED / 3, bomb.THROW_SPEED}
          if parent then
             par_vel = parent:vel()
             util.vector_add(abs_vel, abs_vel, par_vel)
          end
 
-         bomb(abs_pos, abs_vel)
+         bomb.make(abs_pos, abs_vel)
       end
 
       local vel = {0, 0}

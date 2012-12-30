@@ -151,15 +151,15 @@ void CStaticSprite::update(float dt) {
   scene()->addRelative(&scene()->layers[layer], sprite);
 }
 
-OBJECT_IMPL(CDrawPatch, Component);
-OBJECT_PROPERTY(CDrawPatch, entry);
-OBJECT_PROPERTY(CDrawPatch, layer);
+OBJECT_IMPL(CDrawHPatch, Component);
+OBJECT_PROPERTY(CDrawHPatch, entry);
+OBJECT_PROPERTY(CDrawHPatch, layer);
 
-CDrawPatch::CDrawPatch(void* go)
+CDrawHPatch::CDrawHPatch(void* go)
   : Component((GO*)go, PRIORITY_SHOW), entry(NULL), layer(LAYER_BACKGROUND) {
 }
 
-void CDrawPatch::update(float dt) {
+void CDrawHPatch::update(float dt) {
   CCollidable* coll = (CCollidable*)go->find_component(&CCollidable::Type);
   assert(coll);
 
@@ -183,6 +183,42 @@ void CDrawPatch::update(float dt) {
 
     scene()->addRelative(&scene()->layers[layer], sprite);
     offset += entry->w;
+  }
+}
+
+
+OBJECT_IMPL(CDrawVPatch, Component);
+OBJECT_PROPERTY(CDrawVPatch, entry);
+OBJECT_PROPERTY(CDrawVPatch, layer);
+
+CDrawVPatch::CDrawVPatch(void* go)
+  : Component((GO*)go, PRIORITY_SHOW), entry(NULL), layer(LAYER_BACKGROUND) {
+}
+
+void CDrawVPatch::update(float dt) {
+  CCollidable* coll = (CCollidable*)go->find_component(&CCollidable::Type);
+  assert(coll);
+
+  Vector_ pos;
+  go->pos(&pos);
+
+  Rect_ patch_rect;
+  rect_centered(&patch_rect, &pos, coll->w, coll->h);
+  if(!rect_intersect(&scene()->camera_rect, &patch_rect)) return;
+
+  int basex = pos.x;
+  int basey = pos.y;
+  int offset = -coll->h / 2 + entry->h / 2;
+  while(offset < coll->h / 2 - entry->h / 2) {
+    Sprite sprite = frame_make_sprite();
+    sprite_fillfromentry(sprite, entry);
+    sprite->displayX = basex;
+    sprite->displayY = basey + offset;
+    sprite->originX = 0.5;
+    sprite->originY = 0.5;
+
+    scene()->addRelative(&scene()->layers[layer], sprite);
+    offset += entry->h;
   }
 }
 
