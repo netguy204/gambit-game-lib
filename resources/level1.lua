@@ -174,6 +174,7 @@ end
 function steam_pipe(miny, maxy, midx)
    local _pipe = world:atlas_entry(constant.ATLAS, "outside_wall")
    local _smoke = world:atlas_entry(constant.ATLAS, "smoke")
+   local _water = world:atlas_entry(constant.ATLAS, "spark")
 
    local go = world:create_go()
    go:pos{midx, (miny + maxy) / 2}
@@ -181,6 +182,19 @@ function steam_pipe(miny, maxy, midx)
                                     layer=constant.BACKGROUND,
                                     h=maxy-miny})
    local lower_third = -((maxy-miny)/3)
+   go:add_component("CParticleEmitter", {entry=_water,
+                                         max_offset=5,
+                                         coloring=constant.BW,
+                                         start_color=1,
+                                         end_color=1,
+                                         start_alpha=0.7,
+                                         end_alpha=0.2,
+                                         max_life=1,
+                                         start_scale=0.1,
+                                         end_scale=0.4,
+                                         grav_accel=100,
+                                         offset={0, lower_third},
+                                         nmax=50})
    local system = {entry=_smoke,
                    max_offset=32,
                    coloring=constant.BW,
@@ -194,9 +208,10 @@ function steam_pipe(miny, maxy, midx)
                    max_life=1,
                    max_angular_speed=2,
                    max_speed=50,
+                   grav_accel=-10,
                    layer=constant.FOREGROUND,
                    offset={0, lower_third}}
-   go:add_component("CParticleEmitter", system)
+
    add_emitter_emitter(go, system, 500)
 end
 
