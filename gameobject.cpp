@@ -717,7 +717,7 @@ static int Lgo_send_message(lua_State *L) {
   GO* go = LCcheck_go(L, 1);
   Message* message = (Message*)lua_touserdata(L, 2);
   go->send_message(message);
-  return NULL;
+  return 0;
 }
 
 static int Lgo_broadcast_message(lua_State *L) {
