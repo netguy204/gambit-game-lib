@@ -31,17 +31,17 @@ void play_vorbis(const char* filename, float volume) {
 
 OBJECT_IMPL(CTimer, Component);
 OBJECT_PROPERTY(CTimer, time_remaining);
-OBJECT_PROPERTY(CTimer, expire_message);
+OBJECT_PROPERTY(CTimer, kind);
 
 CTimer::CTimer(void* go)
-  : Component((GO*)go, PRIORITY_THINK), time_remaining(0), expire_message(NULL) {
+  : Component((GO*)go, PRIORITY_THINK), time_remaining(0), kind(MESSAGE_TIMER_EXPIRED) {
 }
 
 void CTimer::update(float dt) {
   this->time_remaining -= dt;
 
   if(this->time_remaining <= 0) {
-    go->send_message(expire_message);
+    go->send_message(go->create_message(kind));
     delete_me = 1;
   }
 }

@@ -32,6 +32,8 @@ enum MessageKind {
 class Message {
  public:
   Message(GO* source, int kind, void* data);
+  void* operator new(size_t size);
+  void operator delete(void* obj);
 
   struct DLLNode_ node;
   GO* source;

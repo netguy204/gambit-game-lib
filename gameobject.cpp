@@ -144,6 +144,14 @@ Message::Message(GO* source, int kind, void* data)
   : source(source), kind(kind), data(data) {
 }
 
+void* Message::operator new(size_t size) {
+  return frame_alloc(size);
+}
+
+void Message::operator delete(void* obj) {
+  fail_exit("no need to delete messages");
+}
+
 Scene::Scene(World* world)
   : world(world) {
   memset(layers, 0, sizeof(layers));
@@ -223,16 +231,6 @@ GO::~GO() {
     world->have_waiting_messages.remove(this);
   }
 
-  // free all messages
-  inbox.foreach([](Message* msg) -> int {
-      delete msg;
-      return 0;
-    });
-  inbox_pending.foreach([](Message* msg) -> int {
-      delete msg;
-      return 0;
-    });
-
   world->bWorld.DestroyBody(body);
 }
 
@@ -262,11 +260,8 @@ void GO::messages_received() {
       return 0;
     });
 
-  // clear the inbox
-  inbox.foreach([](Message* msg) -> int {
-      delete msg;
-      return 0;
-    });
+  // clear the inbox. remember, messages are stack allocated so we
+  // don't need to free them explicitly
   inbox.zero();
 }
 

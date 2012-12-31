@@ -17,8 +17,7 @@ EXPLODING = 2
 
 function behavior_thread(go, component)
    local set_timer = function(delay)
-      local message = go:create_message(constant.TIMER_EXPIRED)
-      go:add_component("CTimer", {expire_message=message, time_remaining=delay})
+      go:add_component("CTimer", {kind=constant.TIMER_EXPIRED, time_remaining=delay})
    end
 
    set_timer(DELAY - EXPLODE_START)
