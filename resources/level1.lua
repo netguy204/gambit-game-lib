@@ -18,7 +18,35 @@ function merge_into(target, source)
    return target
 end
 
-function background_floor(minx, maxx, topy, art, opts)
+-- rect is minx, miny, mamxx, maxy
+function rect_union(a, b)
+   return {
+      math.min(a[1], b[1]),
+      math.min(a[2], b[2]),
+      math.max(a[3], b[3]),
+      math.max(a[4], b[4])}
+end
+
+function rect_center(a)
+   return {(a[1] + a[3]) / 2,
+           (a[2] + a[4]) / 2}
+end
+
+function rect_width(a)
+   return a[3] - a[1]
+end
+
+function rect_height(a)
+   return a[4] - a[2]
+end
+
+function stage_collidable(r)
+   return stage:add_component("CCollidable", {w=rect_width(r),
+                                              h=rect_height(r),
+                                              offset=rect_center(r)})
+end
+
+function floor(minx, maxx, topy, art, opts)
    local midx = (minx + maxx) / 2
    local midy = topy - art.h / 2
    local w = maxx - minx
@@ -27,11 +55,11 @@ function background_floor(minx, maxx, topy, art, opts)
                      layer=constant.BACKGROUND,
                      offset={midx, midy}}
 
-   c = stage:add_component("CDrawHPatch", merge_into(defaults, opts))
-   return {c}
+   stage:add_component("CDrawHPatch", merge_into(defaults, opts))
+   return {minx, topy - art.h, maxx, topy}
 end
 
-function background_wall(miny, maxy, midx, art, opts)
+function wall(miny, maxy, midx, art, opts)
    local midy = (miny + maxy) / 2
    local h = maxy - miny
 
@@ -39,27 +67,8 @@ function background_wall(miny, maxy, midx, art, opts)
                      layer=constant.BACKGROUND,
                      offset={midx, midy}}
 
-   c = stage:add_component("CDrawVPatch", merge_into(defaults, opts))
-   return {c}
-end
-
-function floor(minx, maxx, topy, art)
-   local midx = (minx + maxx) / 2
-   local midy = topy - art.h / 2
-   local c = background_floor(minx, maxx, topy, art)
-   local w = maxx - minx
-   table.insert(c, stage:add_component("CCollidable", {w=w, h=art.h,
-                                                       offset={midx, midy}}))
-   return c
-end
-
-function wall(miny, maxy, midx, art)
-   local midy = (miny + maxy) / 2
-   local c = background_wall(miny, maxy, midx, art)
-   local h = maxy - miny
-   table.insert(c, stage:add_component("CCollidable", {w=art.w, h=h,
-                                                       offset={midx, midy}}))
-   return c
+   stage:add_component("CDrawVPatch", merge_into(defaults, opts))
+   return {midx - art.w/2, miny, midx + art.w/2, maxy}
 end
 
 function round_to(val, nearest)
@@ -74,10 +83,9 @@ end
 function grass(minx, maxx, y)
    local _grass = world:atlas_entry(constant.ATLAS, "grass")
    local base = dirt(minx, maxx, y)
-   local overlay = background_floor(round_to(minx, _grass.w),
-                                    round_to(maxx, _grass.w),
-                                    y + _grass.h/2, _grass,
-                                    {layer=constant.FOREGROUND})
+   floor(round_to(minx, _grass.w), round_to(maxx, _grass.w),
+         y + _grass.h/2, _grass,
+         {layer=constant.FOREGROUND})
 
    return base
 end
@@ -124,16 +132,17 @@ function level_init()
 
    human.init{32, 100}
 
-   grass(-64*20, 128, 0)
-   dirt(-64*20, 1000, -64)
-   dirt(-64*20, 1000, -64*2)
-   dirt(-64*20, 1000, -64*3)
-   dirt(-64*20, 1000, -64*4)
-   dirt(-64*20, 1000, -64*5)
+   bottom = grass(-64*20, 128, 0)
+   bottom = rect_union(bottom, dirt(-64*20, 1000, -64))
+   bottom = rect_union(bottom, dirt(-64*20, 1000, -64*2))
+   bottom = rect_union(bottom, dirt(-64*20, 1000, -64*3))
+   bottom = rect_union(bottom, dirt(-64*20, 1000, -64*4))
+   bottom = rect_union(bottom, dirt(-64*20, 1000, -64*5))
+   bottom = rect_union(bottom, floor(128, 1000, 0, _wood))
 
-   floor(128, 1000, 0, _wood)
+   stage_collidable(bottom)
 
-   background_wall(0, 64*8, 128 + 32, _pillar)
-   wall(64*2, 64*8, 128 + (64-12), _wall)
+   wall(0, 64*8, 128 + 32, _pillar)
+   stage_collidable(wall(64*2, 64*8, 128 + (64-12), _wall))
    left_door(128 + 64, 0)
 end
