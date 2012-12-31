@@ -233,11 +233,19 @@ function level_init()
    stage_collidable(bottom)
 
    local room_height = 64*5
-   pillar(0, room_height, 128 + 32)
-   stage_collidable(wall(64*2, room_height, 128 + (64-12), _wall))
-   stage_collidable(wall(0, room_height, 64*20 - _wall.w/2, _wall))
-   stage_collidable(floor(192, 64*20, room_height, _wood))
+   pillar(0, room_height*2, 128 + 32)
+   stage_collidable(wall(64*2, room_height*3, 128 + (64-12), _wall))
+   stage_collidable(wall(0, room_height*3, 64*20 - _wall.w/2, _wall))
+
+   stage_collidable(floor(168, 64*16, room_height, _wood))
+   stage_collidable(floor(192+64*4, 64*20, room_height*2, _wood))
+   stage_collidable(floor(168, 64*20, room_height*3, _wood))
+
+   stage_collidable(floor(64*18, 64*20, room_height*0.5, _wood))
+   stage_collidable(floor(192, 192+64*2, room_height*1.5, _wood))
+
+
    left_door(128 + 64, 0)
 
-   steam_pipe(0, room_height, 64*10)
+   steam_pipe(room_height, room_height*2, 64*10)
 end

@@ -39,6 +39,9 @@ void CPlatformer::update(float dt) {
   // try to find a contact with our fixture
   b2ContactEdge* node = go->body->GetContactList();
   GO* old_parent = parent;
+  Vector_ ourpos;
+  go->pos(&ourpos);
+
   parent = NULL;
 
   while(node) {
@@ -54,8 +57,13 @@ void CPlatformer::update(float dt) {
       // normal goes from A to B so we need to be careful
       if((node->contact->GetFixtureA() == fixture && manifold.normal.y < 0)
          || manifold.normal.y > 0) {
-        parent = other;
-        break;
+
+        // normal is pointing the right way but the contact must be
+        // below us
+        if((manifold.points[0].y*BSCALE) < ourpos.y) {
+          parent = other;
+          break;
+        }
       }
     }
     node = node->next;
