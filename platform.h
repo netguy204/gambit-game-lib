@@ -20,6 +20,7 @@ class CPlatformer : public Component {
   float w;
   float h;
   float density;
+  float friction;
 };
 
 #endif

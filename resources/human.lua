@@ -31,13 +31,13 @@ function input_thread(go)
             fire_pressed = true
          end
       elseif fire_pressed then
-         local pos = go:pos()
          fire_pressed = false
-         local abs_pos = {0,0}
-         util.vector_add(abs_pos, pos, {0, HEIGHT})
 
-         local abs_vel = {facing * bomb.THROW_SPEED / 3, bomb.THROW_SPEED}
-         bomb.make(abs_pos, abs_vel)
+         local pos = go:pos()
+         pos[2] = pos[2] + HEIGHT
+
+         local vel = {facing * bomb.THROW_SPEED / 3, bomb.THROW_SPEED}
+         bomb.make(pos, vel)
       end
 
       if math.abs(input.leftright) > 0.01 then
@@ -80,14 +80,14 @@ end
 function init(pos)
    player:pos(pos)
    player:vel{0, 0}
-   player:gravity_scale(5)
+   player:gravity_scale()
 
    camera:pos{100, 100}
    camera:vel{0, 0}
 
    -- make player collidable
    local art = world:atlas_entry(constant.ATLAS, "guy")
-   player:add_component("CPlatformer", {w=WIDTH, h=HEIGHT})
+   player:add_component("CPlatformer", {w=WIDTH, h=HEIGHT, friction=0})
    player:add_component("CStaticSprite", {entry=art, layer=constant.PLAYER})
 
    -- link up the camera and input

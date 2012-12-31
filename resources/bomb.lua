@@ -60,14 +60,14 @@ end
 
 function make(pos, vel)
    local go = world:create_go()
-   go:pos(pos)
-   go:vel(vel)
-
    local bomb_art = world:atlas_entry(constant.ATLAS, "bomb")
    local spark_art = world:atlas_entry(constant.ATLAS, "spark")
 
    go:add_component("CStaticSprite", {entry=bomb_art, layer=constant.PLAYER})
-   go:add_component("CPlatformer", {w=DIM, h=DIM})
+   go:add_component("CPlatformer", {w=DIM, h=DIM, friction=1})
+   go:pos(pos)
+   go:vel(vel)
+
 
    local system = {entry=spark_art,
                    offset={0.0,16.0},

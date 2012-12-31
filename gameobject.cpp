@@ -725,14 +725,7 @@ static int Lgo_broadcast_message(lua_State *L) {
   float range = luaL_checknumber(L, 2);
   int kind = luaL_checkinteger(L, 3);
 
-  Vector_ pos;
-  go->pos(&pos);
-  world_foreach(go->world, &pos, range, [&](GO* item) -> int {
-      if(item != go) {
-        item->send_message(go->create_message(kind));
-      }
-      return 0;
-    });
+  go->world->broadcast_message(go, range, kind);
   return 0;
 }
 
@@ -867,11 +860,11 @@ void init_lua(World* world) {
 }
 
 World::World(void*p)
-  : L(NULL), scene(this), bWorld(b2Vec2(0, -10)) {
+  : L(NULL), scene(this), bWorld(b2Vec2(0, -50)) {
   init_lua(this);
 }
 World::World()
-  : L(NULL), scene(this), bWorld(b2Vec2(0, -10)) {
+  : L(NULL), scene(this), bWorld(b2Vec2(0, -50)) {
   init_lua(this);
 }
 
@@ -968,4 +961,14 @@ SpriteAtlas World::atlas(const char* atlas_name) {
 
 SpriteAtlasEntry World::atlas_entry(const char* atlas_name, const char* entry) {
   return spriteatlas_find(atlas(atlas_name), entry);
+}
+
+void World::broadcast_message(GO* sender, float radius, int kind) {
+  Vector_ pos;
+  sender->pos(&pos);
+
+  world_foreach(this, &pos, radius, [=](GO* go) -> int {
+      go->send_message(sender->create_message(kind));
+      return 0;
+    });
 }

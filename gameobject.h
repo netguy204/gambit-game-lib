@@ -238,6 +238,7 @@ class World : public Object {
 
   SpriteAtlas atlas(const char* atlas);
   SpriteAtlasEntry atlas_entry(const char* atlas, const char* entry);
+  void broadcast_message(GO* go, float radius, int kind);
 
   GO* create_go();
 
@@ -263,19 +264,25 @@ class World : public Object {
 
 int LCpush_world(lua_State *L, World* world);
 
+template <typename Func>
+class WorldCallback : public b2QueryCallback {
+ public:
+ WorldCallback(Func& func) : func(func) {}
+
+  bool ReportFixture(b2Fixture* fixture) {
+    return !func((GO*)fixture->GetBody()->GetUserData());
+  }
+
+  Func& func;
+};
+
 template<typename Func>
 void world_foreach(World* world, Vector pos, float rad, Func func) {
-  DLLNode node = world->game_objects.head;
-  float rad2 = rad * rad;
-  while(node) {
-    GO* go = world->game_objects.to_element(node);
-    Vector_ p;
-    go->pos(&p);
-    if(vector_dist2(&p, pos) < rad2 &&  func(go)) {
-      return;
-    }
-    node = node->next;
-  }
+  b2AABB aabb;
+  aabb.lowerBound.Set((pos->x - rad)/BSCALE, (pos->y - rad)/BSCALE);
+  aabb.upperBound.Set((pos->x + rad)/BSCALE, (pos->y + rad)/BSCALE);
+  WorldCallback<Func> callback(func);
+  world->bWorld.QueryAABB(&callback, aabb);
 }
 
 #endif
