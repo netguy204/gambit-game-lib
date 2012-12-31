@@ -181,7 +181,9 @@ void renderer_shutdown(void* empty) {
 void at_exit() {
 }
 
-void signal_render_complete(void* empty) {
+void signal_render_complete(void* _allocator) {
+  StackAllocator allocator = (StackAllocator)_allocator;
   eglSwapBuffers(display, surface);
   gl_check_("endframe");
+  render_reply_queue->enqueue(allocator);
 }

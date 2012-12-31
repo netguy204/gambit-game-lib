@@ -125,6 +125,9 @@ typedef struct Command_ {
   void *data;
 } *Command;
 
+typedef Queue<StackAllocator_, offsetof(StackAllocator_, node)> AllocatorQueue;
+extern AllocatorQueue* render_reply_queue;
+
 typedef Queue<Command_, offsetof(Command_, node)> CommandQueue;
 
 Command command_make(CommandFunction function, void* data);

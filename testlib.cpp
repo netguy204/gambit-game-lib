@@ -11,6 +11,7 @@ FixedAllocator clock_allocator;
 FixedAllocator image_resource_allocator;
 StackAllocator frame_allocator;
 CommandQueue* render_queue;
+AllocatorQueue* render_reply_queue;
 
 uint32_t screen_width;
 uint32_t screen_height;
@@ -48,9 +49,14 @@ void testlib_init() {
   listlib_init();
   clock_allocator = fixed_allocator_make(sizeof(struct Clock_), MAX_NUM_CLOCKS, "clock_allocator");
   image_resource_allocator = fixed_allocator_make(sizeof(struct ImageResource_), MAX_NUM_IMAGES, "image_resource_allocator");
-  frame_allocator = stack_allocator_make(1024 * 1024, "frame_allocator");
+  frame_allocator = stack_allocator_make(1024 * 1024, "frame_allocator1");
 
   render_queue = new CommandQueue();
+  render_reply_queue = new AllocatorQueue();
+
+  // get our offscreen allocator primed
+  render_reply_queue->enqueue(stack_allocator_make(1024 * 1024, "frame_allocator2"));
+
   render_barrier = threadbarrier_make(2);
 }
 
@@ -91,7 +97,8 @@ void* frame_alloc(size_t bytes) {
 }
 
 void end_frame() {
-  renderer_enqueue_sync(signal_render_complete, NULL);
+  renderer_enqueue(signal_render_complete, frame_allocator);
+  frame_allocator = render_reply_queue->dequeue();
 }
 
 static DLL_DECLARE(ImageResource_, node) image_resources;

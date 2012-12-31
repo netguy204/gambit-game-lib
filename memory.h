@@ -1,6 +1,7 @@
 #ifndef MEMORY_H
 #define MEMORY_H
 
+#include "listlib.h"
 #include "config.h"
 
 #include <stdlib.h>
@@ -22,6 +23,9 @@ typedef struct StackAllocator_ {
   const char* name;
   long max_alloced;
 #endif
+
+  // so these can be enqueued
+  DLLNode_ node;
 
   void* stack_top;
   void* stack_bottom;

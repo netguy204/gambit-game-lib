@@ -4,7 +4,7 @@ require 'human'
 require 'constant'
 require 'util'
 
-THROW_SPEED = 1200
+THROW_SPEED = 1600
 DIM = 48
 MAX_HEIGHT = 400
 GRAV_ACCEL = util.accel(THROW_SPEED, MAX_HEIGHT)

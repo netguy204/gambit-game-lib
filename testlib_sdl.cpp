@@ -116,6 +116,8 @@ void at_exit() {
   SDL_Quit();
 }
 
-void signal_render_complete(void* empty) {
+void signal_render_complete(void* _allocator) {
+  StackAllocator allocator = (StackAllocator)_allocator;
   SDL_GL_SwapBuffers();
+  render_reply_queue->enqueue(allocator);
 }
