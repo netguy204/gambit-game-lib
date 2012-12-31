@@ -96,6 +96,13 @@ struct PEntry {
   Vector_ pos;
   Vector_ vel;
   float life;
+  float angle;
+  float dangle;
+};
+
+enum EmitterColoring {
+  COLORING_BLACKBODY,
+  COLORING_BW
 };
 
 class CParticleEmitter : public Component {
@@ -109,17 +116,23 @@ class CParticleEmitter : public Component {
   virtual void update(float dt);
   void init_entry(PEntry* e, float life);
 
-  Vector_ offset;
   SpriteAtlasEntry entry;
+  Vector_ offset;
   int nmax;
   int active;
   int layer;
+  int coloring;
   float max_life;
   float max_speed;
+  float max_angular_speed;
   float max_offset;
   float grav_accel;
   float start_scale;
   float end_scale;
+  float start_color;
+  float end_color;
+  float start_alpha;
+  float end_alpha;
   PEntry* entries;
 };
 

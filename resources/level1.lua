@@ -6,6 +6,7 @@ require 'human'
 require 'constant'
 require 'util'
 require 'enemy'
+require 'rect'
 
 function merge_into(target, source)
    if not source then
@@ -18,32 +19,10 @@ function merge_into(target, source)
    return target
 end
 
--- rect is minx, miny, mamxx, maxy
-function rect_union(a, b)
-   return {
-      math.min(a[1], b[1]),
-      math.min(a[2], b[2]),
-      math.max(a[3], b[3]),
-      math.max(a[4], b[4])}
-end
-
-function rect_center(a)
-   return {(a[1] + a[3]) / 2,
-           (a[2] + a[4]) / 2}
-end
-
-function rect_width(a)
-   return a[3] - a[1]
-end
-
-function rect_height(a)
-   return a[4] - a[2]
-end
-
 function stage_collidable(r)
-   return stage:add_component("CCollidable", {w=rect_width(r),
-                                              h=rect_height(r),
-                                              offset=rect_center(r)})
+   return stage:add_component("CCollidable", {w=rect.width(r),
+                                              h=rect.height(r),
+                                              offset=rect.center(r)})
 end
 
 function floor(minx, maxx, topy, art, opts)
@@ -136,6 +115,92 @@ function pillar(miny, maxy, midx)
    stage:add_component("CStaticSprite", {offset={midx, capy}, entry=_pillar_cap})
 end
 
+function add_emitter_emitter(emittor_go, system, max_active_dist)
+
+   local emission_behavior = function(go, comp)
+      state = 1
+      go:add_component("CTimer", {kind=constant.TIMER_EXPIRED, time_remaining=1})
+
+      -- die as soon as our timer goes off
+      while true do
+         coroutine.yield()
+         if go:has_message(constant.TIMER_EXPIRED) then
+            if state == 1 then
+               -- start shutting down the particle system
+               state = 2
+               go:add_component("CTimer", {kind=constant.TIMER_EXPIRED, time_remaining=system.max_life})
+               local ps = go:find_component("CParticleEmitter")
+               ps:active(0)
+            elseif state == 2 then
+               go:delete_me(1)
+               return
+            end
+         end
+      end
+   end
+
+   local emittor_behavior = function(go, comp)
+      local reset_timer = function()
+         go:add_component("CTimer", {kind=constant.TIMER_EXPIRED, time_remaining=0.3})
+      end
+
+      reset_timer()
+
+      while true do
+         coroutine.yield()
+
+         -- timer messages wake us up and we kick out a steam particle
+         -- emitter, but only if the player is around to enjoy it
+         local dist = util.vector_dist(go:pos(), player:pos())
+         if dist < max_active_dist then
+            local sp = world:create_go()
+            sp:pos(go:pos())
+            sp:gravity_scale(-2)
+            sp:add_component("CPlatformer", {w=0.1, h=0.1, density=0.1})
+            sp:vel{300+600 * random_gaussian(),
+                   util.rand_between(-1000, 0)}
+            sp:add_component("CParticleEmitter", system)
+            sp:add_component("CScripted", {message_thread=util.thread(emission_behavior)})
+            --sp:add_component("CStaticSprite", {entry=world:atlas_entry(constant.ATLAS, "bomb")})
+         end
+         reset_timer()
+      end
+   end
+
+   emittor_go:add_component("CScripted", {message_thread=util.thread(emittor_behavior)})
+end
+
+
+function steam_pipe(miny, maxy, midx)
+   local _pipe = world:atlas_entry(constant.ATLAS, "outside_wall")
+   local _smoke = world:atlas_entry(constant.ATLAS, "smoke")
+
+   local go = world:create_go()
+   go:pos{midx, (miny + maxy) / 2}
+   go:add_component("CDrawVPatch", {entry=_pipe,
+                                    layer=constant.BACKGROUND,
+                                    h=maxy-miny})
+   local lower_third = -((maxy-miny)/3)
+   local system = {entry=_smoke,
+                   max_offset=32,
+                   coloring=constant.BW,
+                   start_scale=0.3,
+                   end_scale=0.7,
+                   start_color=1,
+                   end_color=1,
+                   start_alpha=0.5,
+                   end_alpha=0,
+                   nmax=40,
+                   max_life=1,
+                   max_angular_speed=2,
+                   max_speed=50,
+                   layer=constant.FOREGROUND,
+                   offset={0, lower_third}}
+   go:add_component("CParticleEmitter", system)
+   add_emitter_emitter(go, system, 500)
+end
+
+
 function level_init()
    local _wood = world:atlas_entry(constant.ATLAS, "wood1")
    local _wall = world:atlas_entry(constant.ATLAS, "outside_wall")
@@ -143,13 +208,13 @@ function level_init()
    human.init{32, 100}
 
    local bottom = grass(-64*20, 128, 0)
-   bottom = rect_union(bottom, dirt(128, 64*20, 0, {layer=constant.BACKDROP}))
-   bottom = rect_union(bottom, dirt(-64*20, 64*20, -64))
-   bottom = rect_union(bottom, dirt(-64*20, 64*20, -64*2))
-   bottom = rect_union(bottom, dirt(-64*20, 64*20, -64*3))
-   bottom = rect_union(bottom, dirt(-64*20, 64*20, -64*4))
-   bottom = rect_union(bottom, dirt(-64*20, 64*20, -64*5))
-   bottom = rect_union(bottom, floor(128, 64*20, 0, _wood))
+   bottom = rect.union(bottom, dirt(128, 64*20, 0, {layer=constant.BACKDROP}))
+   bottom = rect.union(bottom, dirt(-64*20, 64*20, -64))
+   bottom = rect.union(bottom, dirt(-64*20, 64*20, -64*2))
+   bottom = rect.union(bottom, dirt(-64*20, 64*20, -64*3))
+   bottom = rect.union(bottom, dirt(-64*20, 64*20, -64*4))
+   bottom = rect.union(bottom, dirt(-64*20, 64*20, -64*5))
+   bottom = rect.union(bottom, floor(128, 64*20, 0, _wood))
    stage_collidable(bottom)
 
    local room_height = 64*5
@@ -158,4 +223,6 @@ function level_init()
    stage_collidable(wall(0, room_height, 64*20 - _wall.w/2, _wall))
    stage_collidable(floor(192, 64*20, room_height, _wood))
    left_door(128 + 64, 0)
+
+   steam_pipe(0, room_height, 64*10)
 end

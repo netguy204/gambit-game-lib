@@ -69,9 +69,13 @@ function make(pos, vel)
 
 
    local system = {entry=spark_art,
-                   offset={0.0,16.0},
+                   offset={0.0,bomb_art.h/2},
+                   max_offset=0,
                    nmax=10,
-                   start_scale=0}
+                   start_color=7000,
+                   end_color=5000,
+                   start_scale=0,
+                   layer=constant.BACKDROP}
 
    go:add_component("CParticleEmitter", system)
    go:add_component("CScripted", {message_thread=util.thread(behavior_thread)})

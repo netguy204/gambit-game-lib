@@ -54,3 +54,8 @@ function thread(fn)
 
    return coroutine.create(threadfn)
 end
+
+function rand_between(lower, upper)
+   local range = upper - lower
+   return lower + math.random() * range
+end

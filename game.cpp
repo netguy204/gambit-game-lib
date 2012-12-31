@@ -258,6 +258,12 @@ OBJECT_PROPERTY(CParticleEmitter, end_scale);
 OBJECT_PROPERTY(CParticleEmitter, nmax);
 OBJECT_PROPERTY(CParticleEmitter, offset);
 OBJECT_PROPERTY(CParticleEmitter, layer);
+OBJECT_PROPERTY(CParticleEmitter, coloring);
+OBJECT_PROPERTY(CParticleEmitter, start_color);
+OBJECT_PROPERTY(CParticleEmitter, end_color);
+OBJECT_PROPERTY(CParticleEmitter, start_alpha);
+OBJECT_PROPERTY(CParticleEmitter, end_alpha);
+OBJECT_PROPERTY(CParticleEmitter, max_angular_speed);
 
 void vector_random(Vector v, float scale) {
   float mag = 0;
@@ -274,7 +280,9 @@ void vector_random(Vector v, float scale) {
 CParticleEmitter::CParticleEmitter(void* go)
   : Component((GO*)go, PRIORITY_ACT), entry(NULL), nmax(0), entries(NULL),
     max_life(1), max_speed(100), max_offset(3), active(1), grav_accel(0),
-    start_scale(1), end_scale(1), layer(LAYER_BACKGROUND) {
+    start_scale(1), end_scale(1), layer(LAYER_BACKGROUND), start_alpha(1),
+    end_alpha(0), start_color(6500), end_color(2000), coloring(COLORING_BLACKBODY),
+    max_angular_speed(0) {
   vector_zero(&offset);
 }
 
@@ -288,6 +296,9 @@ void CParticleEmitter::init() {
   for(int ii = 0; ii < nmax; ++ii) {
     PEntry* e = &entries[ii];
     init_entry(e, dlife * ii);
+    // off in the nether so it can burn out
+    e->pos.x = -10000;
+    e->pos.y = -10000;
   }
 }
 
@@ -299,6 +310,13 @@ void CParticleEmitter::init_entry(PEntry* e, float life) {
   vector_random(&e->pos, max_offset);
   vector_add(&e->pos, &e->pos, &wpos);
   e->life = life;
+  if(max_angular_speed > 0) {
+    e->angle = random_next_gaussian(&rgen) * 2 * M_PI;
+    e->dangle = random_next_gaussian(&rgen) * max_angular_speed;
+  } else {
+    e->angle = 0;
+    e->dangle = 0;
+  }
 }
 
 CParticleEmitter::~CParticleEmitter() {
@@ -306,10 +324,9 @@ CParticleEmitter::~CParticleEmitter() {
 }
 
 void CParticleEmitter::update(float dt) {
-  const float max_temp = 6500;
-  const float min_temp = 2000;
-  const float temp_slope = (max_temp - min_temp) / max_life;
+  const float color_slope = (start_color - end_color) / max_life;
   const float scale_slope = (start_scale - end_scale) / max_life;
+  const float alpha_slope = (start_alpha - end_alpha) / max_life;
 
   for(int ii = 0; ii < nmax; ++ii) {
     PEntry* e = &entries[ii];
@@ -323,10 +340,14 @@ void CParticleEmitter::update(float dt) {
 
     // integrate
     e->vel.y -= grav_accel * dt;
+    e->angle += e->dangle * dt;
+
     vector_integrate(&e->pos, &e->pos, &e->vel, dt);
     e->life -= dt;
 
     const float scale = end_scale + e->life * scale_slope;
+    const float color = end_color + e->life * color_slope;
+    const float alpha = end_alpha + e->life * alpha_slope;
 
     // draw
     Sprite sprite = frame_make_sprite();
@@ -337,11 +358,21 @@ void CParticleEmitter::update(float dt) {
     sprite->originY = 0.5;
     sprite->w *= scale;
     sprite->h *= scale;
-    sprite->angle = vector_angle(&e->vel);
+    if(max_angular_speed > 0) {
+      sprite->angle = e->angle;
+    } else {
+      sprite->angle = vector_angle(&e->vel);
+    }
 
-    const float temp = min_temp + e->life * temp_slope;
-    color_for_temp(temp, sprite->color);
-    sprite->color[3] = e->life / max_life;
+    if(coloring == COLORING_BLACKBODY) {
+      color_for_temp(color, sprite->color);
+    } else {
+      sprite->color[0] = color;
+      sprite->color[1] = color;
+      sprite->color[2] = color;
+    }
+
+    sprite->color[3] = alpha;
 
     scene()->addRelative(&scene()->particles[layer], sprite);
   }
@@ -350,23 +381,29 @@ void CParticleEmitter::update(float dt) {
 void game_step(long delta, InputState state);
 
 int world_reset_requested = 0;
-int reset_world(lua_State* L);
+
+int Lreset_world(lua_State* L) {
+  world_reset_requested = 1;
+  return 0;
+}
+
+int Lrandom_gaussian(lua_State* L) {
+  lua_pushnumber(L, random_next_gaussian(&rgen));
+  return 1;
+}
 
 void init_world() {
   World* old_world = world;
 
   world = new World();
 
-  lua_register(world->L, "reset_world", reset_world);
+  lua_register(world->L, "reset_world", Lreset_world);
+  lua_register(world->L, "random_gaussian", Lrandom_gaussian);
+
   world->load_level("resources/level1.lua");
 
   if(old_world) delete old_world;
   world_reset_requested = 0;
-}
-
-int reset_world(lua_State* L) {
-  world_reset_requested = 1;
-  return 0;
 }
 
 void game_support_init() {
