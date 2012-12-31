@@ -118,65 +118,9 @@ function pillar(miny, maxy, midx, opt)
    stage:add_component("CStaticSprite", merge_into(defaults, opt))
 end
 
-function add_emitter_emitter(emittor_go, system, max_active_dist)
-
-   local emission_behavior = function(go, comp)
-      state = 1
-      go:add_component("CTimer", {kind=constant.TIMER_EXPIRED, time_remaining=3})
-
-      -- die as soon as our timer goes off
-      while true do
-         coroutine.yield()
-         if go:has_message(constant.TIMER_EXPIRED) then
-            if state == 1 then
-               -- start shutting down the particle system
-               state = 2
-               go:add_component("CTimer", {kind=constant.TIMER_EXPIRED, time_remaining=system.max_life})
-               local ps = go:find_component("CParticleEmitter")
-               ps:active(0)
-            elseif state == 2 then
-               go:delete_me(1)
-               return
-            end
-         end
-      end
-   end
-
-   local emittor_behavior = function(go, comp)
-      local reset_timer = function()
-         go:add_component("CTimer", {kind=constant.TIMER_EXPIRED, time_remaining=0.8})
-      end
-
-      reset_timer()
-
-      while true do
-         coroutine.yield()
-
-         -- timer messages wake us up and we kick out a steam particle
-         -- emitter, but only if the player is around to enjoy it
-         local dist = util.vector_dist(go:pos(), player:pos())
-         if dist < max_active_dist then
-            local sp = world:create_go()
-            sp:pos(go:pos())
-            sp:gravity_scale(-2)
-            sp:add_component("CPlatformer", {w=0.1, h=0.1, density=0.1})
-            sp:vel{-300+300 * random_gaussian(),
-                   util.rand_between(-100, 0)}
-            sp:add_component("CParticleEmitter", system)
-            sp:add_component("CScripted", {message_thread=util.thread(emission_behavior)})
-            --sp:add_component("CStaticSprite", {entry=world:atlas_entry(constant.ATLAS, "bomb")})
-         end
-         reset_timer()
-      end
-   end
-
-   emittor_go:add_component("CScripted", {message_thread=util.thread(emittor_behavior)})
-end
-
-
 function steam_pipe(miny, maxy, midx)
    local _pipe = world:atlas_entry(constant.ATLAS, "outside_wall")
-   local _smoke = world:atlas_entry(constant.ATLAS, "smoke")
+   local _steam = world:atlas_entry(constant.ATLAS, "smoke")
    local _water = world:atlas_entry(constant.ATLAS, "spark")
 
    local go = world:create_go()
@@ -185,38 +129,36 @@ function steam_pipe(miny, maxy, midx)
                                        layer=constant.BACKGROUND,
                                        w=_pipe.w,
                                        h=maxy-miny})
-   local lower_third = -((maxy-miny)/3)
-   go:add_component("CParticleEmitter", {entry=_water,
-                                         max_offset=5,
-                                         coloring=constant.BW,
-                                         start_color=1,
-                                         end_color=1,
-                                         start_alpha=0.7,
-                                         end_alpha=0.2,
-                                         max_life=1,
-                                         start_scale=0.1,
-                                         end_scale=0.4,
-                                         grav_accel=100,
-                                         offset={0, lower_third},
-                                         nmax=50})
-   local system = {entry=_smoke,
-                   max_offset=32,
-                   coloring=constant.BW,
-                   start_scale=0.0,
-                   end_scale=0.7,
-                   start_color=1,
-                   end_color=1,
-                   start_alpha=0.5,
-                   end_alpha=0,
-                   nmax=80,
-                   max_life=1,
-                   max_angular_speed=2,
-                   max_speed=50,
-                   grav_accel=-10,
-                   layer=constant.FOREGROUND,
-                   offset={0, lower_third}}
 
-   add_emitter_emitter(go, system, 500)
+   local lower_third = -((maxy-miny)/3)
+   local water = go:add_component("CParticleEmitter", {entry=_water,
+                                                       max_offset=5,
+                                                       coloring=constant.BW,
+                                                       start_color=1,
+                                                       end_color=1,
+                                                       start_alpha=0.7,
+                                                       end_alpha=0.2,
+                                                       max_life=1,
+                                                       start_scale=0.1,
+                                                       end_scale=0.4,
+                                                       grav_accel=100,
+                                                       offset={0, lower_third},
+                                                       nmax=50})
+   local steam = go:add_component("CParticleEmitter", {entry=_steam,
+                                                       max_offset=5,
+                                                       coloring=constant.BW,
+                                                       start_color=1,
+                                                       end_color=1,
+                                                       start_alpha=1,
+                                                       end_alpha=0,
+                                                       start_scale=0,
+                                                       end_scale=1,
+                                                       max_life=1,
+                                                       max_angular_speed=1,
+                                                       max_speed=5,
+                                                       nmax=5,
+                                                       offset={0, lower_third}})
+
 end
 
 function wallpaper(r, art, opts)
