@@ -795,6 +795,7 @@ void LClink_metatable(lua_State *L, const char* name, const luaL_Reg* table) {
 
 OBJECT_IMPL(World, Object);
 OBJECT_PROPERTY(World, input_state);
+OBJECT_PROPERTY(World, focus);
 OBJECT_PROPERTY(World, dt);
 
 void init_lua(World* world) {
@@ -879,6 +880,11 @@ World::~World() {
 
 void World::update(float dt) {
   this->dt = dt;
+
+  // do an integration step
+  bWorld.Step(dt, 6, 2);
+  update_camera(dt);
+
   scene.start();
 
   // let the game objects initialize any new components
@@ -890,9 +896,6 @@ void World::update(float dt) {
       }
       return 0;
     });
-
-  // do an integration step
-  bWorld.Step(dt, 6, 2);
 
   // update the comonents
   this->components.foreach([=](Component* comp) -> int {
@@ -918,6 +921,33 @@ void World::update(float dt) {
         return 0;
       });
   }
+}
+
+void World::update_camera(float dt) {
+  if(!focus) return;
+  Vector_ offset = {screen_width / 2.0f, screen_height / 2.0f};
+  Vector_ desired;
+  focus->pos(&desired);
+  vector_sub(&desired, &desired, &offset);
+
+  float max_v = 1600;
+  const float max_dx = max_v * dt;
+
+  Vector_ cpos;
+  camera->pos(&cpos);
+
+  Vector_ delta;
+  vector_sub(&delta, &desired, &cpos);
+  float mag = vector_mag(&delta);
+  if(mag < max_dx) {
+    // snap
+    camera->set_pos(&desired);
+    return;
+  }
+
+  vector_scale(&delta, &delta, max_dx / mag);
+  vector_add(&cpos, &cpos, &delta);
+  camera->set_pos(&cpos);
 }
 
 void World::load_level(const char* level) {

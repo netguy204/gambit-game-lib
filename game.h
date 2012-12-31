@@ -72,19 +72,6 @@ class CDrawWallpaper : public Component {
   int layer;
 };
 
-
-// probably want all renders to happen after this has done its update
-class CCameraFocus : public Component {
- public:
-  OBJECT_PROTO(CCameraFocus);
-
-  CCameraFocus(void* go);
-
-  virtual void update(float dt);
-
-  GO* focus;
-};
-
 struct PEntry {
   Vector_ pos;
   Vector_ vel;

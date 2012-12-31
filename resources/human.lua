@@ -91,6 +91,6 @@ function init(pos)
    player:add_component("CStaticSprite", {entry=art, layer=constant.PLAYER})
 
    -- link up the camera and input
-   camera:add_component("CCameraFocus", {focus=player})
+   world:focus(player)
    player:add_component("CScripted", {update_thread=util.thread(input_thread)})
 end

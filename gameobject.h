@@ -236,6 +236,7 @@ class World : public Object {
   virtual ~World();
 
   virtual void update(float dt);
+  void update_camera(float dt);
 
   void load_level(const char* level);
 
@@ -248,6 +249,7 @@ class World : public Object {
   GO* player;
   GO* camera;
   GO* stage;
+  GO* focus;
 
   Scene scene;
 

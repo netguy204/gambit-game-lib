@@ -159,16 +159,16 @@ void CDrawWallpaper::update(float dt) {
 
   vector_add(&pos, &pos, &offset);
 
-  float x_bl = (pos.x - w/2 + entry->w/2) - cpos.x;
-  if(x_bl > screen_width) return;
+  float x_bl = (pos.x - w/2 + entry->w/2) - floorf(cpos.x);
+  if(x_bl > screen_width + entry->w/2) return;
 
-  float y_bl = (pos.y - h/2 + entry->h/2) - cpos.y;
-  if(y_bl > screen_height) return;
+  float y_bl = (pos.y - h/2 + entry->h/2) - floorf(cpos.y);
+  if(y_bl > screen_height + entry->w/2) return;
 
-  float x_tr = (pos.x + w/2) - cpos.x;
+  float x_tr = (pos.x + w/2) - floorf(cpos.x);
   if(x_tr < 0) return;
 
-  float y_tr = (pos.y + h/2) - cpos.y;
+  float y_tr = (pos.y + h/2) - floorf(cpos.y);
   if(y_tr < 0) return;
 
   // now we have some overlap, clamp the tr to the screen and figure
@@ -203,40 +203,6 @@ void CDrawWallpaper::update(float dt) {
     }
     y += entry->h;
   }
-}
-
-OBJECT_IMPL(CCameraFocus, Component);
-OBJECT_PROPERTY(CCameraFocus, focus);
-
-CCameraFocus::CCameraFocus(void* go)
-  : Component((GO*)go, PRIORITY_THINK), focus(NULL)  {
-}
-
-void CCameraFocus::update(float dt) {
-  if(!focus) return;
-  Vector_ offset = {screen_width / 2.0f, screen_height / 2.0f};
-  Vector_ desired;
-  focus->pos(&desired);
-  vector_sub(&desired, &desired, &offset);
-
-  float max_v = 1600;
-  const float max_dx = max_v * dt;
-
-  Vector_ cpos;
-  go->pos(&cpos);
-
-  Vector_ delta;
-  vector_sub(&delta, &desired, &cpos);
-  float mag = vector_mag(&delta);
-  if(mag < max_dx) {
-    // snap
-    go->set_pos(&desired);
-    return;
-  }
-
-  vector_scale(&delta, &delta, max_dx / mag);
-  vector_add(&cpos, &cpos, &delta);
-  go->set_pos(&cpos);
 }
 
 OBJECT_IMPL(CParticleEmitter, Component);
