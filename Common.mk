@@ -88,9 +88,9 @@ GAME_OBJS=$(patsubst %.cpp,%.o,$(GAME_SRC))
 clean:
 	rm -rf $(GAME_OBJS) $(BIN) buildatlas test items_bin $(RESOURCE_FILES)
 
-dist-clean: clean
+distclean: clean
 	rm -rf $(C_OBJS)
-
-
+	(cd vender/libogg-1.3.0 ; make distclean)
+	(cd vender/lua-5.2.1 ; make clean)
 
 .phony: all resources pngs
