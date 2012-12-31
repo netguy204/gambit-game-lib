@@ -173,9 +173,10 @@ void renderer_gl_init() {
 
   glEnable(GL_TEXTURE_2D);
   glEnable(GL_BLEND);
-  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  glBlendEquationSeparate(GL_FUNC_ADD, GL_ONE);
+  glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
 
-  glClearColor(0.0f, 0.2f, 0.8f, 1.0f);
+  glClearColor(0.8f, 0.8f, 0.8f, 1.0f);
   glViewport(0, 0, screen_width, screen_height);
 
   matrix_orthographic_proj(&orthographic_projection, 0.0f, screen_width, 0.0f, screen_height,

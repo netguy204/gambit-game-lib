@@ -122,7 +122,7 @@ function add_emitter_emitter(emittor_go, system, max_active_dist)
 
    local emission_behavior = function(go, comp)
       state = 1
-      go:add_component("CTimer", {kind=constant.TIMER_EXPIRED, time_remaining=1})
+      go:add_component("CTimer", {kind=constant.TIMER_EXPIRED, time_remaining=3})
 
       -- die as soon as our timer goes off
       while true do
@@ -144,7 +144,7 @@ function add_emitter_emitter(emittor_go, system, max_active_dist)
 
    local emittor_behavior = function(go, comp)
       local reset_timer = function()
-         go:add_component("CTimer", {kind=constant.TIMER_EXPIRED, time_remaining=0.3})
+         go:add_component("CTimer", {kind=constant.TIMER_EXPIRED, time_remaining=0.8})
       end
 
       reset_timer()
@@ -160,8 +160,8 @@ function add_emitter_emitter(emittor_go, system, max_active_dist)
             sp:pos(go:pos())
             sp:gravity_scale(-2)
             sp:add_component("CPlatformer", {w=0.1, h=0.1, density=0.1})
-            sp:vel{300+600 * random_gaussian(),
-                   util.rand_between(-1000, 0)}
+            sp:vel{-300+300 * random_gaussian(),
+                   util.rand_between(-100, 0)}
             sp:add_component("CParticleEmitter", system)
             sp:add_component("CScripted", {message_thread=util.thread(emission_behavior)})
             --sp:add_component("CStaticSprite", {entry=world:atlas_entry(constant.ATLAS, "bomb")})
@@ -202,13 +202,13 @@ function steam_pipe(miny, maxy, midx)
    local system = {entry=_smoke,
                    max_offset=32,
                    coloring=constant.BW,
-                   start_scale=0.3,
+                   start_scale=0.0,
                    end_scale=0.7,
                    start_color=1,
                    end_color=1,
                    start_alpha=0.5,
                    end_alpha=0,
-                   nmax=40,
+                   nmax=80,
                    max_life=1,
                    max_angular_speed=2,
                    max_speed=50,
