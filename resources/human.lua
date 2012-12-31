@@ -5,8 +5,6 @@ require 'bomb'
 
 SPEED = 600
 JUMP_SPEED = 1200
-JUMP_HEIGHT = 300
-GRAV_ACCEL = util.accel(JUMP_SPEED, JUMP_HEIGHT)
 WIDTH = 28
 HEIGHT = 64
 
@@ -17,13 +15,16 @@ function input_thread(go)
    local facing = 1
    local left_art = world:atlas_entry(constant.ATLAS, "guy-left")
    local right_art = world:atlas_entry(constant.ATLAS, "guy")
+   local platformer = go:find_component("CPlatformer")
+   local state = FALLING
+   local sprite = go:find_component("CStaticSprite")
 
    while true do
       coroutine.yield()
 
       local input = world:input_state()
-      local parent = go:transform_parent()
-      local _vel = go:_vel()
+      local parent = platformer:parent()
+      local vel = go:vel()
 
       if input.action2 then
          if not fire_pressed then
@@ -36,34 +37,33 @@ function input_thread(go)
          util.vector_add(abs_pos, pos, {0, HEIGHT})
 
          local abs_vel = {facing * bomb.THROW_SPEED / 3, bomb.THROW_SPEED}
-         if parent then
-            par_vel = parent:vel()
-            util.vector_add(abs_vel, abs_vel, par_vel)
-         end
-
          bomb.make(abs_pos, abs_vel)
       end
 
-      local vel = {0, 0}
-      _vel[1] = input.leftright * SPEED
       if math.abs(input.leftright) > 0.01 then
+         vel[1] = input.leftright * SPEED
          facing = util.sign(input.leftright)
          if facing < 0 then
-            go:find_component("CStaticSprite"):entry(left_art)
+            sprite:entry(left_art)
          else
-            go:find_component("CStaticSprite"):entry(right_art)
+            sprite:entry(right_art)
          end
+         go:vel(vel)
+      elseif math.abs(vel[1]) > 0.01 then
+         vel[1] = 0
+         go:vel(vel)
       end
 
       if input.action1 and parent then
-         _vel[2] = JUMP_SPEED
+         vel[2] = JUMP_SPEED
+         go:vel(vel)
       end
 
       if not input.action1 and not parent then
-         _vel[2] = math.min(_vel[2], 0)
+         vel[2] = math.min(vel[2], 0)
+         go:vel(vel)
       end
 
-      go:_vel(_vel)
 
       if input.action3 then
          if not interrupt_pressed then
@@ -78,15 +78,16 @@ function input_thread(go)
 end
 
 function init(pos)
-   player:_pos(pos)
-   player:_vel{0, 0}
-   camera:_pos{100, 100}
-   camera:_vel{0, 0}
+   player:pos(pos)
+   player:vel{0, 0}
+   player:gravity_scale(5)
+
+   camera:pos{100, 100}
+   camera:vel{0, 0}
 
    -- make player collidable
    local art = world:atlas_entry(constant.ATLAS, "guy")
-   player:add_component("CCollidable", {w=WIDTH, h=HEIGHT})
-   player:add_component("CPlatformer", {grav_accel=GRAV_ACCEL})
+   player:add_component("CPlatformer", {w=WIDTH, h=HEIGHT})
    player:add_component("CStaticSprite", {entry=art, layer=constant.PLAYER})
 
    -- link up the camera and input

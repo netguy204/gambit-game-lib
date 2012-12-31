@@ -55,15 +55,19 @@ CLeftAndRight::CLeftAndRight(void* go)
 }
 
 void CLeftAndRight::update(float dt) {
-  if(go->_vel.x > 0) {
-    if(go->_pos.x > this->maxx) {
-      go->_pos.x = this->maxx;
-      go->_vel.x = -go->_vel.x;
+  Vector_ vel, pos;
+  go->pos(&pos);
+  go->vel(&vel);
+
+  if(vel.x > 0) {
+    if(pos.x > this->maxx) {
+      pos.x = this->maxx;
+      vel.x = -vel.x;
     }
   } else {
-    if(go->_pos.x < this->minx) {
-      go->_pos.x = this->minx;
-      go->_vel.x = -go->_vel.x;
+    if(pos.x < this->minx) {
+      pos.x = this->minx;
+      vel.x = -vel.x;
     }
   }
 }
@@ -72,30 +76,36 @@ OBJECT_IMPL(CTestDisplay, Component);
 OBJECT_PROPERTY(CTestDisplay, r);
 OBJECT_PROPERTY(CTestDisplay, g);
 OBJECT_PROPERTY(CTestDisplay, b);
+OBJECT_PROPERTY(CTestDisplay, w);
+OBJECT_PROPERTY(CTestDisplay, h);
 
 CTestDisplay::CTestDisplay(void* go)
-  : Component((GO*)go, PRIORITY_SHOW), r(1.0f), g(0.0f), b(1.0f) {
+  : Component((GO*)go, PRIORITY_SHOW), r(1.0f), g(0.0f), b(1.0f), w(10), h(10) {
 }
 
 void CTestDisplay::update(float dt) {
-  CCollidable* coll = (CCollidable*)go->find_component(&CCollidable::Type);
-
-  assert(coll);
+  Vector_ pos;
+  go->pos(&pos);
 
   struct ColoredRect_ rect;
-  coll->rect(&rect);
-
+  rect.minx = pos.x - w/2;
+  rect.maxx = pos.x + w/2;
+  rect.miny = pos.y - h/2;
+  rect.maxy = pos.y + h/2;
   rect.color[0] = r;
   rect.color[1] = g;
   rect.color[2] = b;
   rect.color[3] = 1.0f;
 
-  float dy = floorf(camera()->_pos.y);
+  Vector_ cpos;
+  camera()->pos(&cpos);
+
+  float dy = floorf(cpos.y);
   rect.miny -= dy;
   rect.maxy -= dy;
   if(rect.miny > screen_height || rect.maxy < 0) return;
 
-  float dx = floorf(camera()->_pos.x);
+  float dx = floorf(cpos.x);
   rect.minx -= dx;
   rect.maxx -= dx;
   if(rect.minx > screen_width || rect.maxx < 0) return;
@@ -219,17 +229,21 @@ void CCameraFocus::update(float dt) {
   float max_v = 1600;
   const float max_dx = max_v * dt;
 
+  Vector_ cpos;
+  go->pos(&cpos);
+
   Vector_ delta;
-  vector_sub(&delta, &desired, &go->_pos);
+  vector_sub(&delta, &desired, &cpos);
   float mag = vector_mag(&delta);
   if(mag < max_dx) {
     // snap
-    go->_pos = desired;
+    go->set_pos(&desired);
     return;
   }
 
   vector_scale(&delta, &delta, max_dx / mag);
-  vector_add(&go->_pos, &go->_pos, &delta);
+  vector_add(&cpos, &cpos, &delta);
+  go->set_pos(&cpos);
 }
 
 OBJECT_IMPL(CParticleEmitter, Component);
@@ -404,7 +418,6 @@ void game_step(long delta, InputState state) {
 
   float dt = clock_update(main_clock, delta / 1000.0);
 
-  world_notify_collisions(world);
   world->update(dt);
   world->scene.enqueue();
 

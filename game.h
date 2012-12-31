@@ -36,7 +36,7 @@ class CTestDisplay : public Component {
 
   virtual void update(float dt);
 
-  float r, g, b;
+  float r, g, b, w, h;
 };
 
 class CStaticSprite : public Component {

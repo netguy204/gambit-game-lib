@@ -8,14 +8,16 @@ B2D_SRC=\
 	$(wildcard $(B2D_BASE)/Box2D/Dynamics/Contacts/*.cpp) \
 	$(wildcard $(B2D_BASE)/Box2D/Rope/*.cpp)
 
-CPP_SRC+= \
+GAME_SRC=\
 	threadlib.cpp memory.cpp listlib.cpp testlib.cpp \
 	sampler.cpp audio.cpp game.cpp vector.cpp \
 	rect.cpp controls.cpp steering.cpp spriteatlas.cpp \
 	realmain.cpp stb_image.cpp tiles.cpp random.cpp \
 	perlin.cpp heapvector.cpp xmltools.cpp \
 	pathfinder.cpp utils.cpp matrix.cpp ooc.cpp \
-	game_ui.cpp platform.cpp gameobject.cpp color.cpp \
+	game_ui.cpp platform.cpp gameobject.cpp color.cpp
+
+CPP_SRC+=$(GAME_SRC) \
 	$(B2D_SRC)
 
 TREMOR_SRC=$(wildcard vender/tremor/*.c)
@@ -81,8 +83,13 @@ items_bin: items_bin.o $(C_TOOL_OBJS)
 sfmt/SFMT.o: sfmt/SFMT.c
 	$(CXX) $(CXXFLAGS) -c $< -o $@ -DSFMT_MEXP=607
 
+GAME_OBJS=$(patsubst %.cpp,%.o,$(GAME_SRC))
+
 clean:
-	rm -rf $(C_OBJS) $(BIN) buildatlas test items_bin $(RESOURCE_FILES)
+	rm -rf $(GAME_OBJS) $(BIN) buildatlas test items_bin $(RESOURCE_FILES)
+
+dist-clean: clean
+	rm -rf $(C_OBJS)
 
 
 

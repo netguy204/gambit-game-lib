@@ -6,8 +6,6 @@
 
 #include <math.h>
 
-#define BSCALE 64.0f
-
 void LCpush_entry(lua_State* L, SpriteAtlasEntry entry) {
   lua_newtable(L);
   lua_pushlightuserdata(L, entry);
@@ -169,12 +167,14 @@ void Scene::addAbsolute(SpriteList* list, Sprite sprite) {
 }
 
 void Scene::start() {
-  dx = floorf(world->camera->_pos.x);
-  dy = floorf(world->camera->_pos.y);
-  camera_rect.minx = world->camera->_pos.x;
-  camera_rect.miny = world->camera->_pos.y;
-  camera_rect.maxx = world->camera->_pos.x + screen_width;
-  camera_rect.maxy = world->camera->_pos.y + screen_height;
+  Vector_ cpos;
+  world->camera->pos(&cpos);
+  dx = floorf(cpos.x);
+  dy = floorf(cpos.y);
+  camera_rect.minx = dx;
+  camera_rect.miny = dy;
+  camera_rect.maxx = dx + screen_width;
+  camera_rect.maxy = dy + screen_height;
 }
 
 void Scene::enqueue() {
@@ -191,16 +191,22 @@ void Scene::enqueue() {
 }
 
 OBJECT_IMPL(GO, Object);
-OBJECT_PROPERTY(GO, _pos);
-OBJECT_PROPERTY(GO, _vel);
-OBJECT_PROPERTY(GO, transform_parent);
+OBJECT_ACCESSOR(GO, gravity_scale, get_gravity_scale, set_gravity_scale);
+OBJECT_ACCESSOR(GO, pos, slow_get_pos, slow_set_pos);
+OBJECT_ACCESSOR(GO, vel, slow_get_vel, slow_set_vel);
 OBJECT_PROPERTY(GO, delete_me);
 
 GO::GO(void* _world)
-  : transform_parent(NULL), world((World*)_world), delete_me(0) {
-  vector_zero(&this->_pos);
-  vector_zero(&this->_vel);
+  : world((World*)_world), delete_me(0) {
   world->game_objects.add_head(this);
+
+  // the manual says to avoid setting major body properties (like
+  // position or dynamic/static) after creation... i'll need to keep
+  // tabs on whether this becomes a real issue.
+  b2BodyDef bodyDef;
+  bodyDef.fixedRotation = true;
+  body = world->bWorld.CreateBody(&bodyDef);
+  body->SetUserData(this);
 }
 
 GO::~GO() {
@@ -208,15 +214,6 @@ GO::~GO() {
       delete comp;
       return 0;
     });
-
-  this->transform_children.foreach_node([](DLLNode node) -> int {
-      GO* child = container_of(node, GO, transform_siblings);
-      go_set_parent(child, NULL);
-      return 0;
-    });
-
-  // unparent ourselves
-  go_set_parent(this, NULL);
 
   world->game_objects.remove(this);
 
@@ -235,6 +232,8 @@ GO::~GO() {
       delete msg;
       return 0;
     });
+
+  world->bWorld.DestroyBody(body);
 }
 
 Component* GO::add_component(TypeInfo* type) {
@@ -254,11 +253,6 @@ void GO::update(float dt) {
         });
       return 0;
     });
-
-  // do an integration step
-  struct Vector_ dx;
-  vector_scale(&dx, &this->_vel, dt);
-  vector_add(&this->_pos, &this->_pos, &dx);
 }
 
 void GO::messages_received() {
@@ -276,22 +270,58 @@ void GO::messages_received() {
   inbox.zero();
 }
 
+float GO::get_gravity_scale() {
+  return body->GetGravityScale();
+}
+
+void GO::set_gravity_scale(float scale) {
+  body->SetGravityScale(scale);
+}
+
 void GO::pos(Vector pos) {
-  GO* go = this;
-  *pos = go->_pos;
-  while(go->transform_parent) {
-    go = go->transform_parent;
-    vector_add(pos, pos, &go->_pos);
-  }
+  const b2Vec2& bPos = body->GetPosition();
+  pos->x = bPos.x * BSCALE;
+  pos->y = bPos.y * BSCALE;
 }
 
 void GO::vel(Vector vel) {
-  GO* go = this;
-  *vel = go->_vel;
-  while(go->transform_parent) {
-    go = go->transform_parent;
-    vector_add(vel, vel, &go->_vel);
-  }
+  const b2Vec2& bVel = body->GetLinearVelocity();
+  vel->x = bVel.x * BSCALE;
+  vel->y = bVel.y * BSCALE;
+}
+
+void GO::set_pos(Vector pos) {
+  b2Vec2 bPos;
+  bPos.x = pos->x / BSCALE;
+  bPos.y = pos->y / BSCALE;
+  body->SetTransform(bPos, body->GetAngle());
+}
+
+void GO::set_vel(Vector vel) {
+  b2Vec2 bVel;
+  bVel.x = vel->x / BSCALE;
+  bVel.y = vel->y / BSCALE;
+  body->SetLinearVelocity(bVel);
+}
+
+Vector_ GO::slow_get_pos() {
+  Vector_ result;
+  pos(&result);
+  return result;
+}
+
+Vector_ GO::slow_get_vel() {
+  Vector_ result;
+  vel(&result);
+  return result;
+}
+
+void GO::slow_set_pos(Vector_ pos) {
+  set_pos(&pos);
+}
+
+void GO::slow_set_vel(Vector_ vel) {
+  set_vel(&vel);
 }
 
 Component* GO::find_component(const TypeInfo* info) {
@@ -352,37 +382,6 @@ void GO::send_message(Message* message) {
   inbox_pending.add_tail(message);
 }
 
-void go_set_parent(GO* child, GO* parent) {
-  struct Vector_ cpos, ppos;
-  struct Vector_ cvel, pvel;
-
-  if(child->transform_parent) {
-    GO* old_parent = child->transform_parent;
-    old_parent->transform_children.remove_node(&child->transform_siblings);
-  }
-
-  if(parent) {
-    child->pos(&cpos);
-    parent->pos(&ppos);
-    vector_sub(&child->_pos, &cpos, &ppos);
-
-    child->vel(&cvel);
-    parent->vel(&pvel);
-    vector_sub(&child->_vel, &cvel, &pvel);
-    child->transform_parent = parent;
-    parent->transform_children.add_head_node(&child->transform_siblings);
-
-  } else if(!parent && child->transform_parent) {
-    child->pos(&cpos);
-    child->vel(&cvel);
-    child->_pos = cpos;
-    child->_vel = cvel;
-    child->transform_parent = NULL;
-  }
-
-  child->send_message(child->create_message(MESSAGE_PARENT_CHANGE));
-}
-
 OBJECT_IMPL(Component, Object);
 OBJECT_PROPERTY(Component, delete_me);
 
@@ -439,41 +438,27 @@ void Component::set_parent(GO* go) {
 }
 
 OBJECT_IMPL(CCollidable, Component);
+OBJECT_PROPERTY(CCollidable, offset);
 OBJECT_PROPERTY(CCollidable, w);
 OBJECT_PROPERTY(CCollidable, h);
-OBJECT_PROPERTY(CCollidable, mask);
-OBJECT_PROPERTY(CCollidable, offset);
 
 CCollidable::CCollidable(void* go)
-  : Component((GO*)go, PRIORITY_LEAST), w(0), h(0), mask(MASK_PLATFORMER) {
-  if(this->go) {
-    this->go->world->collidables.add_head(this);
-  }
+  : Component((GO*)go, PRIORITY_LEAST), w(0), h(0), fixture(NULL) {
   vector_zero(&offset);
 }
 
 CCollidable::~CCollidable() {
-  GO* go = this->go;
-  if(go) {
-    go->world->collidables.remove(this);
-  }
+  go->body->DestroyFixture(fixture);
 }
 
-void CCollidable::rect(Rect rect) {
-  GO* go = this->go;
+void CCollidable::init() {
+  b2Vec2 center;
+  center.x = offset.x / BSCALE;
+  center.y = offset.y / BSCALE;
 
-  struct Vector_ pos;
-  go->pos(&pos);
-  vector_add(&pos, &pos, &offset);
-
-  rect_centered(rect, &pos, this->w, this->h);
-}
-
-int CCollidable::intersect(CCollidable* b) {
-  struct Rect_ ra, rb;
-  this->rect(&ra);
-  b->rect(&rb);
-  return rect_intersect(&ra, &rb);
+  b2PolygonShape shape;
+  shape.SetAsBox((w/2)/BSCALE, (h/2)/BSCALE, center, 0);
+  fixture = go->body->CreateFixture(&shape, 0);
 }
 
 LuaThread::LuaThread()
@@ -501,6 +486,9 @@ void CScripted::init() {
     delete_me = 1;
     return;
   }
+
+  step_thread(&update_thread);
+  step_thread(&message_thread);
 }
 
 void CScripted::free_thread(LuaThread* thread) {
@@ -575,45 +563,6 @@ void CScripted::resume(LuaThread* thread, int args) {
     // when both threads exit, remove ourselves
     if(!message_thread.state && !update_thread.state) {
       delete_me = 1;
-    }
-  }
-}
-
-struct CollisionRecord {
-  Rect_ rect;
-  CCollidable* collidable;
-};
-
-void world_notify_collisions(World* world) {
-  const int N = world->collidables.count();
-  CollisionRecord* records = (CollisionRecord*)frame_alloc(sizeof(CollisionRecord) * N);
-  int ii = 0;
-  world->collidables.foreach([&] (CCollidable* collidable) -> int {
-      collidable->rect(&records[ii].rect);
-      records[ii].collidable = collidable;
-      ++ii;
-      return 0;
-    });
-
-  for(ii = 0; ii < N; ++ii) {
-    for(int jj = ii + 1; jj < N; ++jj) {
-      if(rect_intersect(&records[ii].rect, &records[jj].rect)) {
-        CCollidable* c1 = records[ii].collidable;
-        CCollidable* c2 = records[jj].collidable;
-
-        if((c1->mask & c2->mask) && c1->intersect(c2)) {
-          GO* g1 = c1->go;
-          GO* g2 = c2->go;
-
-          Message* m1 = new Message(g2, MESSAGE_COLLIDING, c2);
-          m1->data2 = c1;
-          g1->send_message(m1);
-
-          Message* m2 = new Message(g1, MESSAGE_COLLIDING, c1);
-          m2->data2 = c2;
-          g2->send_message(m2);
-        }
-      }
     }
   }
 }
@@ -809,22 +758,6 @@ static int Lgo_has_message(lua_State *L) {
   return 1;
 }
 
-static int Lgo_pos(lua_State* L) {
-  GO* go = LCcheck_go(L, 1);
-  Vector_ pos;
-  go->pos(&pos);
-  LCpush_vector(L, &pos);
-  return 1;
-}
-
-static int Lgo_vel(lua_State* L) {
-  GO* go = LCcheck_go(L, 1);
-  Vector_ vel;
-  go->vel(&vel);
-  LCpush_vector(L, &vel);
-  return 1;
-}
-
 static int Lobject_mutate(lua_State* L) {
   const char* name = luaL_checkstring(L, lua_upvalueindex(1));
   Object* obj = LCcheck_object(L, 1);
@@ -901,8 +834,6 @@ void init_lua(World* world) {
     {"create_message", Lgo_create_message},
     {"send_message", Lgo_send_message},
     {"broadcast_message", Lgo_broadcast_message},
-    {"pos", Lgo_pos},
-    {"vel", Lgo_vel},
     {"__tostring", Lobject_tostring},
     {NULL, NULL}};
 
@@ -962,7 +893,7 @@ void World::update(float dt) {
   this->dt = dt;
   scene.start();
 
-  // let the game objects do their integration step
+  // let the game objects initialize any new components
   game_objects.foreach([=](GO* go) -> int {
       if(go->delete_me) {
         delete go;
@@ -971,6 +902,9 @@ void World::update(float dt) {
       }
       return 0;
     });
+
+  // do an integration step
+  bWorld.Step(dt, 6, 2);
 
   // update the comonents
   this->components.foreach([=](Component* comp) -> int {

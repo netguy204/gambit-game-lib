@@ -9,22 +9,17 @@ class CPlatformer : public Component {
   OBJECT_PROTO(CPlatformer);
 
   CPlatformer(void* go);
+  virtual ~CPlatformer();
 
-  virtual void messages_received();
+  virtual void init();
   virtual void update(float dt);
-  void look_for_support();
-  void resolve_interpenetration();
-  int is_supported();
 
-  // valid if parent is set
-  CCollidable* other_collidable;
+  b2Fixture* fixture;
+  GO* parent;
 
-  float grav_accel;
-  float max_speed;
-  int platform_mask;
+  float w;
+  float h;
+  float density;
 };
-
-int is_supported(Rect supportee, Rect supporter);
-void resolve_interpenetration(Vector resolution, Rect minor, Rect major);
 
 #endif

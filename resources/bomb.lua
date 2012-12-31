@@ -24,15 +24,17 @@ function behavior_thread(go, component)
    set_timer(DELAY - EXPLODE_START)
 
    local state = IDLE
+   local platformer = go:find_component("CPlatformer")
+
    while true do
       coroutine.yield()
 
       -- sticky if landed
-      local parent = go:transform_parent()
+      local parent = platformer:parent()
       if parent then
-         local vel = go:_vel()
+         local vel = go:vel()
          vel[1] = 0
-         go:_vel(vel)
+         go:vel(vel)
       end
 
       if go:has_message(constant.TIMER_EXPIRED) or go:has_message(constant.EXPLOSION_NEARBY) then
@@ -58,20 +60,18 @@ end
 
 function make(pos, vel)
    local go = world:create_go()
-   go:_pos(pos)
-   go:_vel(vel)
+   go:pos(pos)
+   go:vel(vel)
 
    local bomb_art = world:atlas_entry(constant.ATLAS, "bomb")
    local spark_art = world:atlas_entry(constant.ATLAS, "spark")
 
    go:add_component("CStaticSprite", {entry=bomb_art, layer=constant.PLAYER})
-   go:add_component("CCollidable", {w=DIM, h=DIM})
-   go:add_component("CPlatformer", {grav_accel=GRAV_ACCEL})
+   go:add_component("CPlatformer", {w=DIM, h=DIM})
 
    local system = {entry=spark_art,
                    offset={0.0,16.0},
                    nmax=10,
-                   grav_accel=80,
                    start_scale=0}
 
    go:add_component("CParticleEmitter", system)

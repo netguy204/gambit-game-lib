@@ -11,6 +11,8 @@
 
 #include <map>
 
+#define BSCALE 64.0f
+
 typedef enum {
   MASK_NON_COLLIDER = 0,
   MASK_PLATFORM = 1,
@@ -112,15 +114,12 @@ class CCollidable : public Component {
 
   CCollidable(void* go);
   virtual ~CCollidable();
+  virtual void init();
 
-  void rect(Rect rect);
-  int intersect(CCollidable* other);
-
-  struct DLLNode_ collidable_node;
+  b2Fixture* fixture;
   Vector_ offset;
   float w;
   float h;
-  int mask;
 };
 
 struct LuaThread {
@@ -185,26 +184,32 @@ class GO : public Object {
 
   Message* create_message(int kind);
   void send_message(Message* message);
+
+  float get_gravity_scale();
+  void set_gravity_scale(float scale);
+
+  // fast way (no allocation)
   void pos(Vector p);
   void vel(Vector v);
+  void set_pos(Vector p);
+  void set_vel(Vector v);
+
+  // script way
+  Vector_ slow_get_pos();
+  Vector_ slow_get_vel();
+  void slow_set_pos(Vector_ p);
+  void slow_set_vel(Vector_ p);
+
   Component* find_component(const TypeInfo* info);
   void print_description();
 
   struct DLLNode_ messages_waiting_node;
   struct DLLNode_ world_node;
 
-  struct DLLNode_ transform_siblings;
-  struct GO* transform_parent;
-  SimpleDLL transform_children;
-
   DLL_DECLARE(Component, node) components;
   DLL_DECLARE(Component, node) uninitialized_components;
   DLL_DECLARE(Message, node) inbox;
   DLL_DECLARE(Message, node) inbox_pending;
-
-  // pos and vel are always relative to the parent if there is one
-  struct Vector_ _pos;
-  struct Vector_ _vel;
 
   // the world we're a part of
   World* world;
@@ -212,8 +217,6 @@ class GO : public Object {
 
   int delete_me;
 };
-
-void go_set_parent(GO* child, GO* parent);
 
 void LCpush_go(lua_State *L, GO* go);
 GO* LCcheck_go(lua_State *L, int pos);
@@ -254,13 +257,11 @@ class World : public Object {
   DLL_DECLARE(GO, messages_waiting_node) have_waiting_messages;
 
   DLL_DECLARE(Component, world_node) components;
-  DLL_DECLARE(CCollidable, collidable_node) collidables;
+
   NameToAtlas name_to_atlas;
 };
 
 int LCpush_world(lua_State *L, World* world);
-void world_notify_collisions(World* world);
-
 
 template<typename Func>
 void world_foreach(World* world, Vector pos, float rad, Func func) {

@@ -51,7 +51,7 @@ function behavior_thread(go, component)
 
       -- kill ourselves when we're falling out of the world. FIXME:
       -- won't work message driven unless i add a timer
-      if state == FALLING and go:_pos()[2] < -100 then
+      if state == FALLING and go:pos()[2] < -100 then
          go:delete_me(1)
          return
       end
@@ -61,12 +61,11 @@ end
 
 function make(pos)
    local go = world:create_go()
-   go:_pos(pos)
+   go:pos(pos)
 
    local art = world:atlas_entry(constant.ATLAS, "enemy")
    go:add_component("CStaticSprite", {entry=art})
-   go:add_component("CCollidable", {w=DIM, h=DIM})
-   go:add_component("CPlatformer", {grav_accel=human.GRAV_ACCEL})
+   go:add_component("CPlatformer", {w=DIM, h=DIM})
    go:add_component("CScripted", {message_thread=util.thread(behavior_thread)})
    return go
 end

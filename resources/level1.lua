@@ -110,7 +110,7 @@ end
 function left_door(maxx, miny)
    local _door = world:atlas_entry(constant.ATLAS, "door")
    local go = world:create_go()
-   go:_pos{maxx - _door.w / 2, miny + _door.h / 2}
+   go:pos{maxx - _door.w / 2, miny + _door.h / 2}
 
    go:add_component("CStaticSprite", {entry=_door})
    go:add_component("CScripted", {update_thread=util.thread(door_behavior)})
