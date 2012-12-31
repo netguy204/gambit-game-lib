@@ -75,9 +75,9 @@ function round_to(val, nearest)
    return nearest * math.floor(val/nearest)
 end
 
-function dirt(minx, maxx, y)
+function dirt(minx, maxx, y, opts)
    local _dirt = world:atlas_entry(constant.ATLAS, "dirt")
-   return floor(round_to(minx, _dirt.w), round_to(maxx, _dirt.w), y, _dirt)
+   return floor(round_to(minx, _dirt.w), round_to(maxx, _dirt.w), y, _dirt, opts)
 end
 
 function grass(minx, maxx, y)
@@ -125,24 +125,37 @@ function left_door(maxx, miny)
    return go
 end
 
+function pillar(miny, maxy, midx)
+   local _pillar = world:atlas_entry(constant.ATLAS, "pillar")
+   local _pillar_cap = world:atlas_entry(constant.ATLAS, "pillar-cap")
+
+   maxy = round_to(maxy, _pillar.h)
+   wall(miny, maxy, midx, _pillar)
+
+   local capy = maxy + _pillar_cap.h / 2
+   stage:add_component("CStaticSprite", {offset={midx, capy}, entry=_pillar_cap})
+end
+
 function level_init()
    local _wood = world:atlas_entry(constant.ATLAS, "wood1")
    local _wall = world:atlas_entry(constant.ATLAS, "outside_wall")
-   local _pillar = world:atlas_entry(constant.ATLAS, "pillar")
 
    human.init{32, 100}
 
-   bottom = grass(-64*20, 128, 0)
-   bottom = rect_union(bottom, dirt(-64*20, 1000, -64))
-   bottom = rect_union(bottom, dirt(-64*20, 1000, -64*2))
-   bottom = rect_union(bottom, dirt(-64*20, 1000, -64*3))
-   bottom = rect_union(bottom, dirt(-64*20, 1000, -64*4))
-   bottom = rect_union(bottom, dirt(-64*20, 1000, -64*5))
-   bottom = rect_union(bottom, floor(128, 1000, 0, _wood))
-
+   local bottom = grass(-64*20, 128, 0)
+   bottom = rect_union(bottom, dirt(128, 64*20, 0, {layer=constant.BACKDROP}))
+   bottom = rect_union(bottom, dirt(-64*20, 64*20, -64))
+   bottom = rect_union(bottom, dirt(-64*20, 64*20, -64*2))
+   bottom = rect_union(bottom, dirt(-64*20, 64*20, -64*3))
+   bottom = rect_union(bottom, dirt(-64*20, 64*20, -64*4))
+   bottom = rect_union(bottom, dirt(-64*20, 64*20, -64*5))
+   bottom = rect_union(bottom, floor(128, 64*20, 0, _wood))
    stage_collidable(bottom)
 
-   wall(0, 64*8, 128 + 32, _pillar)
-   stage_collidable(wall(64*2, 64*8, 128 + (64-12), _wall))
+   local room_height = 64*5
+   pillar(0, room_height, 128 + 32)
+   stage_collidable(wall(64*2, room_height, 128 + (64-12), _wall))
+   stage_collidable(wall(0, room_height, 64*20 - _wall.w/2, _wall))
+   stage_collidable(floor(192, 64*20, room_height, _wood))
    left_door(128 + 64, 0)
 end

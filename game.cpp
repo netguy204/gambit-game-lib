@@ -421,7 +421,7 @@ void game_step(long delta, InputState state) {
   world->update(dt);
   world->scene.enqueue();
 
-  render_hud();
+  //render_hud();
 }
 
 void game_shutdown() {

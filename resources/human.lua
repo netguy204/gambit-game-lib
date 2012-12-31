@@ -6,7 +6,7 @@ require 'bomb'
 SPEED = 600
 JUMP_SPEED = 1200
 WIDTH = 28
-HEIGHT = 64
+HEIGHT = 62
 
 function input_thread(go)
    local fire_pressed = false

@@ -5,7 +5,7 @@ require 'constant'
 require 'util'
 
 THROW_SPEED = 1600
-DIM = 48
+DIM = 45
 MAX_HEIGHT = 400
 GRAV_ACCEL = util.accel(THROW_SPEED, MAX_HEIGHT)
 DELAY = 6
