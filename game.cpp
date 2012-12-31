@@ -10,6 +10,7 @@
 #include "random.h"
 #include "game_ui.h"
 #include "color.h"
+#include "utils.h"
 
 #include "config.h"
 
@@ -138,79 +139,71 @@ void CStaticSprite::update(float dt) {
   scene()->addRelative(&scene()->layers[layer], sprite);
 }
 
-OBJECT_IMPL(CDrawHPatch, Component);
-OBJECT_PROPERTY(CDrawHPatch, entry);
-OBJECT_PROPERTY(CDrawHPatch, layer);
-OBJECT_PROPERTY(CDrawHPatch, w);
-OBJECT_PROPERTY(CDrawHPatch, offset);
+OBJECT_IMPL(CDrawWallpaper, Component);
+OBJECT_PROPERTY(CDrawWallpaper, entry);
+OBJECT_PROPERTY(CDrawWallpaper, offset);
+OBJECT_PROPERTY(CDrawWallpaper, w);
+OBJECT_PROPERTY(CDrawWallpaper, h);
+OBJECT_PROPERTY(CDrawWallpaper, style);
+OBJECT_PROPERTY(CDrawWallpaper, layer);
 
-CDrawHPatch::CDrawHPatch(void* go)
-  : Component((GO*)go, PRIORITY_SHOW), entry(NULL), layer(LAYER_BACKGROUND) {
+CDrawWallpaper::CDrawWallpaper(void* _go)
+  : Component((GO*)_go, PRIORITY_SHOW), style(WALLPAPER_TILE), layer(LAYER_BACKDROP) {
   vector_zero(&offset);
 }
 
-void CDrawHPatch::update(float dt) {
-  Vector_ pos;
+void CDrawWallpaper::update(float dt) {
+  Vector_ pos, cpos;
   go->pos(&pos);
+  camera()->pos(&cpos);
+
   vector_add(&pos, &pos, &offset);
 
-  Rect_ patch_rect;
-  rect_centered(&patch_rect, &pos, w, entry->h);
-  if(!rect_intersect(&scene()->camera_rect, &patch_rect)) return;
+  float x_bl = (pos.x - w/2 + entry->w/2) - cpos.x;
+  if(x_bl > screen_width) return;
 
-  int basex = pos.x;
-  int basey = pos.y;
-  int offset = -w / 2 + entry->w / 2;
-  while(offset <= w / 2 - entry->w / 2) {
-    Sprite sprite = frame_make_sprite();
-    sprite_fillfromentry(sprite, entry);
-    sprite->displayX = basex + offset;
-    sprite->displayY = basey;
-    sprite->originX = 0.5;
-    sprite->originY = 0.5;
+  float y_bl = (pos.y - h/2 + entry->h/2) - cpos.y;
+  if(y_bl > screen_height) return;
 
-    scene()->addRelative(&scene()->layers[layer], sprite);
-    offset += entry->w;
+  float x_tr = (pos.x + w/2) - cpos.x;
+  if(x_tr < 0) return;
+
+  float y_tr = (pos.y + h/2) - cpos.y;
+  if(y_tr < 0) return;
+
+  // now we have some overlap, clamp the tr to the screen and figure
+  // out the bl offset
+  x_tr = MIN(x_tr, screen_width + entry->w/2);
+  y_tr = MIN(y_tr, screen_height + entry->h/2);
+
+  if(x_bl < 0) {
+    x_bl += floorf(fabs(x_bl) / entry->w) * entry->w;
+  }
+
+  if(y_bl < 0) {
+    y_bl += floorf(fabs(y_bl) / entry->h) * entry->h;
+  }
+
+  if(style != WALLPAPER_TILE) {
+    fail_exit("i haven't bothered to implement the other wallpaper styles yet\n");
+  }
+
+  float y = y_bl;
+  while(y < y_tr) {
+    float x = x_bl;
+    while(x < x_tr) {
+      Sprite sprite = frame_make_sprite();
+      sprite_fillfromentry(sprite, entry);
+      sprite->displayX = x;
+      sprite->displayY = y;
+      sprite->originX = 0.5;
+      sprite->originY = 0.5;
+      scene()->addAbsolute(&scene()->layers[layer], sprite);
+      x += entry->w;
+    }
+    y += entry->h;
   }
 }
-
-
-OBJECT_IMPL(CDrawVPatch, Component);
-OBJECT_PROPERTY(CDrawVPatch, entry);
-OBJECT_PROPERTY(CDrawVPatch, layer);
-OBJECT_PROPERTY(CDrawVPatch, h);
-OBJECT_PROPERTY(CDrawVPatch, offset);
-
-CDrawVPatch::CDrawVPatch(void* go)
-  : Component((GO*)go, PRIORITY_SHOW), entry(NULL), layer(LAYER_BACKGROUND) {
-  vector_zero(&offset);
-}
-
-void CDrawVPatch::update(float dt) {
-  Vector_ pos;
-  go->pos(&pos);
-  vector_add(&pos, &pos, &offset);
-
-  Rect_ patch_rect;
-  rect_centered(&patch_rect, &pos, entry->w, h);
-  if(!rect_intersect(&scene()->camera_rect, &patch_rect)) return;
-
-  int basex = pos.x;
-  int basey = pos.y;
-  int offset = -h / 2 + entry->h / 2;
-  while(offset <= h / 2 - entry->h / 2) {
-    Sprite sprite = frame_make_sprite();
-    sprite_fillfromentry(sprite, entry);
-    sprite->displayX = basex;
-    sprite->displayY = basey + offset;
-    sprite->originX = 0.5;
-    sprite->originY = 0.5;
-
-    scene()->addRelative(&scene()->layers[layer], sprite);
-    offset += entry->h;
-  }
-}
-
 
 OBJECT_IMPL(CCameraFocus, Component);
 OBJECT_PROPERTY(CCameraFocus, focus);

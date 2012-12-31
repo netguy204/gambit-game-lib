@@ -79,8 +79,9 @@ def mk_sheet(filenames, outbase, tgt_dims, notrimg):
         junk, basename = os.path.split(fname)
         img = Image.open(fname)
 
-        if not basename in notrim:
-            img = img.crop(find_visible_bounds(img))
+        # not working correctly
+        #if not basename in notrim:
+        #    img = img.crop(find_visible_bounds(img))
 
         img_w, img_h = img.size
 

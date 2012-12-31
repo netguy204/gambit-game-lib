@@ -52,33 +52,26 @@ class CStaticSprite : public Component {
   int layer;
 };
 
-class CDrawHPatch : public Component {
- public:
-  OBJECT_PROTO(CDrawHPatch);
+enum WallpaperStyle {
+  WALLPAPER_SCALE,
+  WALLPAPER_TILE,
+};
 
-  CDrawHPatch(void* go);
+class CDrawWallpaper : public Component {
+ public:
+  OBJECT_PROTO(CDrawWallpaper);
+
+  CDrawWallpaper(void* go);
 
   virtual void update(float dt);
 
-  Vector_ offset;
   SpriteAtlasEntry entry;
-  float w;
+  Vector_ offset;
+  float w, h;
+  int style;
   int layer;
 };
 
-class CDrawVPatch : public Component {
- public:
-  OBJECT_PROTO(CDrawVPatch);
-
-  CDrawVPatch(void* go);
-
-  virtual void update(float dt);
-
-  Vector_ offset;
-  SpriteAtlasEntry entry;
-  float h;
-  int layer;
-};
 
 // probably want all renders to happen after this has done its update
 class CCameraFocus : public Component {

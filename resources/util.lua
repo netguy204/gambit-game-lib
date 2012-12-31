@@ -59,3 +59,11 @@ function rand_between(lower, upper)
    local range = upper - lower
    return lower + math.random() * range
 end
+
+function table_copy(tbl)
+   local new = {}
+   for k, v in pairs(tbl) do
+      new[k] = v
+   end
+   return new
+end

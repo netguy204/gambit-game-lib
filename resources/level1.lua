@@ -13,6 +13,7 @@ function merge_into(target, source)
       return target
    end
 
+   target = util.table_copy(target)
    for k, v in pairs(source) do
       target[k] = v
    end
@@ -30,11 +31,11 @@ function floor(minx, maxx, topy, art, opts)
    local midy = topy - art.h / 2
    local w = maxx - minx
 
-   local defaults = {entry=art, w=w,
+   local defaults = {entry=art, w=w, h=art.h,
                      layer=constant.BACKGROUND,
                      offset={midx, midy}}
 
-   stage:add_component("CDrawHPatch", merge_into(defaults, opts))
+   stage:add_component("CDrawWallpaper", merge_into(defaults, opts))
    return {minx, topy - art.h, maxx, topy}
 end
 
@@ -42,11 +43,11 @@ function wall(miny, maxy, midx, art, opts)
    local midy = (miny + maxy) / 2
    local h = maxy - miny
 
-   local defaults = {entry=art, h=h,
+   local defaults = {entry=art, h=h, w=art.w,
                      layer=constant.BACKGROUND,
                      offset={midx, midy}}
 
-   stage:add_component("CDrawVPatch", merge_into(defaults, opts))
+   stage:add_component("CDrawWallpaper", merge_into(defaults, opts))
    return {midx - art.w/2, miny, midx + art.w/2, maxy}
 end
 
@@ -104,15 +105,17 @@ function left_door(maxx, miny)
    return go
 end
 
-function pillar(miny, maxy, midx)
+function pillar(miny, maxy, midx, opt)
    local _pillar = world:atlas_entry(constant.ATLAS, "pillar")
    local _pillar_cap = world:atlas_entry(constant.ATLAS, "pillar-cap")
 
    maxy = round_to(maxy, _pillar.h)
-   wall(miny, maxy, midx, _pillar)
+   wall(miny, maxy, midx, _pillar, opt)
 
    local capy = maxy + _pillar_cap.h / 2
-   stage:add_component("CStaticSprite", {offset={midx, capy}, entry=_pillar_cap})
+   local defaults = {offset={midx, capy},
+                     entry=_pillar_cap}
+   stage:add_component("CStaticSprite", merge_into(defaults, opt))
 end
 
 function add_emitter_emitter(emittor_go, system, max_active_dist)
@@ -178,9 +181,10 @@ function steam_pipe(miny, maxy, midx)
 
    local go = world:create_go()
    go:pos{midx, (miny + maxy) / 2}
-   go:add_component("CDrawVPatch", {entry=_pipe,
-                                    layer=constant.BACKGROUND,
-                                    h=maxy-miny})
+   go:add_component("CDrawWallpaper", {entry=_pipe,
+                                       layer=constant.BACKGROUND,
+                                       w=_pipe.w,
+                                       h=maxy-miny})
    local lower_third = -((maxy-miny)/3)
    go:add_component("CParticleEmitter", {entry=_water,
                                          max_offset=5,
@@ -215,32 +219,41 @@ function steam_pipe(miny, maxy, midx)
    add_emitter_emitter(go, system, 500)
 end
 
+function wallpaper(r, art, opts)
+   local defaults = {w=rect.width(r),
+                     h=rect.height(r),
+                     offset=rect.center(r),
+                     entry=art}
+
+   stage:add_component("CDrawWallpaper", merge_into(defaults, opts))
+   return r
+end
 
 function level_init()
    local _wood = world:atlas_entry(constant.ATLAS, "wood1")
    local _wall = world:atlas_entry(constant.ATLAS, "outside_wall")
+   local _dirt = world:atlas_entry(constant.ATLAS, "dirt")
+   local _gold = world:atlas_entry(constant.ATLAS, "wallpaper-gold")
+   local _aqua = world:atlas_entry(constant.ATLAS, "wallpaper-aqua")
+   local _sky = world:atlas_entry(constant.ATLAS, "wallpaper-sky")
 
    human.init{32, 100}
 
-   local bottom = grass(-64*20, 128, 0)
-   bottom = rect.union(bottom, dirt(128, 64*20, 0, {layer=constant.BACKDROP}))
-   bottom = rect.union(bottom, dirt(-64*20, 64*20, -64))
-   bottom = rect.union(bottom, dirt(-64*20, 64*20, -64*2))
-   bottom = rect.union(bottom, dirt(-64*20, 64*20, -64*3))
-   bottom = rect.union(bottom, dirt(-64*20, 64*20, -64*4))
-   bottom = rect.union(bottom, dirt(-64*20, 64*20, -64*5))
-   bottom = rect.union(bottom, floor(128, 64*20, 0, _wood))
-   stage_collidable(bottom)
-
    local room_height = 64*5
-   pillar(0, room_height*2, 128 + 32)
+   pillar(0, room_height*2, 128 + 32, {layer=constant.BACKDROP})
    stage_collidable(wall(64*2, room_height*3, 128 + (64-12), _wall))
    stage_collidable(wall(0, room_height*3, 64*20 - _wall.w/2, _wall))
 
+   -- first floor
    stage_collidable(floor(168, 64*16, room_height, _wood))
+   wallpaper({64*3, 0, 64*20, room_height}, _gold)
+
+   -- second and third
    stage_collidable(floor(192+64*4, 64*20, room_height*2, _wood))
    stage_collidable(floor(168, 64*20, room_height*3, _wood))
+   wallpaper({64*3, room_height, 64*20, room_height*3}, _aqua)
 
+   -- mini platforms
    stage_collidable(floor(64*18, 64*20, room_height*0.5, _wood))
    stage_collidable(floor(192, 192+64*2, room_height*1.5, _wood))
 
@@ -248,4 +261,14 @@ function level_init()
    left_door(128 + 64, 0)
 
    steam_pipe(room_height, room_height*2, 64*10)
+
+   -- outdoors
+   local bottom = grass(-64*20, 128, 0)
+   bottom = rect.union(bottom, grass(64*20, 64*40,0))
+   bottom = rect.union(bottom, dirt(128, 64*20, 0, {layer=constant.BACKDROP}))
+   bottom = rect.union(bottom, wallpaper({-64*20, -64*6, 64*40, -64}, _dirt))
+   bottom = rect.union(bottom, floor(128, 64*20, 0, _wood))
+   stage_collidable(bottom)
+
+   wallpaper({-64*20, 0, 64*40, 64*40}, _sky, {layer=constant.BACKERDROP})
 end

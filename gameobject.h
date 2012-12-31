@@ -44,6 +44,7 @@ class Message {
 };
 
 enum RenderLayers {
+  LAYER_BACKERDROP,
   LAYER_BACKDROP,
   LAYER_BACKGROUND,
   LAYER_PLAYER,
