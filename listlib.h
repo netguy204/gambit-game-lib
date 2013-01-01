@@ -43,6 +43,7 @@ class SimpleDLL {
   void add_tail_node(DLLNode node);
   void remove_node(DLLNode node);
   DLLNode remove_tail_node();
+  int contains_node(DLLNode node);
 
   int count();
   void zero();
@@ -93,6 +94,10 @@ class DLL : public SimpleDLL {
   E* tail_element() {
     if(!this->tail) return NULL;
     return DLL<E,OFFSET>::to_element(this->tail);
+  }
+
+  int contains(E* element) {
+    return contains_node(to_node(element));
   }
 
   DLLNode to_node(E* element) {

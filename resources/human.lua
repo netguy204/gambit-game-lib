@@ -20,6 +20,29 @@ function rising_edge_trigger(state)
    return trigger
 end
 
+SELECTABLE_CATEGORY = 4
+
+function is_selectable(go)
+   local comp = go:find_component("CCollidable", nil)
+   while comp do
+      if comp:category() == SELECTABLE_CATEGORY then
+         return comp
+      end
+      comp = go:find_component("CCollidable", comp)
+   end
+   return nil
+end
+
+function make_selectable(go, opts)
+   local old_comp = is_selectable(go)
+   if old_comp then
+      old_comp:delete_me(1)
+   end
+
+   local defaults = {w=32, h=32, category=SELECTABLE_CATEGORY, mask=0}
+   go:add_component("CCollidable", util.merge_into(defaults, opts))
+end
+
 function input_thread(go)
    local fire_pressed = false
    local interrupt_pressed = false
@@ -27,9 +50,9 @@ function input_thread(go)
    local facing = 1
    local left_art = world:atlas_entry(constant.ATLAS, "guy-left")
    local right_art = world:atlas_entry(constant.ATLAS, "guy")
-   local platformer = go:find_component("CPlatformer")
+   local platformer = go:find_component("CPlatformer", nil)
    local state = FALLING
-   local sprite = go:find_component("CStaticSprite")
+   local sprite = go:find_component("CStaticSprite", nil)
 
    local last_mark = nil
    local select_trigger = rising_edge_trigger(false)
@@ -37,10 +60,13 @@ function input_thread(go)
 
    local set_mark = function(new_go)
       if last_mark then
-         last_mark:find_component("CTestDisplay"):delete_me(1)
+         last_mark:find_component("CTestDisplay", nil):delete_me(1)
       end
       if new_go then
-         new_go:add_component("CTestDisplay", {w=32,h=32,a=0.5})
+         -- it's already been established that the thing we have is
+         -- selectable, but this lets us get at the dimensions
+         local sc = is_selectable(new_go)
+         new_go:add_component("CTestDisplay", {w=sc:w(),h=sc:h(),a=0.5})
       end
       last_mark = new_go
    end
@@ -60,10 +86,6 @@ function input_thread(go)
       if math.abs(dy) > dead_zone then
          dy = util.sign(dy)
       end
-
-      --print('fire_pressed', fire_pressed,
-      --      'select_triggered', select_triggered,
-      --      'have_direction', have_direction)
 
       -- during selection, jump resets the mark to the player
       if fire_pressed and input.action1 then
@@ -99,9 +121,18 @@ function input_thread(go)
       -- reset when the direction changes
       if fire_pressed and select_triggered then
          local next_mark = world:next_in_cone(last_mark:pos(), last_mark, angle, 0.6)
+
+         -- keep searching till we find something selectable
+         while next_mark and not is_selectable(next_mark) do
+            next_mark = world:next_in_cone(last_mark:pos(), next_mark, angle, 0.6)
+         end
+
+         -- if we found nothing, select the player who is always
+         -- selectable
          if not next_mark then
             next_mark = go
          end
+
          set_mark(next_mark)
       end
 
@@ -120,7 +151,7 @@ function input_thread(go)
          pos[2] = pos[2] + HEIGHT
 
          local vel = {facing * bomb.THROW_SPEED / 3, bomb.THROW_SPEED}
-         bomb.make(pos, vel)
+         make_selectable(bomb.make(pos, vel), {w=bomb.DIM,h=bomb.DIM})
       end
 
       if math.abs(input.leftright) > 0.01 and not fire_pressed then
@@ -163,7 +194,7 @@ end
 function init(pos)
    player:pos(pos)
    player:vel{0, 0}
-   player:gravity_scale()
+   make_selectable(player, {w=WIDTH,h=HEIGHT})
 
    camera:pos{100, 100}
    camera:vel{0, 0}
