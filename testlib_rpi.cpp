@@ -11,22 +11,12 @@
 #include "testlib.h"
 #include "testlib_internal.h"
 #include "joystick.h"
-
+#include "gl_headers.h"
 #include "bcm_host.h"
-
-#include "GLES2/gl2.h"
-#include "EGL/egl.h"
-#include "EGL/eglext.h"
 
 EGLDisplay display;
 EGLSurface surface;
 EGLContext context;
-
-extern StackAllocator frame_allocator;
-
-// include common code that is dependant on the platform variable
-// location/name of the opengl headers
-#include "testlib_gl.cpp"
 
 void egl_assert_(int test, const char * string) {
   if(!test) {

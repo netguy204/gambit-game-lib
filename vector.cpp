@@ -40,6 +40,11 @@ float vector_angle(Vector v) {
   return angle;
 }
 
+void vector_for_angle(Vector v, float angle) {
+  v->x = cosf(angle);
+  v->y = sinf(angle);
+}
+
 int vector_direction_scaled(Vector dst, Vector a, Vector b, float s) {
   struct Vector_ ba;
   vector_sub(&ba, a, b);

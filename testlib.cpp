@@ -225,19 +225,13 @@ void spritelist_enqueue_for_screen_colored(SpriteList list) {
 extern void rect_render_to_screen(ColoredRect rect);
 
 void rect_enqueue_for_screen(ColoredRect rect) {
-  // copy for caller convenience (this is really a debugging routine)
-  ColoredRect new_rect = (ColoredRect)frame_alloc(sizeof(struct ColoredRect_));
-  memcpy(new_rect, rect, sizeof(struct ColoredRect_));
-  renderer_enqueue(rect_render_to_screen, new_rect);
+  renderer_enqueue(rect_render_to_screen, rect);
 }
 
 extern void filledrect_render_to_screen(ColoredRect rect);
 
 void filledrect_enqueue_for_screen(ColoredRect rect) {
-  // copy for caller convenience (this is really a debugging routine)
-  ColoredRect new_rect = (ColoredRect)frame_alloc(sizeof(struct ColoredRect_));
-  memcpy(new_rect, rect, sizeof(struct ColoredRect_));
-  renderer_enqueue(filledrect_render_to_screen, new_rect);
+  renderer_enqueue(filledrect_render_to_screen, rect);
 }
 
 Command command_make(CommandFunction function, void* data) {

@@ -156,6 +156,7 @@ Scene::Scene(World* world)
   : world(world) {
   memset(layers, 0, sizeof(layers));
   memset(particles, 0, sizeof(particles));
+  memset(testRects, 0, sizeof(testRects));
 }
 
 void Scene::addRelative(SpriteList* list, Sprite sprite) {
@@ -172,6 +173,16 @@ void Scene::addAbsolute(SpriteList* list, Sprite sprite) {
      || sprite->displayY - sprite->h > screen_height) return;
 
   *list = frame_spritelist_append(*list, sprite);
+}
+
+void Scene::addRelative(ColoredRect* list, ColoredRect rect) {
+  rect->minx -= dx;
+  rect->maxx -= dx;
+  rect->miny -= dy;
+  rect->maxy -= dy;
+
+  rect->next = *list;
+  *list = rect;
 }
 
 void Scene::start() {
@@ -192,6 +203,10 @@ void Scene::enqueue() {
     }
     if(particles[ii]) {
       spritelist_enqueue_for_screen_colored(particles[ii]);
+    }
+    while(testRects[ii]) {
+      filledrect_enqueue_for_screen(testRects[ii]);
+      testRects[ii] = testRects[ii]->next;
     }
     layers[ii] = NULL;
     particles[ii] = NULL;
@@ -633,6 +648,21 @@ static int Lworld_atlas_entry(lua_State *L) {
   return 1;
 }
 
+static int Lworld_next_in_cone(lua_State *L) {
+  World* world = LCcheck_world(L, 1);
+  GO* last_go = LCcheck_go(L, 2);
+  float angle = luaL_checknumber(L, 3);
+
+  Cone cone;
+  cone.angle = luaL_checknumber(L, 4);
+  rect_center(&cone.point, &world->scene.camera_rect);
+  vector_for_angle(&cone.direction, angle);
+
+  GO* next_go = world->next_in_cone(last_go, &world->scene.camera_rect, &cone);
+  LCpush_go(L, next_go);
+  return 1;
+}
+
 static Component* LCcheck_component(lua_State *L, int pos) {
   return (Component*)LCcheck_lut(L, LUT_COMPONENT, pos);
 }
@@ -797,8 +827,11 @@ OBJECT_IMPL(World, Object);
 OBJECT_PROPERTY(World, input_state);
 OBJECT_PROPERTY(World, focus);
 OBJECT_PROPERTY(World, dt);
+OBJECT_ACCESSOR(World, time_scale, get_time_scale, set_time_scale);
 
 void init_lua(World* world) {
+  world->clock = clock_make();
+  world->camera_clock = clock_make();
   world->player = world->create_go();
   world->camera = world->create_go();
   world->stage = world->create_go();
@@ -811,6 +844,7 @@ void init_lua(World* world) {
   static const luaL_Reg world_m[] = {
     {"create_go", Lworld_create_go},
     {"atlas_entry", Lworld_atlas_entry},
+    {"next_in_cone", Lworld_next_in_cone},
     {"__tostring", Lobject_tostring},
     {NULL, NULL}};
 
@@ -878,12 +912,12 @@ World::~World() {
   lua_close(L);
 }
 
-void World::update(float dt) {
-  this->dt = dt;
+void World::update(long delta) {
+  this->dt = clock_update(clock, delta / 1000.0);;
 
   // do an integration step
   bWorld.Step(dt, 6, 2);
-  update_camera(dt);
+  update_camera(clock_update(camera_clock, delta / 1000.0));
 
   scene.start();
 
@@ -988,6 +1022,14 @@ SpriteAtlasEntry World::atlas_entry(const char* atlas_name, const char* entry) {
   return spriteatlas_find(atlas(atlas_name), entry);
 }
 
+void World::set_time_scale(float scale) {
+  clock->time_scale = scale;
+}
+
+float World::get_time_scale() {
+  return clock->time_scale;
+}
+
 void World::broadcast_message(GO* sender, float radius, int kind) {
   Vector_ pos;
   sender->pos(&pos);
@@ -996,4 +1038,43 @@ void World::broadcast_message(GO* sender, float radius, int kind) {
       go->send_message(sender->create_message(kind));
       return 0;
     });
+}
+
+int point_in_cone(Cone* cone, Vector point) {
+  Vector_ to_point;
+  vector_sub(&to_point, point, &cone->point);
+  vector_norm(&to_point, &to_point);
+  float dot = vector_dot(&cone->direction, &to_point);
+  return acosf(dot) <= cone->angle;
+}
+
+GO* World::next_in_cone(GO* last, Rect bounds, Cone* cone) {
+  float last_dist = 0;
+  if(last) {
+    Vector_ last_pos;
+    last->pos(&last_pos);
+    last_dist = vector_dist(&last_pos, &cone->point);
+  }
+
+  GO* next_exceeding = NULL;
+  float exceeded_by = INFINITY;
+
+  world_foreach(this, bounds, [&](GO* go) -> int {
+      if(go == last) return 0;
+
+      Vector_ pos;
+      go->pos(&pos);
+      if(point_in_cone(cone, &pos)) {
+        float dist = vector_dist(&pos, &cone->point);
+        if(dist > last_dist) {
+          float my_exceeded_by = dist - last_dist;
+          if(my_exceeded_by < exceeded_by) {
+            next_exceeding = go;
+            exceeded_by = my_exceeded_by;
+          }
+        }
+      }
+      return 0;
+    });
+  return next_exceeding;
 }

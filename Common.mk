@@ -10,7 +10,7 @@ B2D_SRC=\
 
 GAME_SRC=\
 	threadlib.cpp memory.cpp listlib.cpp testlib.cpp \
-	sampler.cpp audio.cpp game.cpp vector.cpp \
+	sampler.cpp audio.cpp game.cpp vector.cpp testlib_gl.cpp \
 	rect.cpp controls.cpp steering.cpp spriteatlas.cpp \
 	realmain.cpp stb_image.cpp tiles.cpp random.cpp \
 	perlin.cpp heapvector.cpp xmltools.cpp \

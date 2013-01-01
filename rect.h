@@ -15,9 +15,4 @@ void rect_offset(Rect output, Rect input, Vector offset);
 void rect_center(Vector center, Rect rect);
 void rect_scaled(Rect output, Rect input, float w, float h);
 
-typedef struct ColoredRect_ : Rect_ {
-  float color[4];
-} *ColoredRect;
-
-
 #endif

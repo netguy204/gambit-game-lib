@@ -58,6 +58,7 @@ class Scene {
  public:
   SpriteList layers[LAYER_MAX];
   SpriteList particles[LAYER_MAX];
+  ColoredRect testRects[LAYER_MAX];
 
   int dx, dy;
   Rect_ camera_rect;
@@ -67,6 +68,7 @@ class Scene {
 
   void addRelative(SpriteList* list, Sprite sprite);
   void addAbsolute(SpriteList* list, Sprite sprite);
+  void addRelative(ColoredRect* list, ColoredRect rect);
 
   void start(); // after the camera is ready
   void enqueue();
@@ -227,6 +229,12 @@ void LCpush_vector(lua_State *L, Vector vector);
 
 typedef std::map<const char*, SpriteAtlas, cmp_str> NameToAtlas;
 
+struct Cone {
+  Vector_ point;
+  Vector_ direction;
+  float angle;
+};
+
 class World : public Object {
  public:
   OBJECT_PROTO(World);
@@ -235,7 +243,7 @@ class World : public Object {
   World(void*);
   virtual ~World();
 
-  virtual void update(float dt);
+  virtual void update(long delta);
   void update_camera(float dt);
 
   void load_level(const char* level);
@@ -243,6 +251,9 @@ class World : public Object {
   SpriteAtlas atlas(const char* atlas);
   SpriteAtlasEntry atlas_entry(const char* atlas, const char* entry);
   void broadcast_message(GO* go, float radius, int kind);
+  GO* next_in_cone(GO* last, Rect bounds, Cone* cone);
+  void set_time_scale(float scale);
+  float get_time_scale();
 
   GO* create_go();
 
@@ -250,6 +261,9 @@ class World : public Object {
   GO* camera;
   GO* stage;
   GO* focus;
+
+  Clock clock;
+  Clock camera_clock;
 
   Scene scene;
 
@@ -282,12 +296,20 @@ class WorldCallback : public b2QueryCallback {
 };
 
 template<typename Func>
-void world_foreach(World* world, Vector pos, float rad, Func func) {
+void world_foreach(World* world, Rect rect, Func func) {
   b2AABB aabb;
-  aabb.lowerBound.Set((pos->x - rad)/BSCALE, (pos->y - rad)/BSCALE);
-  aabb.upperBound.Set((pos->x + rad)/BSCALE, (pos->y + rad)/BSCALE);
+  aabb.lowerBound.Set(rect->minx/BSCALE, rect->miny/BSCALE);
+  aabb.upperBound.Set(rect->maxx/BSCALE, rect->maxy/BSCALE);
   WorldCallback<Func> callback(func);
   world->bWorld.QueryAABB(&callback, aabb);
 }
+
+template<typename Func>
+void world_foreach(World* world, Vector pos, float rad, Func func) {
+  Rect_ rect = {pos->x - rad, pos->y - rad, pos->x + rad, pos->y + rad};
+  world_foreach(world, &rect, func);
+}
+
+int point_in_cone(Cone* cone, Vector point);
 
 #endif
