@@ -73,7 +73,7 @@ pngs: $(SPRITE_PNGS)
 RESOURCE_FILES=resources/images_default.png resources/images_default.dat
 
 $(RESOURCE_FILES):
-	python tools/spritepak.py sprites/notrim.txt resources/images_default $(SPRITE_PNGS)
+	python tools/spritepak.py sprites/trim.txt resources/images_default $(SPRITE_PNGS)
 
 resources: $(RESOURCE_FILES)
 
