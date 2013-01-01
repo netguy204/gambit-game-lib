@@ -7,6 +7,7 @@
 #include <assert.h>
 #include <time.h>
 #include <unistd.h>
+#include <sys/time.h>
 
 #include "testlib.h"
 #include "testlib_gl.h"

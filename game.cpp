@@ -404,6 +404,10 @@ void game_step(long delta, InputState state) {
   world->scene.enqueue();
 
   //render_hud();
+  // get a clean exit for profiling
+  if(clock_cycles_to_seconds(clock_time(world->clock)) > 120) {
+    exit(0);
+  }
 }
 
 void game_shutdown() {
