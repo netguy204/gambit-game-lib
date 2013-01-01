@@ -43,7 +43,7 @@ function make_selectable(go, opts)
    go:add_component("CCollidable", util.merge_into(defaults, opts))
 end
 
-function input_thread(go)
+function input_thread(go, comp)
    local fire_pressed = false
    local interrupt_pressed = false
 
@@ -70,6 +70,21 @@ function input_thread(go)
       end
       last_mark = new_go
    end
+
+   local message_thread = function(go)
+      while true do
+         coroutine.yield()
+         if go:has_message(constant.PLAYER_ACTION) then
+            local pos = go:pos()
+            pos[2] = pos[2] + HEIGHT
+
+            local vel = {facing * bomb.THROW_SPEED / 3, bomb.THROW_SPEED}
+            make_selectable(bomb.make(pos, vel), {w=bomb.DIM,h=bomb.DIM})
+         end
+      end
+   end
+
+   comp:message_thread(util.thread(message_thread))
 
    while true do
       coroutine.yield()
@@ -146,12 +161,6 @@ function input_thread(go)
          end
       elseif fire_pressed then
          fire_pressed = false
-
-         local pos = go:pos()
-         pos[2] = pos[2] + HEIGHT
-
-         local vel = {facing * bomb.THROW_SPEED / 3, bomb.THROW_SPEED}
-         make_selectable(bomb.make(pos, vel), {w=bomb.DIM,h=bomb.DIM})
       end
 
       if math.abs(input.leftright) > 0.01 and not fire_pressed then

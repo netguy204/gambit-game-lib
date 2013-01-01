@@ -1041,7 +1041,7 @@ void World::broadcast_message(GO* sender, float radius, int kind) {
   Vector_ pos;
   sender->pos(&pos);
 
-  world_foreach(this, &pos, radius, [=](GO* go) -> int {
+  world_foreach(this, &pos, radius, [=](GO* go, b2Fixture*) -> int {
       go->send_message(sender->create_message(kind));
       return 0;
     });
@@ -1066,19 +1066,39 @@ GO* World::next_in_cone(GO* last, Rect bounds, Cone* cone) {
   GO* next_exceeding = NULL;
   float exceeded_by = INFINITY;
 
-  world_foreach(this, bounds, [&](GO* go) -> int {
+  world_foreach(this, bounds, [&](GO* go, b2Fixture* fixture) -> int {
       if(go == last) return 0;
 
-      Vector_ pos;
-      go->pos(&pos);
-      if(point_in_cone(cone, &pos)) {
-        float dist = vector_dist(&pos, &cone->point);
-        if(dist > last_dist) {
-          float my_exceeded_by = dist - last_dist;
-          if(my_exceeded_by < exceeded_by) {
-            next_exceeding = go;
-            exceeded_by = my_exceeded_by;
+      // test the center and the 4 corners of its AABB
+      Vector_ test_points[5];
+      go->pos(&test_points[0]);
+
+      const b2AABB& aabb = fixture->GetAABB(0);
+      Vector_ lower = {aabb.lowerBound.x * BSCALE, aabb.lowerBound.y * BSCALE};
+      Vector_ upper = {aabb.upperBound.x * BSCALE, aabb.upperBound.y * BSCALE};
+
+      test_points[1] = lower; // BL
+      test_points[2].x = upper.x; // BR
+      test_points[2].y = lower.y;
+      test_points[3] = upper; // UR
+      test_points[4].x = lower.x; // UL
+      test_points[4].y = upper.y;
+
+      for(int ii = 0; ii < 5; ++ii) {
+        // if we intersect any of the test points then see if that's
+        // the object with the next closest center
+        if(point_in_cone(cone, &test_points[ii])) {
+          float dist = vector_dist(&test_points[0], &cone->point);
+          if(dist > last_dist) {
+            float my_exceeded_by = dist - last_dist;
+            if(my_exceeded_by < exceeded_by) {
+              next_exceeding = go;
+              exceeded_by = my_exceeded_by;
+            }
           }
+          // once we've found an intersecting point there's no need to
+          // keep looking. move on to the next object
+          break;
         }
       }
       return 0;

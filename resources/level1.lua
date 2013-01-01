@@ -153,6 +153,63 @@ function steam_pipe(miny, maxy, midx)
 
 end
 
+function lawnmower(pos)
+   NOT_RUNNING = 0
+   RUNNING = 1
+   DISABLING = 2
+
+   local _smoke = world:atlas_entry(constant.ATLAS, "smoke")
+
+   local behavior = function(go, comp)
+      local state = NOT_RUNNING
+      local particle_life = 1
+
+      while true do
+         coroutine.yield()
+         if go:has_message(constant.PLAYER_ACTION) then
+            if state == NOT_RUNNING then
+               print("turning on")
+               state = RUNNING
+               go:add_component("CParticleEmitter", {entry=_smoke,
+                                                     max_offset=5,
+                                                     coloring=constant.BW,
+                                                     start_color=0,
+                                                     end_color=0.4,
+                                                     start_scale=0.1,
+                                                     end_scale=0.4,
+                                                     max_life=particle_life,
+                                                     nmax=10,
+                                                     start_alpha=1,
+                                                     end_alpha=0,
+                                                     grav_accel=-60})
+            elseif state == RUNNING then
+               print("disabling")
+               state = DISABLING
+               go:find_component("CParticleEmitter", nil):active(0)
+               go:add_component("CTimer", {time_remaining=particle_life,
+                                           kind=constant.TIMER_EXPIRED})
+            end
+         elseif go:has_message(constant.TIMER_EXPIRED) then
+            print("turning off")
+            state = NOT_RUNNING
+            go:find_component("CParticleEmitter", nil):delete_me(1)
+         end
+      end
+   end
+
+   local _art = world:atlas_entry(constant.ATLAS, "lawnmower")
+   local go = world:create_go()
+   go:pos(pos)
+
+   go:add_component("CPlatformer", {w=_art.w, h=_art.h})
+   go:add_component("CStaticSprite", {entry=_art})
+   go:add_component("CScripted", {message_thread=util.thread(behavior)})
+   human.make_selectable(go)
+
+   print(pos[1], pos[2])
+   return go
+end
+
 function wallpaper(r, art, opts)
    local defaults = {w=rect.width(r),
                      h=rect.height(r),
@@ -186,6 +243,7 @@ function level_init()
    stage_collidable(floor(192+64*4, 64*20, room_height*2, _wood))
    stage_collidable(floor(168, 64*20, room_height*3, _wood))
    wallpaper({64*3, room_height, 64*20, room_height*3}, _aqua)
+   lawnmower({64*18, room_height*2.5})
 
    -- mini platforms
    stage_collidable(floor(64*18, 64*20, room_height*0.5, _wood))

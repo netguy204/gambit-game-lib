@@ -36,7 +36,10 @@ function behavior_thread(go, component)
          go:vel(vel)
       end
 
-      if go:has_message(constant.TIMER_EXPIRED) or go:has_message(constant.EXPLOSION_NEARBY) then
+      if go:has_message(constant.TIMER_EXPIRED)
+         or go:has_message(constant.EXPLOSION_NEARBY)
+         or go:has_message(constant.PLAYER_ACTION) then
+
          if state == IDLE then
             -- set the next timer
             state = EXPLODING
