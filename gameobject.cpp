@@ -65,6 +65,19 @@ void LCpush_vector(lua_State* L, Vector v) {
   lua_rawseti(L, -2, 2);
 }
 
+void LCcheck_vector(lua_State* L, int pos, Vector v) {
+  if(!lua_istable(L, pos)) {
+    luaL_argerror(L, pos, "`table' expected");
+  }
+
+  lua_rawgeti(L, pos, 1);
+  v->x = luaL_checknumber(L, -1);
+  lua_pop(L, 1);
+  lua_rawgeti(L, pos, 2);
+  v->y = luaL_checknumber(L, -1);
+  lua_pop(L, 1);
+}
+
 template<>
 void PropertyTypeImpl<Vector_>::LCpush_value(Object* obj, lua_State* L) const {
   Vector_ v;
@@ -74,17 +87,8 @@ void PropertyTypeImpl<Vector_>::LCpush_value(Object* obj, lua_State* L) const {
 
 template<>
 void PropertyTypeImpl<Vector_>::LCset_value(Object* obj, lua_State* L, int pos) const {
-  if(!lua_istable(L, pos)) {
-    luaL_argerror(L, pos, "`table' expected");
-  }
-
   Vector_ v;
-  lua_rawgeti(L, pos, 1);
-  v.x = luaL_checknumber(L, -1);
-  lua_pop(L, 1);
-  lua_rawgeti(L, pos, 2);
-  v.y = luaL_checknumber(L, -1);
-  lua_pop(L, 1);
+  LCcheck_vector(L, pos, &v);
   set_value(obj, &v);
 }
 
@@ -648,14 +652,16 @@ static int Lworld_atlas_entry(lua_State *L) {
   return 1;
 }
 
+// world, center, last_go, look angle, cone angle
 static int Lworld_next_in_cone(lua_State *L) {
-  World* world = LCcheck_world(L, 1);
-  GO* last_go = LCcheck_go(L, 2);
-  float angle = luaL_checknumber(L, 3);
-
   Cone cone;
-  cone.angle = luaL_checknumber(L, 4);
-  rect_center(&cone.point, &world->scene.camera_rect);
+
+  World* world = LCcheck_world(L, 1);
+  LCcheck_vector(L, 2, &cone.point);
+  GO* last_go = LCcheck_go(L, 3);
+  float angle = luaL_checknumber(L, 4);
+  cone.angle = luaL_checknumber(L, 5);
+
   vector_for_angle(&cone.direction, angle);
 
   GO* next_go = world->next_in_cone(last_go, &world->scene.camera_rect, &cone);

@@ -41,13 +41,21 @@ function input_thread(go)
       local input = world:input_state()
       local dx = input.leftright
       local dy = input.updown
+      local dead_zone = 0.5
 
       local have_direction = math.abs(dx) > 0.01 or math.abs(dy) > 0.01
+      if math.abs(dx) > dead_zone then
+         dx = util.sign(dx)
+      end
+      if math.abs(dy) > dead_zone then
+         dy = util.sign(dy)
+      end
+
       --print('fire_pressed', fire_pressed,
       --      'select_triggered', select_triggered,
       --      'have_direction', have_direction)
 
-      if last_mark and not fire_pressed then
+      if (last_mark and not fire_pressed) or input.action1 then
          -- here's where we do something with our selection
          select_trigger(false)
          select_triggered = false
@@ -67,10 +75,15 @@ function input_thread(go)
 
       -- test, mark the next in cone
       if fire_pressed and select_triggered then
+         local start_pos = nil
          if last_mark then
             last_mark:find_component("CTestDisplay"):delete_me(1)
+            start_pos = last_mark:pos()
+         else
+            start_pos = go:pos()
          end
-         last_mark = world:next_in_cone(last_mark, angle, 0.4)
+
+         last_mark = world:next_in_cone(start_pos, last_mark, angle, 0.6)
          if last_mark then
             last_mark:add_component("CTestDisplay", {w=32,h=32,a=0.5})
          end
