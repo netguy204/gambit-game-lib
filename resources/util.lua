@@ -67,3 +67,15 @@ function table_copy(tbl)
    end
    return new
 end
+
+function merge_into(target, source)
+   if not source then
+      return target
+   end
+
+   target = table_copy(target)
+   for k, v in pairs(source) do
+      target[k] = v
+   end
+   return target
+end

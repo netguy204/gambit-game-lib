@@ -8,18 +8,6 @@ require 'util'
 require 'enemy'
 require 'rect'
 
-function merge_into(target, source)
-   if not source then
-      return target
-   end
-
-   target = util.table_copy(target)
-   for k, v in pairs(source) do
-      target[k] = v
-   end
-   return target
-end
-
 function stage_collidable(r)
    return stage:add_component("CCollidable", {w=rect.width(r),
                                               h=rect.height(r),
@@ -35,7 +23,7 @@ function floor(minx, maxx, topy, art, opts)
                      layer=constant.BACKGROUND,
                      offset={midx, midy}}
 
-   stage:add_component("CDrawWallpaper", merge_into(defaults, opts))
+   stage:add_component("CDrawWallpaper", util.merge_into(defaults, opts))
    return {minx, topy - art.h, maxx, topy}
 end
 
@@ -47,7 +35,7 @@ function wall(miny, maxy, midx, art, opts)
                      layer=constant.BACKGROUND,
                      offset={midx, midy}}
 
-   stage:add_component("CDrawWallpaper", merge_into(defaults, opts))
+   stage:add_component("CDrawWallpaper", util.merge_into(defaults, opts))
    return {midx - art.w/2, miny, midx + art.w/2, maxy}
 end
 
@@ -115,7 +103,7 @@ function pillar(miny, maxy, midx, opt)
    local capy = maxy + _pillar_cap.h / 2
    local defaults = {offset={midx, capy},
                      entry=_pillar_cap}
-   stage:add_component("CStaticSprite", merge_into(defaults, opt))
+   stage:add_component("CStaticSprite", util.merge_into(defaults, opt))
 end
 
 function steam_pipe(miny, maxy, midx)
@@ -124,6 +112,8 @@ function steam_pipe(miny, maxy, midx)
    local _water = world:atlas_entry(constant.ATLAS, "spark")
 
    local go = world:create_go()
+   human.make_selectable(go)
+
    go:pos{midx, (miny + maxy) / 2}
    go:add_component("CDrawWallpaper", {entry=_pipe,
                                        layer=constant.BACKGROUND,
@@ -168,7 +158,7 @@ function wallpaper(r, art, opts)
                      offset=rect.center(r),
                      entry=art}
 
-   stage:add_component("CDrawWallpaper", merge_into(defaults, opts))
+   stage:add_component("CDrawWallpaper", util.merge_into(defaults, opts))
    return r
 end
 

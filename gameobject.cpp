@@ -451,10 +451,11 @@ OBJECT_PROPERTY(CCollidable, w);
 OBJECT_PROPERTY(CCollidable, h);
 OBJECT_PROPERTY(CCollidable, category);
 OBJECT_PROPERTY(CCollidable, mask);
+OBJECT_PROPERTY(CCollidable, density);
 
 CCollidable::CCollidable(void* go)
   : Component((GO*)go, PRIORITY_LEAST), w(0), h(0), fixture(NULL),
-    category(1), mask(0xffff) {
+    category(1), mask(0xffff), density(0) {
   vector_zero(&offset);
 }
 
@@ -469,7 +470,14 @@ void CCollidable::init() {
 
   b2PolygonShape shape;
   shape.SetAsBox((w/2)/BSCALE, (h/2)/BSCALE, center, 0);
-  fixture = go->body->CreateFixture(&shape, 0);
+
+  b2FixtureDef fixtureDef;
+  fixtureDef.shape = &shape;
+  fixtureDef.density = density;
+  fixtureDef.filter.categoryBits = category;
+  fixtureDef.filter.maskBits = mask;
+
+  fixture = go->body->CreateFixture(&fixtureDef);
 }
 
 LuaThread::LuaThread()

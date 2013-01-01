@@ -125,6 +125,7 @@ class CCollidable : public Component {
   Vector_ offset;
   float w;
   float h;
+  float density;
   int category;
   int mask;
 };

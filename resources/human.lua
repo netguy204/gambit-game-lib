@@ -20,8 +20,27 @@ function rising_edge_trigger(state)
    return trigger
 end
 
+SELECTABLE_CATEGORY = 4
+
 function is_selectable(go)
-   local comp = go:find_component("CCollidable")
+   local comp = go:find_component("CCollidable", nil)
+   while comp do
+      if comp:category() == SELECTABLE_CATEGORY then
+         return comp
+      end
+      comp = go:find_component("CCollidable", comp)
+   end
+   return nil
+end
+
+function make_selectable(go, opts)
+   local old_comp = is_selectable(go)
+   if old_comp then
+      old_comp:delete_me(1)
+   end
+
+   local defaults = {w=32, h=32, category=SELECTABLE_CATEGORY, mask=0}
+   go:add_component("CCollidable", util.merge_into(defaults, opts))
 end
 
 function input_thread(go)
@@ -65,10 +84,6 @@ function input_thread(go)
          dy = util.sign(dy)
       end
 
-      --print('fire_pressed', fire_pressed,
-      --      'select_triggered', select_triggered,
-      --      'have_direction', have_direction)
-
       -- during selection, jump resets the mark to the player
       if fire_pressed and input.action1 then
          set_mark(go)
@@ -103,9 +118,18 @@ function input_thread(go)
       -- reset when the direction changes
       if fire_pressed and select_triggered then
          local next_mark = world:next_in_cone(last_mark:pos(), last_mark, angle, 0.6)
+
+         -- keep searching till we find something selectable
+         while next_mark and not is_selectable(next_mark) do
+            next_mark = world:next_in_cone(last_mark:pos(), next_mark, angle, 0.6)
+         end
+
+         -- if we found nothing, select the player who is always
+         -- selectable
          if not next_mark then
             next_mark = go
          end
+
          set_mark(next_mark)
       end
 
@@ -124,7 +148,7 @@ function input_thread(go)
          pos[2] = pos[2] + HEIGHT
 
          local vel = {facing * bomb.THROW_SPEED / 3, bomb.THROW_SPEED}
-         bomb.make(pos, vel)
+         make_selectable(bomb.make(pos, vel))
       end
 
       if math.abs(input.leftright) > 0.01 and not fire_pressed then
@@ -167,7 +191,7 @@ end
 function init(pos)
    player:pos(pos)
    player:vel{0, 0}
-   player:gravity_scale()
+   make_selectable(player)
 
    camera:pos{100, 100}
    camera:vel{0, 0}
