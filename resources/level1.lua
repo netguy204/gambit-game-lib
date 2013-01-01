@@ -181,6 +181,10 @@ function lawnmower(pos)
       while true do
          coroutine.yield()
          switchability(go, comp)
+         if go:has_message(constant.EXPLOSION_NEARBY) then
+            go:vel{util.rand_between(-600, 600),
+                   util.rand_between(0, 600)}
+         end
       end
    end
 
