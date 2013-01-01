@@ -1,7 +1,9 @@
+#include "gl_headers.h"
+#include "testlib_gl.h"
+
 #include "memory.h"
 #include "utils.h"
 #include "matrix.h"
-#include "gl_headers.h"
 #include "testlib.h"
 
 #include <math.h>
@@ -41,12 +43,6 @@ void gl_check_(const char * msg) {
 
   fprintf(stderr, "GL_ERROR: %s => %s\n", msg, e_msg);
 }
-
-#ifdef GL_CHECK_ERRORS
-#define gl_check(command); gl_check_(#command)
-#else
-#define gl_check(command) command
-#endif
 
 int renderer_load_shader(const char* src, int kind) {
   int shader = glCreateShader(kind);

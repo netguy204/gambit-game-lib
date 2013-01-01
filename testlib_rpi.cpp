@@ -9,6 +9,7 @@
 #include <unistd.h>
 
 #include "testlib.h"
+#include "testlib_gl.h"
 #include "testlib_internal.h"
 #include "joystick.h"
 #include "gl_headers.h"
