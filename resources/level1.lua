@@ -136,84 +136,51 @@ function steam_pipe(miny, maxy, midx)
                          offset={0, lower_third},
                          nmax=50}
 
-   local water = go:add_component("CParticleEmitter", water_system)
-   local steam = go:add_component("CParticleEmitter", {entry=_steam,
-                                                       max_offset=5,
-                                                       coloring=constant.BW,
-                                                       start_color=1,
-                                                       end_color=1,
-                                                       start_alpha=1,
-                                                       end_alpha=0,
-                                                       start_scale=0,
-                                                       end_scale=1,
-                                                       max_life=1,
-                                                       max_angular_speed=1,
-                                                       max_speed=5,
-                                                       nmax=5,
-                                                       grav_accel=-30,
-                                                       offset={0, lower_third}})
+   local steam_system = {entry=_steam,
+                         max_offset=5,
+                         coloring=constant.BW,
+                         start_color=1,
+                         end_color=1,
+                         start_alpha=1,
+                         end_alpha=0,
+                         start_scale=0,
+                         end_scale=1,
+                         max_life=1,
+                         max_angular_speed=1,
+                         max_speed=5,
+                         nmax=5,
+                         grav_accel=-30,
+                         offset={0, lower_third}}
 
-end
+   local thread = util.thread_part(util.switchable_particle_system_part(water_system, util.RUNNING))
+   go:add_component("CScripted", {message_thread=thread})
 
-function switchable(go, running, disabling, not_running, disable_time)
-   NOT_RUNNING = 0
-   RUNNING = 1
-   DISABLING = 2
-
-   state = NOT_RUNNING
-   local behavior_part = function()
-      if go:has_message(constant.PLAYER_ACTION) then
-         if state == NOT_RUNNING then
-            state = RUNNING
-            running()
-         elseif state == RUNNING then
-            state = DISABLING
-            go:add_component("CTimer", {time_remaining=disable_time,
-                                        kind=constant.TIMER_EXPIRED})
-            disabling()
-         end
-      elseif go:has_message(constant.TIMER_EXPIRED) then
-         state = NOT_RUNNING
-         not_running()
-      end
-   end
-   return behavior_part
+   thread = util.thread_part(util.switchable_particle_system_part(steam_system, util.RUNNING))
+   go:add_component("CScripted", {message_thread=thread})
 end
 
 function lawnmower(pos)
-
    local _smoke = world:atlas_entry(constant.ATLAS, "smoke")
+   local particle_life = 1
+   local system = {entry=_smoke,
+                   max_offset=5,
+                   coloring=constant.BW,
+                   start_color=0,
+                   end_color=0.4,
+                   start_scale=0.1,
+                   end_scale=0.4,
+                   max_life=particle_life,
+                   nmax=10,
+                   start_alpha=1,
+                   end_alpha=0,
+                   grav_accel=-60}
 
    local behavior = function(go, comp)
       local state = NOT_RUNNING
-      local particle_life = 1
-      local switch_on = function()
-         go:add_component("CParticleEmitter", {entry=_smoke,
-                                               max_offset=5,
-                                               coloring=constant.BW,
-                                               start_color=0,
-                                               end_color=0.4,
-                                               start_scale=0.1,
-                                               end_scale=0.4,
-                                               max_life=particle_life,
-                                               nmax=10,
-                                               start_alpha=1,
-                                               end_alpha=0,
-                                               grav_accel=-60})
-      end
-
-      local switch_disable = function()
-         go:find_component("CParticleEmitter", nil):active(0)
-      end
-
-      local switch_off = function()
-         go:find_component("CParticleEmitter", nil):delete_me(1)
-      end
-
-      local switchability = switchable(go, switch_on, switch_disable, switch_off, particle_life)
+      local switchability = util.switchable_particle_system_part(system)
       while true do
          coroutine.yield()
-         switchability()
+         switchability(go, comp)
       end
    end
 
@@ -226,7 +193,6 @@ function lawnmower(pos)
    go:add_component("CScripted", {message_thread=util.thread(behavior)})
    human.make_selectable(go)
 
-   print(pos[1], pos[2])
    return go
 end
 
