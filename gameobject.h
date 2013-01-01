@@ -125,6 +125,8 @@ class CCollidable : public Component {
   Vector_ offset;
   float w;
   float h;
+  int category;
+  int mask;
 };
 
 struct LuaThread {
@@ -205,7 +207,7 @@ class GO : public Object {
   void slow_set_pos(Vector_ p);
   void slow_set_vel(Vector_ p);
 
-  Component* find_component(const TypeInfo* info);
+  Component* find_component(const TypeInfo* info, Component* last);
   void print_description();
 
   struct DLLNode_ messages_waiting_node;

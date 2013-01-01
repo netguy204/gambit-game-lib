@@ -79,7 +79,7 @@ function door_behavior(go)
 
    local _door = world:atlas_entry(constant.ATLAS, "door")
    local _door_open = world:atlas_entry(constant.ATLAS, "door_open")
-   local sprite = go:find_component("CStaticSprite")
+   local sprite = go:find_component("CStaticSprite", nil)
 
    while true do
       coroutine.yield()

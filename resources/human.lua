@@ -20,6 +20,10 @@ function rising_edge_trigger(state)
    return trigger
 end
 
+function is_selectable(go)
+   local comp = go:find_component("CCollidable")
+end
+
 function input_thread(go)
    local fire_pressed = false
    local interrupt_pressed = false
@@ -27,9 +31,9 @@ function input_thread(go)
    local facing = 1
    local left_art = world:atlas_entry(constant.ATLAS, "guy-left")
    local right_art = world:atlas_entry(constant.ATLAS, "guy")
-   local platformer = go:find_component("CPlatformer")
+   local platformer = go:find_component("CPlatformer", nil)
    local state = FALLING
-   local sprite = go:find_component("CStaticSprite")
+   local sprite = go:find_component("CStaticSprite", nil)
 
    local last_mark = nil
    local select_trigger = rising_edge_trigger(false)
@@ -37,7 +41,7 @@ function input_thread(go)
 
    local set_mark = function(new_go)
       if last_mark then
-         last_mark:find_component("CTestDisplay"):delete_me(1)
+         last_mark:find_component("CTestDisplay", nil):delete_me(1)
       end
       if new_go then
          new_go:add_component("CTestDisplay", {w=32,h=32,a=0.5})

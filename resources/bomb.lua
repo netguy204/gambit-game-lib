@@ -23,7 +23,7 @@ function behavior_thread(go, component)
    set_timer(DELAY - EXPLODE_START)
 
    local state = IDLE
-   local platformer = go:find_component("CPlatformer")
+   local platformer = go:find_component("CPlatformer", nil)
 
    while true do
       coroutine.yield()
@@ -47,7 +47,7 @@ function behavior_thread(go, component)
                             max_life=EXPLODE_START,
                             grav_accel=-30}
             go:add_component("CParticleEmitter", system)
-            go:find_component("CStaticSprite"):delete_me(1)
+            go:find_component("CStaticSprite", nil):delete_me(1)
          elseif state == EXPLODING then
             go:delete_me(1)
             go:broadcast_message(DIM * CHAIN_FACTOR, constant.EXPLOSION_NEARBY)

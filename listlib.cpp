@@ -157,6 +157,15 @@ DLLNode SimpleDLL::remove_tail_node() {
   return result;
 }
 
+int SimpleDLL::contains_node(DLLNode test) {
+  DLLNode node = head;
+  while(node) {
+    if(node == test) return 1;
+    node = node->next;
+  }
+  return 0;
+}
+
 int SimpleDLL::count() {
   return this->nelems;
 }

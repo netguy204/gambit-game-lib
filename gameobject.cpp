@@ -338,37 +338,31 @@ void GO::slow_set_vel(Vector_ vel) {
   set_vel(&vel);
 }
 
-Component* GO::find_component(const TypeInfo* info) {
-  Component* result = NULL;
-  this->components.foreach([&](Component* comp) -> int {
-      if(comp->typeinfo()->isInstanceOf(info)) {
-        if(comp->delete_me) {
-          result = NULL;
-        } else {
-          result = comp;
-        }
-        return 1;
-      }
-      return 0;
-    });
-
-  if(result) {
-    return result;
+Component* GO::find_component(const TypeInfo* info, Component* last) {
+  DLLNode node = components.head;
+  if(last) {
+    node = last->node.next;
   }
 
-  // try the uninitialized components
-  this->uninitialized_components.foreach([&](Component* comp) -> int {
-      if(comp->typeinfo()->isInstanceOf(info)) {
-        if(comp->delete_me) {
-          result = NULL;
-        } else {
-          result = comp;
-        }
-        return 1;
-      }
-      return 0;
-    });
-  return result;
+  while(node) {
+    Component* comp = components.to_element(node);
+    if(comp->typeinfo()->isInstanceOf(info)) {
+      return comp;
+    }
+    node = node->next;
+  }
+
+  if(last && uninitialized_components.contains(last)) return NULL;
+
+  node = uninitialized_components.head;
+  while(node) {
+    Component* comp = uninitialized_components.to_element(node);
+    if(comp->typeinfo()->isInstanceOf(info)) {
+      return comp;
+    }
+    node = node->next;
+  }
+  return NULL;
 }
 
 void GO::print_description() {
@@ -455,9 +449,12 @@ OBJECT_IMPL(CCollidable, Component);
 OBJECT_PROPERTY(CCollidable, offset);
 OBJECT_PROPERTY(CCollidable, w);
 OBJECT_PROPERTY(CCollidable, h);
+OBJECT_PROPERTY(CCollidable, category);
+OBJECT_PROPERTY(CCollidable, mask);
 
 CCollidable::CCollidable(void* go)
-  : Component((GO*)go, PRIORITY_LEAST), w(0), h(0), fixture(NULL) {
+  : Component((GO*)go, PRIORITY_LEAST), w(0), h(0), fixture(NULL),
+    category(1), mask(0xffff) {
   vector_zero(&offset);
 }
 
@@ -693,13 +690,9 @@ void LCpush_component(lua_State *L, Component *comp) {
 static int Lgo_find_component(lua_State *L) {
   GO* go = LCcheck_go(L, 1);
   TypeInfo* type = LCcheck_type(L, 2);
-
-  Component* comp = go->find_component(type);
-  if(comp == NULL) {
-    lua_pushnil(L);
-  } else {
-    LCpush_component(L, comp);
-  }
+  Component* last = LCcheck_component(L, 3);
+  Component* comp = go->find_component(type, last);
+  LCpush_component(L, comp);
   return 1;
 }
 
