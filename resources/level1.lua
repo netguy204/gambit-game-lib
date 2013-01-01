@@ -181,9 +181,17 @@ function lawnmower(pos)
       while true do
          coroutine.yield()
          switchability(go, comp)
-         if go:has_message(constant.EXPLOSION_NEARBY) then
-            go:vel{util.rand_between(-600, 600),
-                   util.rand_between(0, 600)}
+         local expl_sender = go:has_message(constant.EXPLOSION_NEARBY)
+         if expl_sender then
+            -- want to move away from the sender
+            local away = {0,0}
+            util.vector_sub(away, go:pos(), expl_sender:pos())
+            util.vector_norm(away, away)
+            util.vector_scale(away, away, 600)
+            local rand = {util.rand_between(-600, 600),
+                          util.rand_between(0, 600)}
+            util.vector_add(away, away, rand)
+            go:vel(away)
          end
       end
    end

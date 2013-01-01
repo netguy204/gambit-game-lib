@@ -775,7 +775,7 @@ static int Lgo_has_message(lua_State *L) {
     });
 
   if(found) {
-    lua_pushlightuserdata(L, found);
+    LCpush_go(L, found->source);
   } else {
     lua_pushnil(L);
   }

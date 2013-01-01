@@ -21,10 +21,30 @@ function vector_add(out, a, b)
    out[2] = a[2] + b[2]
 end
 
+function vector_sub(out, a, b)
+   out[1] = a[1] - b[1]
+   out[2] = a[2] - b[2]
+end
+
+function vector_norm(out, a)
+   local len = vector_length(a)
+   out[1] = a[1] / len
+   out[2] = a[2] / len
+end
+
+function vector_length(v)
+   return math.sqrt(v[1] * v[1] + v[2] * v[2])
+end
+
 function vector_dist(a, b)
    local dx = a[1] - b[1]
    local dy = a[2] - b[2]
    return math.sqrt(dx * dx + dy * dy)
+end
+
+function vector_scale(out, a, s)
+   out[1] = a[1] * s
+   out[2] = a[2] * s
 end
 
 function thread(fn)
