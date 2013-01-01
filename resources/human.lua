@@ -92,7 +92,7 @@ function input_thread(go, comp)
       local input = world:input_state()
       local dx = input.leftright
       local dy = input.updown
-      local dead_zone = 0.5
+      local dead_zone = 0.9
 
       local have_direction = math.abs(dx) > 0.01 or math.abs(dy) > 0.01
       if math.abs(dx) > dead_zone then
