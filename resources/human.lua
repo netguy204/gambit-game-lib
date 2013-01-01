@@ -63,7 +63,10 @@ function input_thread(go)
          last_mark:find_component("CTestDisplay", nil):delete_me(1)
       end
       if new_go then
-         new_go:add_component("CTestDisplay", {w=32,h=32,a=0.5})
+         -- it's already been established that the thing we have is
+         -- selectable, but this lets us get at the dimensions
+         local sc = is_selectable(new_go)
+         new_go:add_component("CTestDisplay", {w=sc:w(),h=sc:h(),a=0.5})
       end
       last_mark = new_go
    end
@@ -148,7 +151,7 @@ function input_thread(go)
          pos[2] = pos[2] + HEIGHT
 
          local vel = {facing * bomb.THROW_SPEED / 3, bomb.THROW_SPEED}
-         make_selectable(bomb.make(pos, vel))
+         make_selectable(bomb.make(pos, vel), {w=bomb.DIM,h=bomb.DIM})
       end
 
       if math.abs(input.leftright) > 0.01 and not fire_pressed then
@@ -191,7 +194,7 @@ end
 function init(pos)
    player:pos(pos)
    player:vel{0, 0}
-   make_selectable(player)
+   make_selectable(player, {w=WIDTH,h=HEIGHT})
 
    camera:pos{100, 100}
    camera:vel{0, 0}

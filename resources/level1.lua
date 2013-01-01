@@ -110,15 +110,16 @@ function steam_pipe(miny, maxy, midx)
    local _pipe = world:atlas_entry(constant.ATLAS, "outside_wall")
    local _steam = world:atlas_entry(constant.ATLAS, "smoke")
    local _water = world:atlas_entry(constant.ATLAS, "spark")
+   local h = maxy - miny
 
    local go = world:create_go()
-   human.make_selectable(go)
+   human.make_selectable(go, {w=_pipe.w,h=h})
 
    go:pos{midx, (miny + maxy) / 2}
    go:add_component("CDrawWallpaper", {entry=_pipe,
                                        layer=constant.BACKGROUND,
                                        w=_pipe.w,
-                                       h=maxy-miny})
+                                       h=h})
 
    local lower_third = -((maxy-miny)/3)
    local water = go:add_component("CParticleEmitter", {entry=_water,
