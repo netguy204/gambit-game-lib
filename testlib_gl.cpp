@@ -229,6 +229,18 @@ void renderer_finish_image_free(void* texturep) {
 
 GLuint last_texture = -1;
 
+void spritelist_set_texs_and_verts_gl(int nverts, GLfloat* verts, GLfloat* texs) {
+  glEnableVertexAttribArray(GLPARAM_VERTEX);
+  glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 3 * nverts, verts, GL_DYNAMIC_DRAW);
+  glVertexAttribPointer(GLPARAM_VERTEX, 3, GL_FLOAT, GL_FALSE, 0, 0);
+
+  glEnableVertexAttribArray(GLPARAM_TEXCOORD0);
+  glBindBuffer(GL_ARRAY_BUFFER, texcoord_buffer);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 2 * nverts, texs, GL_DYNAMIC_DRAW);
+  glVertexAttribPointer(GLPARAM_TEXCOORD0, 2, GL_FLOAT, GL_FALSE, 0, 0);
+}
+
 int spritelist_set_texs_and_verts(SpriteList list) {
   int nquads = list->count;
   int ntris = nquads * 2;
@@ -302,16 +314,7 @@ int spritelist_set_texs_and_verts(SpriteList list) {
     texs[tex_idx++] = sprite->v0;
   }
 
-  glEnableVertexAttribArray(GLPARAM_VERTEX);
-  glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 3 * nverts, verts, GL_DYNAMIC_DRAW);
-  glVertexAttribPointer(GLPARAM_VERTEX, 3, GL_FLOAT, GL_FALSE, 0, 0);
-
-  glEnableVertexAttribArray(GLPARAM_TEXCOORD0);
-  glBindBuffer(GL_ARRAY_BUFFER, texcoord_buffer);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 2 * nverts, texs, GL_DYNAMIC_DRAW);
-  glVertexAttribPointer(GLPARAM_TEXCOORD0, 2, GL_FLOAT, GL_FALSE, 0, 0);
-
+  spritelist_set_texs_and_verts_gl(nverts, verts, texs);
   return nverts;
 }
 
