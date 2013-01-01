@@ -60,6 +60,8 @@ void native_init();
 void inputstate_latest(InputState state);
 long time_millis();
 void sleep_millis(long millis);
+void renderer_gl_init();
+void renderer_gl_shutdown();
 
 /* exported by testlib.c */
 typedef struct Clock_ {
@@ -114,6 +116,12 @@ SpriteList frame_spritelist_append(SpriteList list, Sprite sprite);
 
 void spritelist_enqueue_for_screen(SpriteList list);
 void spritelist_enqueue_for_screen_colored(SpriteList list);
+
+typedef struct ColoredRect_ : Rect_ {
+  ColoredRect_* next;
+  float color[4];
+} *ColoredRect;
+
 void rect_enqueue_for_screen(ColoredRect rect);
 void filledrect_enqueue_for_screen(ColoredRect rect);
 

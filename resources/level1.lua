@@ -157,6 +157,7 @@ function steam_pipe(miny, maxy, midx)
                                                        max_angular_speed=1,
                                                        max_speed=5,
                                                        nmax=5,
+                                                       grav_accel=-30,
                                                        offset={0, lower_third}})
 
 end

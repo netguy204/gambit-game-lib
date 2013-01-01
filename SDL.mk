@@ -12,7 +12,7 @@ else
 	PLATFORM=linux
 endif
 
-CFLAGS+=`sdl-config --cflags`
+CFLAGS+=`sdl-config --cflags` -DBUILD_SDL
 LDFLAGS+=$(SDL_LIBS) $(OPENGL)
 
 include Common.mk

@@ -1,8 +1,12 @@
 #include "memory.h"
 #include "utils.h"
 #include "matrix.h"
+#include "gl_headers.h"
+#include "testlib.h"
 
 #include <math.h>
+#include <stdio.h>
+#include <stdarg.h>
 
 StackAllocator gldata_allocator;
 

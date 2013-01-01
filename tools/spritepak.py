@@ -60,7 +60,7 @@ def find_visible_bounds(image, pad=0):
     return (left, top, right, bottom)
 
 
-def mk_sheet(filenames, outbase, tgt_dims, notrimg):
+def mk_sheet(filenames, outbase, tgt_dims, trim):
     outimagename = outbase + '.png'
     outdatname = outbase + '.dat'
     outdat = open(outdatname, 'w')
@@ -79,9 +79,8 @@ def mk_sheet(filenames, outbase, tgt_dims, notrimg):
         junk, basename = os.path.split(fname)
         img = Image.open(fname)
 
-        # not working correctly
-        #if not basename in notrim:
-        #    img = img.crop(find_visible_bounds(img))
+        if basename in trim:
+            img = img.crop(find_visible_bounds(img))
 
         img_w, img_h = img.size
 
@@ -121,14 +120,14 @@ def mk_sheet(filenames, outbase, tgt_dims, notrimg):
 
 if __name__ == '__main__':
     if len(sys.argv) < 4:
-        print 'usage: %s notrim outprefix [input files]' % sys.argv[0]
+        print 'usage: %s trimfile outprefix [input files]' % sys.argv[0]
         exit(1)
 
-    notrimfile = sys.argv[1]
+    trimfile = sys.argv[1]
     outfile = sys.argv[2]
     infiles = sys.argv[3:]
 
-    with open(notrimfile) as f:
-        notrim = [ name.rstrip() for name in f ]
+    with open(trimfile) as f:
+        trim = [ name.rstrip() for name in f ]
 
-    mk_sheet(infiles, outfile, (1024, 1024), notrim)
+    mk_sheet(infiles, outfile, (1024, 1024), trim)

@@ -10,7 +10,7 @@ B2D_SRC=\
 
 GAME_SRC=\
 	threadlib.cpp memory.cpp listlib.cpp testlib.cpp \
-	sampler.cpp audio.cpp game.cpp vector.cpp \
+	sampler.cpp audio.cpp game.cpp vector.cpp testlib_gl.cpp \
 	rect.cpp controls.cpp steering.cpp spriteatlas.cpp \
 	realmain.cpp stb_image.cpp tiles.cpp random.cpp \
 	perlin.cpp heapvector.cpp xmltools.cpp \
@@ -73,7 +73,7 @@ pngs: $(SPRITE_PNGS)
 RESOURCE_FILES=resources/images_default.png resources/images_default.dat
 
 $(RESOURCE_FILES):
-	python tools/spritepak.py sprites/notrim.txt resources/images_default $(SPRITE_PNGS)
+	python tools/spritepak.py sprites/trim.txt resources/images_default $(SPRITE_PNGS)
 
 resources: $(RESOURCE_FILES)
 

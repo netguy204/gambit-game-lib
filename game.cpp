@@ -24,8 +24,6 @@
 World* world;
 struct Random_ rgen;
 
-Clock main_clock;
-
 void play_vorbis(const char* filename, float volume) {
   audio_enqueue(oggsampler_make(filename, audio_current_sample(), volume));
 }
@@ -77,41 +75,31 @@ OBJECT_IMPL(CTestDisplay, Component);
 OBJECT_PROPERTY(CTestDisplay, r);
 OBJECT_PROPERTY(CTestDisplay, g);
 OBJECT_PROPERTY(CTestDisplay, b);
+OBJECT_PROPERTY(CTestDisplay, a);
 OBJECT_PROPERTY(CTestDisplay, w);
 OBJECT_PROPERTY(CTestDisplay, h);
+OBJECT_PROPERTY(CTestDisplay, layer);
 
 CTestDisplay::CTestDisplay(void* go)
-  : Component((GO*)go, PRIORITY_SHOW), r(1.0f), g(0.0f), b(1.0f), w(10), h(10) {
+  : Component((GO*)go, PRIORITY_SHOW), r(1.0f), g(0.0f), b(1.0f), a(1.0f),
+    w(10), h(10), layer(LAYER_PLAYER) {
 }
 
 void CTestDisplay::update(float dt) {
   Vector_ pos;
   go->pos(&pos);
 
-  struct ColoredRect_ rect;
-  rect.minx = pos.x - w/2;
-  rect.maxx = pos.x + w/2;
-  rect.miny = pos.y - h/2;
-  rect.maxy = pos.y + h/2;
-  rect.color[0] = r;
-  rect.color[1] = g;
-  rect.color[2] = b;
-  rect.color[3] = 1.0f;
+  ColoredRect rect = (ColoredRect)frame_alloc(sizeof(ColoredRect_));
+  rect->minx = pos.x - w/2;
+  rect->maxx = pos.x + w/2;
+  rect->miny = pos.y - h/2;
+  rect->maxy = pos.y + h/2;
+  rect->color[0] = r;
+  rect->color[1] = g;
+  rect->color[2] = b;
+  rect->color[3] = a;
 
-  Vector_ cpos;
-  camera()->pos(&cpos);
-
-  float dy = floorf(cpos.y);
-  rect.miny -= dy;
-  rect.maxy -= dy;
-  if(rect.miny > screen_height || rect.maxy < 0) return;
-
-  float dx = floorf(cpos.x);
-  rect.minx -= dx;
-  rect.maxx -= dx;
-  if(rect.minx > screen_width || rect.maxx < 0) return;
-
-  filledrect_enqueue_for_screen(&rect);
+  scene()->addRelative(&scene()->testRects[layer], rect);
 }
 
 OBJECT_IMPL(CStaticSprite, Component);
@@ -368,7 +356,6 @@ void init_world() {
 void game_support_init() {
   color_init();
   random_init(&rgen, 1234);
-  main_clock = clock_make();
 }
 
 void game_init() {
@@ -411,10 +398,7 @@ void game_step(long delta, InputState state) {
   }
 
   world->input_state = state;
-
-  float dt = clock_update(main_clock, delta / 1000.0);
-
-  world->update(dt);
+  world->update(delta);
   world->scene.enqueue();
 
   //render_hud();

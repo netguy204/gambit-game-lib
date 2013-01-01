@@ -1,21 +1,10 @@
 /* SDL/OpenGL implementation of testlib suitable for desktops */
 
-#ifdef __APPLE__
-#include <OpenGL/gl.h>
-#else
-#include <GL/glew.h>
-#include <GL/gl.h>
-#endif
-
 #include <SDL/SDL.h>
 
 #include "testlib.h"
 #include "testlib_internal.h"
-
-// include common code that is dependant on the platform variable
-// location/name of the opengl headers
-#define glOrthof glOrtho
-#include "testlib_gl.cpp"
+#include "gl_headers.h"
 
 static struct InputState_ pstate;
 
