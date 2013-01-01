@@ -35,6 +35,16 @@ function input_thread(go)
    local select_trigger = rising_edge_trigger(false)
    local select_triggered = false
 
+   local set_mark = function(new_go)
+      if last_mark then
+         last_mark:find_component("CTestDisplay"):delete_me(1)
+      end
+      if new_go then
+         new_go:add_component("CTestDisplay", {w=32,h=32,a=0.5})
+      end
+      last_mark = new_go
+   end
+
    while true do
       coroutine.yield()
 
@@ -55,38 +65,44 @@ function input_thread(go)
       --      'select_triggered', select_triggered,
       --      'have_direction', have_direction)
 
-      if (last_mark and not fire_pressed) or input.action1 then
+      -- during selection, jump resets the mark to the player
+      if fire_pressed and input.action1 then
+         set_mark(go)
+      end
+
+      if (last_mark and not fire_pressed) then
          -- here's where we do something with our selection
          select_trigger(false)
          select_triggered = false
          if last_mark then
-            last_mark:find_component("CTestDisplay"):delete_me(1)
-            last_mark = nil
+            last_mark:send_message(go:create_message(constant.PLAYER_ACTION))
+            set_mark(nil)
          end
       end
 
       local angle = math.atan2(dy, dx)
       if fire_pressed then
+         -- if nothing is selected, select the player
+         if not last_mark then
+            set_mark(go)
+         end
+
          select_triggered = select_trigger(have_direction and angle)
          world:time_scale(0)
       else
          world:time_scale(1)
       end
 
-      -- test, mark the next in cone
+      -- cycle the mark to the next object. right now we start the
+      -- cone at the last mark but we should start the cone at the
+      -- mark it was at for the current direction of travel and only
+      -- reset when the direction changes
       if fire_pressed and select_triggered then
-         local start_pos = nil
-         if last_mark then
-            last_mark:find_component("CTestDisplay"):delete_me(1)
-            start_pos = last_mark:pos()
-         else
-            start_pos = go:pos()
+         local next_mark = world:next_in_cone(last_mark:pos(), last_mark, angle, 0.6)
+         if not next_mark then
+            next_mark = go
          end
-
-         last_mark = world:next_in_cone(start_pos, last_mark, angle, 0.6)
-         if last_mark then
-            last_mark:add_component("CTestDisplay", {w=32,h=32,a=0.5})
-         end
+         set_mark(next_mark)
       end
 
 
