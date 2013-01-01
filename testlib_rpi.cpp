@@ -74,6 +74,7 @@ void inputstate_latest(InputState state) {
   state->updown = -((float)joystick_state->values[3].value) / 32767.0;
   state->action1 = joystick_state->values[0].value;
   state->action2 = joystick_state->values[4].value;
+//  state->action3 = joystick_state->values[5].value;
 }
 
 void renderer_init(void* empty) {
@@ -147,11 +148,13 @@ void renderer_init(void* empty) {
 
   dispman_display = vc_dispmanx_display_open( 0 /* LCD */);
   dispman_update = vc_dispmanx_update_start( 0 );
-
+  VC_DISPMANX_ALPHA_T alpha;
+  alpha.flags = DISPMANX_FLAGS_ALPHA_FROM_SOURCE;
+  alpha.opacity = 255;
   dispman_element =
     vc_dispmanx_element_add ( dispman_update, dispman_display,
                               0/*layer*/, &dst_rect, 0/*src*/,
-                              &src_rect, DISPMANX_PROTECTION_NONE, 0 /*alpha*/, 0/*clamp*/, DISPMANX_NO_ROTATE/*transform*/);
+                              &src_rect, DISPMANX_PROTECTION_NONE, &alpha/*alpha*/, 0/*clamp*/, DISPMANX_NO_ROTATE/*transform*/);
 
   nativewindow.element = dispman_element;
   nativewindow.width = screen_width;
