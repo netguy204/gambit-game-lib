@@ -292,7 +292,7 @@ class WorldCallback : public b2QueryCallback {
  WorldCallback(Func& func) : func(func) {}
 
   bool ReportFixture(b2Fixture* fixture) {
-    return !func((GO*)fixture->GetBody()->GetUserData());
+    return !func((GO*)fixture->GetBody()->GetUserData(), fixture);
   }
 
   Func& func;

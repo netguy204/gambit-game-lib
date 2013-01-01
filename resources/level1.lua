@@ -122,35 +122,78 @@ function steam_pipe(miny, maxy, midx)
                                        h=h})
 
    local lower_third = -((maxy-miny)/3)
-   local water = go:add_component("CParticleEmitter", {entry=_water,
-                                                       max_offset=5,
-                                                       coloring=constant.BW,
-                                                       start_color=1,
-                                                       end_color=1,
-                                                       start_alpha=0.7,
-                                                       end_alpha=0.2,
-                                                       max_life=1,
-                                                       start_scale=0.1,
-                                                       end_scale=0.4,
-                                                       grav_accel=100,
-                                                       offset={0, lower_third},
-                                                       nmax=50})
-   local steam = go:add_component("CParticleEmitter", {entry=_steam,
-                                                       max_offset=5,
-                                                       coloring=constant.BW,
-                                                       start_color=1,
-                                                       end_color=1,
-                                                       start_alpha=1,
-                                                       end_alpha=0,
-                                                       start_scale=0,
-                                                       end_scale=1,
-                                                       max_life=1,
-                                                       max_angular_speed=1,
-                                                       max_speed=5,
-                                                       nmax=5,
-                                                       grav_accel=-30,
-                                                       offset={0, lower_third}})
+   local water_system = {entry=_water,
+                         max_offset=5,
+                         coloring=constant.BW,
+                         start_color=1,
+                         end_color=1,
+                         start_alpha=0.7,
+                         end_alpha=0.2,
+                         max_life=1,
+                         start_scale=0.1,
+                         end_scale=0.4,
+                         grav_accel=100,
+                         offset={0, lower_third},
+                         nmax=50}
 
+   local steam_system = {entry=_steam,
+                         max_offset=5,
+                         coloring=constant.BW,
+                         start_color=1,
+                         end_color=1,
+                         start_alpha=1,
+                         end_alpha=0,
+                         start_scale=0,
+                         end_scale=1,
+                         max_life=1,
+                         max_angular_speed=1,
+                         max_speed=5,
+                         nmax=5,
+                         grav_accel=-30,
+                         offset={0, lower_third}}
+
+   local thread = util.thread_part(util.switchable_particle_system_part(water_system, util.RUNNING))
+   go:add_component("CScripted", {message_thread=thread})
+
+   thread = util.thread_part(util.switchable_particle_system_part(steam_system, util.RUNNING))
+   go:add_component("CScripted", {message_thread=thread})
+end
+
+function lawnmower(pos)
+   local _smoke = world:atlas_entry(constant.ATLAS, "smoke")
+   local particle_life = 1
+   local system = {entry=_smoke,
+                   max_offset=5,
+                   coloring=constant.BW,
+                   start_color=0,
+                   end_color=0.4,
+                   start_scale=0.1,
+                   end_scale=0.4,
+                   max_life=particle_life,
+                   nmax=10,
+                   start_alpha=1,
+                   end_alpha=0,
+                   grav_accel=-60}
+
+   local behavior = function(go, comp)
+      local state = NOT_RUNNING
+      local switchability = util.switchable_particle_system_part(system)
+      while true do
+         coroutine.yield()
+         switchability(go, comp)
+      end
+   end
+
+   local _art = world:atlas_entry(constant.ATLAS, "lawnmower")
+   local go = world:create_go()
+   go:pos(pos)
+
+   go:add_component("CPlatformer", {w=_art.w, h=_art.h})
+   go:add_component("CStaticSprite", {entry=_art})
+   go:add_component("CScripted", {message_thread=util.thread(behavior)})
+   human.make_selectable(go)
+
+   return go
 end
 
 function wallpaper(r, art, opts)
@@ -186,6 +229,7 @@ function level_init()
    stage_collidable(floor(192+64*4, 64*20, room_height*2, _wood))
    stage_collidable(floor(168, 64*20, room_height*3, _wood))
    wallpaper({64*3, room_height, 64*20, room_height*3}, _aqua)
+   lawnmower({64*18, room_height*2.5})
 
    -- mini platforms
    stage_collidable(floor(64*18, 64*20, room_height*0.5, _wood))

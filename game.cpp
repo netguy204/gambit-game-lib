@@ -277,12 +277,14 @@ void CParticleEmitter::update(float dt) {
 
   for(int ii = 0; ii < nmax; ++ii) {
     PEntry* e = &entries[ii];
-    if(active && e->life <= 0) {
-      // re-init dead particles
-      init_entry(e, max_life);
-    } else if(!active) {
-      // skip dead particles
-      continue;
+    if(e->life <= 0) {
+      if(active) {
+        // re-init dead particles
+        init_entry(e, max_life);
+      } else {
+        // skip dead particles
+        continue;
+      }
     }
 
     // integrate
