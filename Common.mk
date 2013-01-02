@@ -15,7 +15,8 @@ GAME_SRC=\
 	realmain.cpp stb_image.cpp tiles.cpp random.cpp \
 	perlin.cpp heapvector.cpp xmltools.cpp \
 	pathfinder.cpp utils.cpp matrix.cpp ooc.cpp \
-	game_ui.cpp platform.cpp gameobject.cpp color.cpp
+	game_ui.cpp platform.cpp gameobject.cpp color.cpp \
+	soundmgr.cpp
 
 CPP_SRC+=$(GAME_SRC) \
 	$(B2D_SRC)

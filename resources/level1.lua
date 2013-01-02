@@ -8,6 +8,11 @@ require 'util'
 require 'enemy'
 require 'rect'
 
+_G.sounds = {explosion=world:get_sound("sounds/Explosion6.ogg", 0.3),
+             action=world:get_sound("sounds/Jump20.ogg", 0.2),
+             door=world:get_sound("sounds/door1.ogg", 0.2),
+             music="sounds/DST-2ndBallad.ogg"}
+
 function stage_collidable(r)
    return stage:add_component("CCollidable", {w=rect.width(r),
                                               h=rect.height(r),
@@ -76,9 +81,11 @@ function door_behavior(go)
       if state == CLOSED and dist < 100 then
          state = OPEN
          sprite:entry(_door_open)
+         world:play_sound(sounds.door, constant.EVENT)
       elseif state == OPEN and dist > 120 then
          state = CLOSED
          sprite:entry(_door)
+         world:play_sound(sounds.door, constant.EVENT)
       end
    end
 end
@@ -261,4 +268,8 @@ function level_init()
    stage_collidable(bottom)
 
    wallpaper({-64*20, 0, 64*40, 64*40}, _sky, {layer=constant.BACKERDROP})
+
+   -- play music twice
+   local next_sample = world:stream_sound(sounds.music, world:current_sound_sample())
+   world:stream_sound(sounds.music, next_sample)
 end

@@ -51,6 +51,7 @@ function behavior_thread(go, component)
                             grav_accel=-30}
             go:add_component("CParticleEmitter", system)
             go:find_component("CStaticSprite", nil):delete_me(1)
+            world:play_sound(sounds.explosion, constant.FOLEY)
          elseif state == EXPLODING then
             go:delete_me(1)
             go:broadcast_message(DIM * CHAIN_FACTOR, constant.EXPLOSION_NEARBY)

@@ -53,8 +53,7 @@ typedef struct SawSampler_ {
 Sampler sawsampler_make(long start, long duration,
                         float freq, float amp, float phase);
 
-typedef struct OggSampler_ {
-  struct Sampler_ sampler;
+typedef struct OggSampler_ : Sampler_ {
   FILE* f;
   OggVorbis_File vf;
   long sample_rate;
@@ -65,6 +64,12 @@ typedef struct OggSampler_ {
 } *OggSampler;
 
 Sampler oggsampler_make(const char* filename, long sample, float volume);
+
+typedef struct BufferSampler_ : Sampler_ {
+  int16_t* buffer;
+} *BufferSampler;
+
+Sampler buffersampler_make(int16_t* buffer, long start, long nsamples);
 
 #define DURATION(f) (((Sampler)f)->duration_samples)
 #define START(f) (((Sampler)f)->start_sample)

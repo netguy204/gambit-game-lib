@@ -150,17 +150,41 @@ Sampler oggsampler_make(const char* filename, long start, float volume) {
   }
 
   vorbis_info *vi = ov_info(&sampler->vf, -1);
-  ((Sampler)sampler)->start_sample = start;
-  ((Sampler)sampler)->duration_samples = ov_pcm_total(&sampler->vf, -1);
-  ((Sampler)sampler)->function = oggsampler_sample;
-  ((Sampler)sampler)->release = oggsampler_release;
+  sampler->start_sample = start;
+  sampler->duration_samples = ov_pcm_total(&sampler->vf, -1);
+  sampler->function = oggsampler_sample;
+  sampler->release = oggsampler_release;
   sampler->samples_past = 0;
   sampler->channels = vi->channels;
   sampler->sample_rate = vi->rate;
   sampler->volume = volume;
   oggsampler_fillbuffer(sampler);
 
-  return (Sampler)sampler;
+  return sampler;
+}
+
+int16_t buffersampler_sample(void* _sampler, long sample) {
+  BufferSampler sampler = (BufferSampler)_sampler;
+  sample = sampler_offset(sampler, sample);
+  if(sample < sampler->duration_samples) {
+    return sampler->buffer[sample];
+  } else {
+    return 0;
+  }
+}
+
+void buffersampler_release(void* sampler) {
+  free(sampler);
+}
+
+Sampler buffersampler_make(int16_t* buffer, long start, long nsamples) {
+  BufferSampler sampler = (BufferSampler)malloc(sizeof(struct BufferSampler_));
+  sampler->start_sample = start;
+  sampler->duration_samples = nsamples;
+  sampler->function = buffersampler_sample;
+  sampler->release = buffersampler_release;
+  sampler->buffer = buffer;
+  return sampler;
 }
 
 int16_t filter_value(Filter filter, int16_t value) {

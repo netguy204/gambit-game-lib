@@ -5,6 +5,7 @@
 #include "rect.h"
 #include "spriteatlas.h"
 #include "ooc.h"
+#include "soundmgr.h"
 
 #include <lua.hpp>
 #include <Box2D/Box2D.h>
@@ -269,6 +270,7 @@ class World : public Object {
   Clock camera_clock;
 
   Scene scene;
+  SoundMgr sound;
 
   lua_State* L;
   b2World bWorld;

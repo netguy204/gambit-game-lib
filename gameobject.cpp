@@ -674,6 +674,38 @@ static int Lworld_next_in_cone(lua_State *L) {
   return 1;
 }
 
+static int Lworld_get_sound(lua_State* L) {
+  World* world = LCcheck_world(L, 1);
+  const char* sound = luaL_checkstring(L, 2);
+  float scale = luaL_checknumber(L, 3);
+
+  lua_pushlightuserdata(L, world->sound.get_sync(sound, scale));
+  return 1;
+}
+
+static int Lworld_play_sound(lua_State* L) {
+  World* world = LCcheck_world(L, 1);
+  Sound* sound = (Sound*)lua_touserdata(L, 2);
+  luaL_argcheck(L, sound != NULL, 2, "`Sound' expected");
+  int channel = luaL_checkinteger(L, 3);
+  world->sound.play(sound, channel);
+  return 0;
+}
+
+static int Lworld_stream_sound(lua_State* L) {
+  World* world = LCcheck_world(L, 1);
+  const char* sound = luaL_checkstring(L, 2);
+  long start = luaL_checkinteger(L, 3);
+  long end = world->sound.stream(sound, start);
+  lua_pushinteger(L, end);
+  return 1;
+}
+
+static int Lworld_current_sound_sample(lua_State* L) {
+  lua_pushinteger(L, audio_current_sample());
+  return 1;
+}
+
 static Component* LCcheck_component(lua_State *L, int pos) {
   return (Component*)LCcheck_lut(L, LUT_COMPONENT, pos);
 }
@@ -852,6 +884,10 @@ void init_lua(World* world) {
     {"create_go", Lworld_create_go},
     {"atlas_entry", Lworld_atlas_entry},
     {"next_in_cone", Lworld_next_in_cone},
+    {"get_sound", Lworld_get_sound},
+    {"play_sound", Lworld_play_sound},
+    {"stream_sound", Lworld_stream_sound},
+    {"current_sound_sample", Lworld_current_sound_sample},
     {"__tostring", Lobject_tostring},
     {NULL, NULL}};
 
@@ -1017,7 +1053,7 @@ SpriteAtlas World::atlas(const char* atlas_name) {
 
   if(iter == name_to_atlas.end()) {
     atlas = spriteatlas_load(atlas_name, "png");
-    name_to_atlas.insert(std::make_pair(atlas_name, atlas));
+    name_to_atlas.insert(std::make_pair(strdup(atlas_name), atlas));
   } else {
     atlas = iter->second;
   }

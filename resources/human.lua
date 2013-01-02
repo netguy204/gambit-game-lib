@@ -109,6 +109,7 @@ function input_thread(go, comp)
 
       if (last_mark and not fire_pressed) then
          -- here's where we do something with our selection
+         world:play_sound(sounds.action, constant.EVENT)
          select_trigger(false)
          select_triggered = false
          if last_mark then

@@ -36,3 +36,10 @@ FOREGROUND = 4
 -- colorings
 BLACKBODY = 0
 BW = 1
+
+-- channels
+
+EVENT = 0
+FOLEY = 1
+AMBIANCE = 2
+STREAM = 3
