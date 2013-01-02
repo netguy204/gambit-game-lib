@@ -92,14 +92,17 @@ int image_height(ImageResource resource);
 void image_free(ImageResource resource);
 void images_free();
 
-typedef struct Sprite_ {
+typedef struct BaseSprite_ {
   unsigned int texture;
+  int16_t displayX;
+  int16_t displayY;
+  int16_t w, h;
+} *BaseSprite;
+
+typedef struct Sprite_ : BaseSprite_ {
   float angle;
   float originX;
   float originY;
-  float displayX;
-  float displayY;
-  float w, h;
   float u0, u1, v0, v1;
   float color[4];
 } *Sprite;

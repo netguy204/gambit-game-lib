@@ -170,12 +170,6 @@ void Scene::addRelative(SpriteList* list, Sprite sprite) {
 }
 
 void Scene::addAbsolute(SpriteList* list, Sprite sprite) {
-  if(sprite->displayX + sprite->w < 0
-     || sprite->displayX - sprite->w > screen_width) return;
-
-  if(sprite->displayY + sprite->h < 0
-     || sprite->displayY - sprite->h > screen_height) return;
-
   *list = frame_spritelist_append(*list, sprite);
 }
 
