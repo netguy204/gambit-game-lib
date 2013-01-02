@@ -75,6 +75,7 @@ function input_thread(go, comp)
       while true do
          coroutine.yield()
          if go:has_message(constant.PLAYER_ACTION) then
+            world:play_sound(sounds.action, constant.EVENT)
             local pos = go:pos()
             pos[2] = pos[2] + HEIGHT
 
@@ -109,7 +110,6 @@ function input_thread(go, comp)
 
       if (last_mark and not fire_pressed) then
          -- here's where we do something with our selection
-         world:play_sound(sounds.action, constant.EVENT)
          select_trigger(false)
          select_triggered = false
          if last_mark then
