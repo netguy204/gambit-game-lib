@@ -398,9 +398,8 @@ Component::Component(void* p)
 Component::Component(GO* go, ComponentPriority priority)
   : go(NULL), priority(priority), delete_me(0) {
 
-  if(go) {
-    set_parent(go);
-  }
+  this->go = go;
+  go->uninitialized_components.add_head(this);
 }
 
 Component::~Component() {
@@ -417,30 +416,6 @@ void Component::update(float dt) {
 }
 
 void Component::messages_received() {
-}
-
-Scene* Component::scene() {
-  return &go->world->scene;
-}
-
-GO* Component::player() {
-  return go->world->player;
-}
-
-GO* Component::camera() {
-  return go->world->camera;
-}
-
-void Component::set_parent(GO* go) {
-  if(this->go) {
-    this->go->components.remove(this);
-  }
-
-  this->go = go;
-
-  if(go) {
-    go->uninitialized_components.add_head(this);
-  }
 }
 
 OBJECT_IMPL(CCollidable, Component);

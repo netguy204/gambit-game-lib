@@ -96,11 +96,10 @@ class Component : public Object {
   virtual void update(float dt);
   virtual void messages_received();
 
-  Scene* scene();
-  GO* player();
-  GO* camera();
+  inline Scene* scene();
+  inline GO* player();
+  inline GO* camera();
 
-  void set_parent(GO* go);
 
   struct DLLNode_ node;
   struct DLLNode_ world_node;
@@ -317,5 +316,19 @@ void world_foreach(World* world, Vector pos, float rad, Func func) {
 }
 
 int point_in_cone(Cone* cone, Vector point);
+
+
+inline Scene* Component::scene() {
+  return &go->world->scene;
+}
+
+inline GO* Component::player() {
+  return go->world->player;
+}
+
+inline GO* Component::camera() {
+  return go->world->camera;
+}
+
 
 #endif
