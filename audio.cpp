@@ -46,19 +46,21 @@ void playlist_fill_buffer(PlayList list, int16_t* buffer, int nsamples) {
     long sample = next_sample + ii / 2;
     PlayListSample node;
 
-    /* mixing strategy outlined at:
-     * http://www.vttoth.com/CMS/index.php/technical-notes/68
-     */
-    float value = 0;
+    int32_t value = 0;
     for(node = (PlayListSample)list->samples.head; node != NULL;
         node = (PlayListSample)node->node.next) {
       if(START(node->sampler) > sample) break;
-      int16_t sampled = SAMPLE(node->sampler, sample);
-      float normalized = (float)sampled / int16_max;
-      value = value + normalized - (value * normalized);
+      value +=  SAMPLE(node->sampler, sample);
     }
 
-    buffer[ii] = int16_max * value; //filter_value(global_filter, value);
+    if(value > int16_max) {
+      buffer[ii] = int16_max;
+    } else if(value < int16_min) {
+      buffer[ii] = int16_min;
+    } else {
+      buffer[ii] = value;
+    }
+
     buffer[ii+1] = buffer[ii];
   }
 
