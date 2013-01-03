@@ -163,13 +163,13 @@ Scene::Scene(World* world)
   memset(testRects, 0, sizeof(testRects));
 }
 
-void Scene::addRelative(SpriteList* list, Sprite sprite) {
+void Scene::addRelative(SpriteList* list, BaseSprite sprite) {
   sprite->displayX -= dx;
   sprite->displayY -= dy;
   addAbsolute(list, sprite);
 }
 
-void Scene::addAbsolute(SpriteList* list, Sprite sprite) {
+void Scene::addAbsolute(SpriteList* list, BaseSprite sprite) {
   *list = frame_spritelist_append(*list, sprite);
 }
 
@@ -196,6 +196,9 @@ void Scene::start() {
 
 void Scene::enqueue() {
   for(int ii = 0; ii < LAYER_MAX; ++ii) {
+    if(baseLayers[ii]) {
+      basespritelist_enqueue_for_screen(baseLayers[ii]);
+    }
     if(layers[ii]) {
       spritelist_enqueue_for_screen(layers[ii]);
     }
@@ -208,6 +211,7 @@ void Scene::enqueue() {
     }
     layers[ii] = NULL;
     particles[ii] = NULL;
+    baseLayers[ii] = NULL;
   }
 }
 

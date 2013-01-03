@@ -241,6 +241,81 @@ void spritelist_set_texs_and_verts_gl(int nverts, GLfloat* verts, GLfloat* texs)
   glVertexAttribPointer(GLPARAM_TEXCOORD0, 2, GL_FLOAT, GL_FALSE, 0, 0);
 }
 
+void basespritelist_render_to_screen(SpriteList list) {
+  if(!list) return;
+
+  glUseProgram(standard_program);
+
+  int nquads = list->count;
+  int ntris = nquads * 2;
+  int nverts = 3 * ntris;
+
+  GLfloat* verts = (GLfloat*)stack_allocator_alloc(gldata_allocator, sizeof(float) * nverts * 3);
+  GLfloat* texs = (GLfloat*)stack_allocator_alloc(gldata_allocator, sizeof(float) * nverts * 2);
+
+  int vert_idx = 0;
+  int tex_idx = 0;
+
+  SpriteList element;
+  for(element = list; element != NULL;
+      element = (SpriteList)element->node.next) {
+    BaseSprite sprite = element->sprite;
+
+    // bottom-left
+    verts[vert_idx++] = sprite->displayX;
+    verts[vert_idx++] = sprite->displayY;
+    verts[vert_idx++] = 0.0f;
+    texs[tex_idx++] = sprite->u0;
+    texs[tex_idx++] = sprite->v0;
+
+    // bottom-right
+    verts[vert_idx++] = sprite->displayX + sprite->w;
+    verts[vert_idx++] = sprite->displayY;
+    verts[vert_idx++] = 0.0f;
+    texs[tex_idx++] = sprite->u1;
+    texs[tex_idx++] = sprite->v0;
+
+    // top-right
+    verts[vert_idx++] = sprite->displayX + sprite->w;
+    verts[vert_idx++] = sprite->displayY + sprite->h;
+    verts[vert_idx++] = 0.0f;
+    texs[tex_idx++] = sprite->u1;
+    texs[tex_idx++] = sprite->v1;
+
+    // top-right
+    verts[vert_idx++] = sprite->displayX + sprite->w;
+    verts[vert_idx++] = sprite->displayY + sprite->h;
+    verts[vert_idx++] = 0.0f;
+    texs[tex_idx++] = sprite->u1;
+    texs[tex_idx++] = sprite->v1;
+
+    // top-left
+    verts[vert_idx++] = sprite->displayX;
+    verts[vert_idx++] = sprite->displayY + sprite->h;
+    verts[vert_idx++] = 0.0f;
+    texs[tex_idx++] = sprite->u0;
+    texs[tex_idx++] = sprite->v1;
+
+    // bottom-left
+    verts[vert_idx++] = sprite->displayX;
+    verts[vert_idx++] = sprite->displayY;
+    verts[vert_idx++] = 0.0f;
+    texs[tex_idx++] = sprite->u0;
+    texs[tex_idx++] = sprite->v0;
+  }
+
+  spritelist_set_texs_and_verts_gl(nverts, verts, texs);
+
+  if(list->sprite->texture != last_texture) {
+    glBindTexture(GL_TEXTURE_2D, list->sprite->texture);
+    last_texture = list->sprite->texture;
+  }
+
+  glUniform1i(tex0_uniform_location, 0);
+  glUniformMatrix4fv(mvp_uniform_location, 1, GL_FALSE, orthographic_projection.data);
+  glDrawArrays(GL_TRIANGLES, 0, nverts);
+}
+
 int spritelist_set_texs_and_verts(SpriteList list) {
   int nquads = list->count;
   int ntris = nquads * 2;
@@ -255,7 +330,7 @@ int spritelist_set_texs_and_verts(SpriteList list) {
   SpriteList element;
   for(element = list; element != NULL;
       element = (SpriteList)element->node.next) {
-    Sprite sprite = element->sprite;
+    Sprite sprite = (Sprite)element->sprite;
 
     float sa = 0.0f;
     float ca = 1.0f;
@@ -349,7 +424,7 @@ void spritelist_render_to_screen_colored(SpriteList list) {
   int color_idx = 0;
   for(element = list; element != NULL;
       element = (SpriteList)element->node.next) {
-    Sprite sprite = element->sprite;
+    Sprite sprite = (Sprite)element->sprite;
 
     // bottom-left
     colors[color_idx++] = sprite->color[0];

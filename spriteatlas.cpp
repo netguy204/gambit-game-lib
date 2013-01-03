@@ -55,7 +55,7 @@ SpriteAtlasEntry spriteatlas_find(SpriteAtlas atlas, const char* name) {
   return NULL;
 }
 
-void sprite_fillfromentry(Sprite sprite, SpriteAtlasEntry entry) {
+void sprite_fillfromentry(BaseSprite sprite, SpriteAtlasEntry entry) {
   sprite->texture = entry->atlas->image->texture;
   sprite->u0 = entry->u0;
   sprite->u1 = entry->u1;

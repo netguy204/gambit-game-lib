@@ -147,11 +147,11 @@ void CDrawWallpaper::update(float dt) {
 
   vector_add(&pos, &pos, &offset);
 
-  float x_bl = (pos.x - w/2 + entry->w/2) - floorf(cpos.x);
-  if(x_bl > screen_width + entry->w/2) return;
+  float x_bl = (pos.x - w/2) - floorf(cpos.x);
+  if(x_bl > screen_width) return;
 
-  float y_bl = (pos.y - h/2 + entry->h/2) - floorf(cpos.y);
-  if(y_bl > screen_height + entry->w/2) return;
+  float y_bl = (pos.y - h/2) - floorf(cpos.y);
+  if(y_bl > screen_height) return;
 
   float x_tr = (pos.x + w/2) - floorf(cpos.x);
   if(x_tr < 0) return;
@@ -161,8 +161,8 @@ void CDrawWallpaper::update(float dt) {
 
   // now we have some overlap, clamp the tr to the screen and figure
   // out the bl offset
-  x_tr = MIN(x_tr, screen_width + entry->w/2);
-  y_tr = MIN(y_tr, screen_height + entry->h/2);
+  x_tr = MIN(x_tr, screen_width);
+  y_tr = MIN(y_tr, screen_height);
 
   if(x_bl < 0) {
     x_bl += floorf(fabs(x_bl) / entry->w) * entry->w;
@@ -180,13 +180,11 @@ void CDrawWallpaper::update(float dt) {
   while(y < y_tr) {
     float x = x_bl;
     while(x < x_tr) {
-      Sprite sprite = frame_make_sprite();
+      BaseSprite sprite = (BaseSprite)frame_alloc(sizeof(BaseSprite_));
       sprite_fillfromentry(sprite, entry);
       sprite->displayX = x;
       sprite->displayY = y;
-      sprite->originX = 0.5;
-      sprite->originY = 0.5;
-      scene()->addAbsolute(&scene()->layers[layer], sprite);
+      scene()->addAbsolute(&scene()->baseLayers[layer], sprite);
       x += entry->w;
     }
     y += entry->h;

@@ -57,6 +57,7 @@ class World;
 
 class Scene {
  public:
+  SpriteList baseLayers[LAYER_MAX];
   SpriteList layers[LAYER_MAX];
   SpriteList particles[LAYER_MAX];
   ColoredRect testRects[LAYER_MAX];
@@ -67,8 +68,8 @@ class Scene {
 
   Scene(World* world);
 
-  void addRelative(SpriteList* list, Sprite sprite);
-  void addAbsolute(SpriteList* list, Sprite sprite);
+  void addRelative(SpriteList* list, BaseSprite sprite);
+  void addAbsolute(SpriteList* list, BaseSprite sprite);
   void addRelative(ColoredRect* list, ColoredRect rect);
 
   void start(); // after the camera is ready

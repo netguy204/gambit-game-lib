@@ -196,7 +196,7 @@ Sprite frame_make_sprite() {
   return sprite;
 }
 
-SpriteList frame_spritelist_append(SpriteList rest, Sprite sprite) {
+SpriteList frame_spritelist_append(SpriteList rest, BaseSprite sprite) {
   SpriteList list = (SpriteList)frame_alloc(sizeof(struct SpriteList_));
   list->node.next = (LLNode)rest;
   list->sprite = sprite;
@@ -208,6 +208,12 @@ SpriteList frame_spritelist_append(SpriteList rest, Sprite sprite) {
   }
 
   return list;
+}
+
+extern void basespritelist_render_to_screen(SpriteList list);
+
+void basespritelist_enqueue_for_screen(SpriteList list) {
+  renderer_enqueue(basespritelist_render_to_screen, list);
 }
 
 extern void spritelist_render_to_screen(SpriteList list);
