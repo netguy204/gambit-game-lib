@@ -101,7 +101,7 @@ int clamp(int val, int min, int max) {
   return val;
 }
 
-SpriteList tilemap_spritelist(TileMap map, float x_bl, float y_bl, float wpx, float hpx) {
+BaseSprite tilemap_spritelist(TileMap map, float x_bl, float y_bl, float wpx, float hpx) {
   float mx_bl = x_bl - map->x_bl;
   float my_bl = y_bl - map->y_bl;
   float mx_tr = mx_bl + wpx;
@@ -112,7 +112,7 @@ SpriteList tilemap_spritelist(TileMap map, float x_bl, float y_bl, float wpx, fl
   int tx_tr = clamp(ceil(mx_tr / map->tile_width_IP), 0, map->width_IT);
   int ty_tr = clamp(ceil(my_tr / map->tile_height_IP), 0, map->height_IT);
 
-  SpriteList spritelist = NULL;
+  BaseSprite spritelist = NULL;
 
   int ox = (int)floorf((map->x_bl + tx_bl * map->tile_width_IP) - x_bl);
   int oy = (int)floorf((map->y_bl + ty_bl * map->tile_height_IP) - y_bl);
@@ -136,7 +136,7 @@ SpriteList tilemap_spritelist(TileMap map, float x_bl, float y_bl, float wpx, fl
       sprite->originY = 0.0f;
       sprite->displayX = (float)x;
       sprite->displayY = (float)y;
-      spritelist = frame_spritelist_append(spritelist, sprite);
+      sprite_append(spritelist, sprite);
     }
   }
 

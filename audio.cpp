@@ -26,43 +26,15 @@ void playlistsample_free(PlayListSample pls) {
 }
 
 PlayList playlist_make() {
-  PlayList pl = (PlayList)malloc(sizeof(struct PlayList_));
-  pl->head = NULL;
+  PlayList pl = new PlayList_();
   pl->next_sample = 0;
   return pl;
 }
 
 void playlist_insert_sampler(PlayList list, PlayListSample sample) {
-  if(list->head == NULL) {
-    list->head = sample;
-    sample->node.next = NULL;
-    return;
-  }
-
-  if(START(sample->sampler) < START(list->head->sampler)) {
-    sample->node.next = (DLLNode)list->head;
-    list->head = sample;
-    return;
-  }
-
-  PlayListSample last_node = list->head;
-  PlayListSample current_node = (PlayListSample)list->head->node.next;
-
-  while(current_node != NULL) {
-    if(START(sample->sampler) < START(current_node->sampler)) {
-      // insert before this node
-      sample->node.next = (DLLNode)current_node;
-      last_node->node.next = (DLLNode)sample;
-      return; // done
-    }
-
-    last_node = current_node;
-    current_node = (PlayListSample)current_node->node.next;
-  }
-
-  // must be after the end
-  sample->node.next = NULL;
-  last_node->node.next = (DLLNode)sample;
+  list->samples.insert_before_when(sample, [=](PlayListSample other) {
+      return START(sample->sampler) < START(other->sampler);
+    });
 }
 
 void playlist_fill_buffer(PlayList list, int16_t* buffer, int nsamples) {
@@ -78,7 +50,7 @@ void playlist_fill_buffer(PlayList list, int16_t* buffer, int nsamples) {
      * http://www.vttoth.com/CMS/index.php/technical-notes/68
      */
     float value = 0;
-    for(node = list->head; node != NULL;
+    for(node = (PlayListSample)list->samples.head; node != NULL;
         node = (PlayListSample)node->node.next) {
       if(START(node->sampler) > sample) break;
       int16_t sampled = SAMPLE(node->sampler, sample);
@@ -91,11 +63,14 @@ void playlist_fill_buffer(PlayList list, int16_t* buffer, int nsamples) {
   }
 
   /* remove any nodes that are no longer playable */
-  while(list->head != NULL &&
-        END(list->head->sampler) < list->next_sample) {
-    PlayListSample node = list->head;
-    list->head = (PlayListSample)node->node.next;
-    playlistsample_free(node);
+  PlayListSample node = (PlayListSample)list->samples.head;
+  while(node) {
+    PlayListSample next = (PlayListSample)node->node.next;
+    if(END(((PlayListSample)node)->sampler) < list->next_sample) {
+      list->samples.remove(node);
+      playlistsample_free(node);
+    }
+    node = next;
   }
 }
 

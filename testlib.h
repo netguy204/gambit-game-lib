@@ -93,12 +93,24 @@ void image_free(ImageResource resource);
 void images_free();
 
 typedef struct BaseSprite_ {
-  float u0, u1, v0, v1;
+  BaseSprite_* next;
   unsigned int texture;
+  unsigned int count;
+  float u0, u1, v0, v1;
   int16_t displayX;
   int16_t displayY;
   int16_t w, h;
 } *BaseSprite;
+
+#define sprite_append(list, sprite) do {        \
+    sprite->next = list;                       \
+    if(list) {                                  \
+      sprite->count = (list)->count + 1;        \
+    } else {                                    \
+      sprite->count = 1;                        \
+    }                                           \
+    list = sprite;                              \
+  } while(0)
 
 typedef struct Sprite_ : BaseSprite_ {
   float angle;
@@ -109,17 +121,9 @@ typedef struct Sprite_ : BaseSprite_ {
 
 Sprite frame_make_sprite();
 
-typedef struct SpriteList_ {
-  struct LLNode_ node;
-  BaseSprite sprite;
-  int count;
-} *SpriteList;
-
-SpriteList frame_spritelist_append(SpriteList list, BaseSprite sprite);
-
-void basespritelist_enqueue_for_screen(SpriteList list);
-void spritelist_enqueue_for_screen(SpriteList list);
-void spritelist_enqueue_for_screen_colored(SpriteList list);
+void basespritelist_enqueue_for_screen(BaseSprite list);
+void spritelist_enqueue_for_screen(BaseSprite list);
+void spritelist_enqueue_for_screen_colored(BaseSprite list);
 
 typedef struct ColoredRect_ : Rect_ {
   ColoredRect_* next;

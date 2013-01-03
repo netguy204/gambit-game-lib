@@ -10,7 +10,7 @@ typedef struct PlayListSample_ {
 } *PlayListSample;
 
 typedef struct PlayList_ {
-  PlayListSample head;
+  DLL_DECLARE(PlayListSample_, node) samples;
   long next_sample;
 } *PlayList;
 

@@ -2,7 +2,6 @@
 #include "vector.h"
 #include "listlib.h"
 #include "memory.h"
-#include "particle.h"
 #include "rect.h"
 #include "controls.h"
 #include "steering.h"
@@ -388,7 +387,7 @@ void render_hud() {
     -32.0f,
     (screen_width + patch_width) / 2.0f,
     patch_height - 32.0f};
-  SpriteList list = spritelist_from_8patch(NULL, world->atlas(ATLAS), &patch);
+  BaseSprite list = spritelist_from_8patch(NULL, world->atlas(ATLAS), &patch);
   spritelist_enqueue_for_screen(list);
 }
 

@@ -11,13 +11,13 @@ typedef enum {
   FONT_MAX
 } FontSize;
 
-SpriteList spritelist_from_8patch(SpriteList list, SpriteAtlas atlas,
+BaseSprite spritelist_from_8patch(BaseSprite list, SpriteAtlas atlas,
                                   Rect screen_rect);
 
-SpriteList spritelist_from_string(SpriteList list, SpriteAtlas atlas, FontSize size,
+BaseSprite spritelist_from_string(BaseSprite list, SpriteAtlas atlas, FontSize size,
                                   const char* string, int bl_x, int bl_y);
 
-SpriteList spritelist_from_consoletext(SpriteList list, SpriteAtlas atlas, const char* string,
+BaseSprite spritelist_from_consoletext(BaseSprite list, SpriteAtlas atlas, const char* string,
                                        int bl_x, int bl_y, int width);
 
 void gameui_submit();

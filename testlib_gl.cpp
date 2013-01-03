@@ -241,7 +241,7 @@ void spritelist_set_texs_and_verts_gl(int nverts, GLfloat* verts, GLfloat* texs)
   glVertexAttribPointer(GLPARAM_TEXCOORD0, 2, GL_FLOAT, GL_FALSE, 0, 0);
 }
 
-void basespritelist_render_to_screen(SpriteList list) {
+void basespritelist_render_to_screen(BaseSprite list) {
   if(!list) return;
 
   glUseProgram(standard_program);
@@ -256,10 +256,9 @@ void basespritelist_render_to_screen(SpriteList list) {
   int vert_idx = 0;
   int tex_idx = 0;
 
-  SpriteList element;
-  for(element = list; element != NULL;
-      element = (SpriteList)element->node.next) {
-    BaseSprite sprite = element->sprite;
+  BaseSprite sprite;
+  for(sprite = list; sprite != NULL;
+      sprite = sprite->next) {
 
     // bottom-left
     verts[vert_idx++] = sprite->displayX;
@@ -306,9 +305,9 @@ void basespritelist_render_to_screen(SpriteList list) {
 
   spritelist_set_texs_and_verts_gl(nverts, verts, texs);
 
-  if(list->sprite->texture != last_texture) {
-    glBindTexture(GL_TEXTURE_2D, list->sprite->texture);
-    last_texture = list->sprite->texture;
+  if(list->texture != last_texture) {
+    glBindTexture(GL_TEXTURE_2D, list->texture);
+    last_texture = list->texture;
   }
 
   glUniform1i(tex0_uniform_location, 0);
@@ -316,7 +315,7 @@ void basespritelist_render_to_screen(SpriteList list) {
   glDrawArrays(GL_TRIANGLES, 0, nverts);
 }
 
-int spritelist_set_texs_and_verts(SpriteList list) {
+int spritelist_set_texs_and_verts(BaseSprite list) {
   int nquads = list->count;
   int ntris = nquads * 2;
   int nverts = 3 * ntris;
@@ -327,10 +326,10 @@ int spritelist_set_texs_and_verts(SpriteList list) {
   int vert_idx = 0;
   int tex_idx = 0;
 
-  SpriteList element;
-  for(element = list; element != NULL;
-      element = (SpriteList)element->node.next) {
-    Sprite sprite = (Sprite)element->sprite;
+  BaseSprite _sprite;
+  for(_sprite = list; _sprite != NULL;
+      _sprite = _sprite->next) {
+    Sprite sprite = (Sprite)_sprite;
 
     float sa = 0.0f;
     float ca = 1.0f;
@@ -393,16 +392,16 @@ int spritelist_set_texs_and_verts(SpriteList list) {
   return nverts;
 }
 
-void spritelist_render_to_screen(SpriteList list) {
+void spritelist_render_to_screen(BaseSprite list) {
   if(!list) return;
 
   glUseProgram(standard_program);
 
   int nverts = spritelist_set_texs_and_verts(list);
 
-  if(list->sprite->texture != last_texture) {
-    glBindTexture(GL_TEXTURE_2D, list->sprite->texture);
-    last_texture = list->sprite->texture;
+  if(list->texture != last_texture) {
+    glBindTexture(GL_TEXTURE_2D, list->texture);
+    last_texture = list->texture;
   }
 
   glUniform1i(tex0_uniform_location, 0);
@@ -410,7 +409,7 @@ void spritelist_render_to_screen(SpriteList list) {
   glDrawArrays(GL_TRIANGLES, 0, nverts);
 }
 
-void spritelist_render_to_screen_colored(SpriteList list) {
+void spritelist_render_to_screen_colored(BaseSprite list) {
   if(!list) return;
 
   glUseProgram(standard_color_program);
@@ -420,11 +419,11 @@ void spritelist_render_to_screen_colored(SpriteList list) {
   int ncolors = nverts * 4;
   GLfloat* colors = (GLfloat*)stack_allocator_alloc(gldata_allocator, sizeof(float) * ncolors);
 
-  SpriteList element;
+  BaseSprite _sprite;
   int color_idx = 0;
-  for(element = list; element != NULL;
-      element = (SpriteList)element->node.next) {
-    Sprite sprite = (Sprite)element->sprite;
+  for(_sprite = list; _sprite != NULL;
+      _sprite = _sprite->next) {
+    Sprite sprite = (Sprite)_sprite;
 
     // bottom-left
     colors[color_idx++] = sprite->color[0];
@@ -468,9 +467,9 @@ void spritelist_render_to_screen_colored(SpriteList list) {
   glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 4 * nverts, colors, GL_DYNAMIC_DRAW);
   glVertexAttribPointer(GLPARAM_OTHER0, 4, GL_FLOAT, GL_FALSE, 0, 0);
 
-  if(list->sprite->texture != last_texture) {
-    glBindTexture(GL_TEXTURE_2D, list->sprite->texture);
-    last_texture = list->sprite->texture;
+  if(list->texture != last_texture) {
+    glBindTexture(GL_TEXTURE_2D, list->texture);
+    last_texture = list->texture;
   }
 
   glUniform1i(color_tex0_uniform_location, 0);

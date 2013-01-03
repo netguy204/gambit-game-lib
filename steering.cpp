@@ -8,6 +8,7 @@ void steeringresult_complete(SteeringResult result, SteeringParams params) {
   vector_clamp(&result->force, &result->force, params->force_max);
 }
 
+/*
 void particle_applysteering(Particle* p, SteeringResult r, SteeringParams params, float dt) {
   struct Vector_ dvdt;
   vector_scale(&dvdt, &r->force, dt / params->application_time);
@@ -22,6 +23,7 @@ void particle_applysteering(Particle* p, SteeringResult r, SteeringParams params
 
   p->angle = vector_angle(&p->vel);
 }
+*/
 
 void steering_apply_desired_velocity(SteeringResult r, Vector desired_vel, Vector src_vel) {
   vector_sub(&r->force, desired_vel, src_vel);

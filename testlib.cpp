@@ -196,35 +196,21 @@ Sprite frame_make_sprite() {
   return sprite;
 }
 
-SpriteList frame_spritelist_append(SpriteList rest, BaseSprite sprite) {
-  SpriteList list = (SpriteList)frame_alloc(sizeof(struct SpriteList_));
-  list->node.next = (LLNode)rest;
-  list->sprite = sprite;
+extern void basespritelist_render_to_screen(BaseSprite list);
 
-  if(rest) {
-    list->count = rest->count + 1;
-  } else {
-    list->count = 1;
-  }
-
-  return list;
-}
-
-extern void basespritelist_render_to_screen(SpriteList list);
-
-void basespritelist_enqueue_for_screen(SpriteList list) {
+void basespritelist_enqueue_for_screen(BaseSprite list) {
   renderer_enqueue(basespritelist_render_to_screen, list);
 }
 
-extern void spritelist_render_to_screen(SpriteList list);
+extern void spritelist_render_to_screen(BaseSprite list);
 
-void spritelist_enqueue_for_screen(SpriteList list) {
+void spritelist_enqueue_for_screen(BaseSprite list) {
   renderer_enqueue(spritelist_render_to_screen, list);
 }
 
-extern void spritelist_render_to_screen_colored(SpriteList list);
+extern void spritelist_render_to_screen_colored(BaseSprite list);
 
-void spritelist_enqueue_for_screen_colored(SpriteList list) {
+void spritelist_enqueue_for_screen_colored(BaseSprite list) {
   renderer_enqueue(spritelist_render_to_screen_colored, list);
 }
 

@@ -73,7 +73,7 @@ static Sprite ui_make_sprite(SpriteAtlasEntry entry, int x, int y) {
   return sprite;
 }
 
-SpriteList spritelist_from_8patch(SpriteList list, SpriteAtlas atlas, Rect rect) {
+BaseSprite spritelist_from_8patch(BaseSprite list, SpriteAtlas atlas, Rect rect) {
   ensure_cache(atlas);
 
   int major_dim = patch_cache[EP_C]->w;
@@ -114,7 +114,7 @@ SpriteList spritelist_from_8patch(SpriteList list, SpriteAtlas atlas, Rect rect)
 
       SpriteAtlasEntry entry = patch_cache[element];
       Sprite sprite = ui_make_sprite(entry, xpos, ypos);
-      list = frame_spritelist_append(list, sprite);
+      sprite_append(list, sprite);
       xpos += entry->w;
       ymax = MAX(ymax, entry->h);
     }
@@ -185,7 +185,7 @@ void ui_wrap_string(HeapVector output, const char* input, int max_chars) {
 }
 
 
-SpriteList spritelist_from_string(SpriteList list, SpriteAtlas atlas, FontSize size,
+BaseSprite spritelist_from_string(BaseSprite list, SpriteAtlas atlas, FontSize size,
                                   const char* string, int bl_x, int bl_y) {
   ensure_cache(atlas);
   int xstart = bl_x;
@@ -207,7 +207,7 @@ SpriteList spritelist_from_string(SpriteList list, SpriteAtlas atlas, FontSize s
 
     SpriteAtlasEntry entry = font_cache[size][ord];
     Sprite sprite = ui_make_sprite(entry, bl_x, bl_y);
-    list = frame_spritelist_append(list, sprite);
+    sprite_append(list, sprite);
     bl_x += entry->w;
   }
 
@@ -216,7 +216,7 @@ SpriteList spritelist_from_string(SpriteList list, SpriteAtlas atlas, FontSize s
 
 HeapVector consoletext_hv = NULL;
 
-SpriteList spritelist_from_consoletext(SpriteList list, SpriteAtlas atlas, const char* string,
+BaseSprite spritelist_from_consoletext(BaseSprite list, SpriteAtlas atlas, const char* string,
                                        int bl_x, int bl_y, int width) {
   ensure_cache(atlas);
 

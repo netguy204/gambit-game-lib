@@ -163,14 +163,14 @@ Scene::Scene(World* world)
   memset(testRects, 0, sizeof(testRects));
 }
 
-void Scene::addRelative(SpriteList* list, BaseSprite sprite) {
+void Scene::addRelative(BaseSprite* list, BaseSprite sprite) {
   sprite->displayX -= dx;
   sprite->displayY -= dy;
   addAbsolute(list, sprite);
 }
 
-void Scene::addAbsolute(SpriteList* list, BaseSprite sprite) {
-  *list = frame_spritelist_append(*list, sprite);
+void Scene::addAbsolute(BaseSprite* list, BaseSprite sprite) {
+  sprite_append(*list, sprite);
 }
 
 void Scene::addRelative(ColoredRect* list, ColoredRect rect) {
