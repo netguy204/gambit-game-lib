@@ -1,5 +1,5 @@
 #include "gameobject.h"
-#include "memory.h"
+#include "memlib.h"
 #include "config.h"
 #include "testlib.h"
 #include "utils.h"

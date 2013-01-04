@@ -3,7 +3,7 @@
 
 #include "tiles.h"
 #include "heapvector.h"
-#include "memory.h"
+#include "memlib.h"
 
 struct PathElement_;
 

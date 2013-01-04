@@ -9,11 +9,11 @@ B2D_SRC=\
 	$(wildcard $(B2D_BASE)/Box2D/Rope/*.cpp)
 
 GAME_SRC=\
-	threadlib.cpp memory.cpp listlib.cpp testlib.cpp \
+	threadlib.cpp memlib.cpp listlib.cpp testlib.cpp \
 	sampler.cpp audio.cpp game.cpp vector.cpp testlib_gl.cpp \
 	rect.cpp controls.cpp steering.cpp spriteatlas.cpp \
-	realmain.cpp stb_image.cpp tiles.cpp random.cpp \
-	perlin.cpp heapvector.cpp xmltools.cpp \
+	realmain.cpp tiles.cpp random.cpp \
+	perlin.cpp heapvector.cpp \
 	pathfinder.cpp utils.cpp matrix.cpp ooc.cpp \
 	game_ui.cpp platform.cpp gameobject.cpp color.cpp \
 	soundmgr.cpp
@@ -27,8 +27,7 @@ OGG_SRC=$(wildcard vender/libogg-1.3.0/src/*.c)
 OGG_HEADER=vender/libogg-1.3.0/include/ogg/config_types.h
 LUA_LIB=vender/lua-5.2.1/src/liblua.a
 
-C_SRC+= \
-	sfmt/SFMT.c spectra.c $(OGG_SRC) $(TREMOR_SRC)
+C_SRC+=sfmt/SFMT.c spectra.c $(OGG_SRC) $(TREMOR_SRC) stb_image.c
 
 XML_INCLUDE:=-I/usr/include/libxml2
 

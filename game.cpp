@@ -1,7 +1,7 @@
 #include "game.h"
 #include "vector.h"
 #include "listlib.h"
-#include "memory.h"
+#include "memlib.h"
 #include "rect.h"
 #include "controls.h"
 #include "steering.h"

@@ -1,7 +1,7 @@
 #include "gl_headers.h"
 #include "testlib_gl.h"
 
-#include "memory.h"
+#include "memlib.h"
 #include "utils.h"
 #include "matrix.h"
 #include "testlib.h"

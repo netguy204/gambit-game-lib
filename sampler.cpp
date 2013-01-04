@@ -1,5 +1,5 @@
 #include "sampler.h"
-#include "memory.h"
+#include "memlib.h"
 #include "config.h"
 
 #include <math.h>

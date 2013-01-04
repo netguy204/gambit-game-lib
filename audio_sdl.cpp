@@ -3,7 +3,7 @@
 #include <assert.h>
 
 #include "audio.h"
-#include "memory.h"
+#include "memlib.h"
 
 #define NUM_SAMPLES 2048
 

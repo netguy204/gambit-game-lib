@@ -33,6 +33,10 @@
 #define LUA_WIN		/* enable goodies for regular Windows platforms */
 #endif
 
+#if defined(__ANDROID__)
+#define getlocaledecpoint() '.'
+#endif
+
 #if defined(LUA_WIN)
 #define LUA_DL_DLL
 #define LUA_USE_AFORMAT		/* assume 'printf' handles 'aA' specifiers */
@@ -92,10 +96,10 @@
 #define LUA_LDIR	"!\\lua\\"
 #define LUA_CDIR	"!\\"
 #define LUA_PATH_DEFAULT  \
-		LUA_LDIR"?.lua;"  LUA_LDIR"?\\init.lua;" \
-		LUA_CDIR"?.lua;"  LUA_CDIR"?\\init.lua;" ".\\?.lua"
+                LUA_LDIR"?.lua;"  LUA_LDIR"?\\init.lua;" \
+                LUA_CDIR"?.lua;"  LUA_CDIR"?\\init.lua;" ".\\?.lua"
 #define LUA_CPATH_DEFAULT \
-		LUA_CDIR"?.dll;" LUA_CDIR"loadall.dll;" ".\\?.dll"
+                LUA_CDIR"?.dll;" LUA_CDIR"loadall.dll;" ".\\?.dll"
 
 #else			/* }{ */
 
@@ -104,10 +108,10 @@
 #define LUA_LDIR	LUA_ROOT "share/lua/" LUA_VDIR
 #define LUA_CDIR	LUA_ROOT "lib/lua/" LUA_VDIR
 #define LUA_PATH_DEFAULT  \
-		LUA_LDIR"?.lua;"  LUA_LDIR"?/init.lua;" \
-		LUA_CDIR"?.lua;"  LUA_CDIR"?/init.lua;" "./?.lua"
+                LUA_LDIR"?.lua;"  LUA_LDIR"?/init.lua;" \
+                LUA_CDIR"?.lua;"  LUA_CDIR"?/init.lua;" "./?.lua"
 #define LUA_CPATH_DEFAULT \
-		LUA_CDIR"?.so;" LUA_CDIR"loadall.so;" "./?.so"
+                LUA_CDIR"?.so;" LUA_CDIR"loadall.so;" "./?.so"
 #endif			/* } */
 
 
@@ -220,7 +224,7 @@
 ** (A format string with one argument is enough for Lua...)
 */
 #define luai_writestringerror(s,p) \
-	(fprintf(stderr, (s), (p)), fflush(stderr))
+        (fprintf(stderr, (s), (p)), fflush(stderr))
 
 
 /*
@@ -263,9 +267,9 @@
 ** You can call your C function directly (with light C functions).
 */
 #define lua_cpcall(L,f,u)  \
-	(lua_pushcfunction(L, (f)), \
-	 lua_pushlightuserdata(L,(u)), \
-	 lua_pcall(L,1,0,0))
+        (lua_pushcfunction(L, (f)), \
+         lua_pushlightuserdata(L,(u)), \
+         lua_pcall(L,1,0,0))
 
 
 /*
@@ -543,4 +547,3 @@
 
 
 #endif
-

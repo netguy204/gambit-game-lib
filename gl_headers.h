@@ -23,8 +23,13 @@
 #include "EGL/eglext.h"
 
 #else
+#ifdef BUILD_ANDROID
+#include "GLES2/gl2.h"
+#include "GLES2/gl2ext.h"
 
-#error "Either BUILD_SDL or BUILD_RPI must be defined"
+#else
+#error "Either BUILD_SDL or BUILD_RPI or BUILD_ANDROID must be defined"
+#endif
 #endif
 #endif
 

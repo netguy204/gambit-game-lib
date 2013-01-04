@@ -13,7 +13,7 @@
  */
 
 #include "threadlib.h"
-#include "memory.h"
+#include "memlib.h"
 #include "listlib.h"
 #include "rect.h"
 #include "audio.h"
