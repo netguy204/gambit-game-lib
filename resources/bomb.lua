@@ -1,21 +1,20 @@
-module(..., package.seeall)
+local M = {}
 
-require 'human'
-require 'constant'
-require 'util'
+local constant = require 'constant'
+local util = require 'util'
 
-THROW_SPEED = 1600
-DIM = 45
-MAX_HEIGHT = 400
-GRAV_ACCEL = util.accel(THROW_SPEED, MAX_HEIGHT)
-DELAY = 6
-EXPLODE_START = 0.3
-CHAIN_FACTOR = 1
+M.THROW_SPEED = 1600
+M.DIM = 45
+local MAX_HEIGHT = 400
+local GRAV_ACCEL = util.accel(M.THROW_SPEED, MAX_HEIGHT)
+local DELAY = 6
+local EXPLODE_START = 0.3
+local CHAIN_FACTOR = 1
 
-IDLE = 1
-EXPLODING = 2
+local IDLE = 1
+local EXPLODING = 2
 
-function behavior_thread(go, component)
+local function behavior_thread(go, component)
    local set_timer = function(delay)
       go:add_component("CTimer", {kind=constant.TIMER_EXPIRED, time_remaining=delay})
    end
@@ -54,20 +53,20 @@ function behavior_thread(go, component)
             world:play_sound(sounds.explosion, constant.FOLEY)
          elseif state == EXPLODING then
             go:delete_me(1)
-            go:broadcast_message(DIM * CHAIN_FACTOR, constant.EXPLOSION_NEARBY)
+            go:broadcast_message(M.DIM * CHAIN_FACTOR, constant.EXPLOSION_NEARBY)
             return
          end
       end
    end
 end
 
-function make(pos, vel)
+function M.make(pos, vel)
    local go = world:create_go()
    local bomb_art = world:atlas_entry(constant.ATLAS, "bomb")
    local spark_art = world:atlas_entry(constant.ATLAS, "spark")
 
    go:add_component("CStaticSprite", {entry=bomb_art, layer=constant.PLAYER})
-   go:add_component("CPlatformer", {w=DIM, h=DIM, friction=1})
+   go:add_component("CPlatformer", {w=M.DIM, h=M.DIM, friction=1})
    go:pos(pos)
    go:vel(vel)
 
@@ -85,3 +84,6 @@ function make(pos, vel)
    go:add_component("CScripted", {message_thread=util.thread(behavior_thread)})
    return go
 end
+
+
+return M

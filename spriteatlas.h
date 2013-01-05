@@ -4,13 +4,15 @@
 #include "testlib.h"
 #include "listlib.h"
 
+#include <stdint.h>
+
 #define MAX_ENTRY_NAME 12
 
 struct SpriteAtlas_;
 
 typedef struct SpriteAtlasEntry_ {
   struct SpriteAtlas_* atlas;
-  int w, h;
+  unsigned short w, h;
   float u0, v0, u1, v1;
   char name[MAX_ENTRY_NAME];
 } *SpriteAtlasEntry;

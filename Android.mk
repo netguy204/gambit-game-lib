@@ -17,9 +17,9 @@ LUA_SRC=\
 	vender/lua-5.2.1/src/lauxlib.c vender/lua-5.2.1/src/ldump.c \
 	vender/lua-5.2.1/src/lobject.c vender/lua-5.2.1/src/ltm.c \
 	vender/lua-5.2.1/src/lbaselib.c vender/lua-5.2.1/src/lfunc.c \
-	vender/lua-5.2.1/src/lopcodes.c	vender/lua-5.2.1/src/lua.c \
+	vender/lua-5.2.1/src/lopcodes.c	\
 	vender/lua-5.2.1/src/lbitlib.c vender/lua-5.2.1/src/lgc.c \
-	vender/lua-5.2.1/src/loslib.c vender/lua-5.2.1/src/luac.c \
+	vender/lua-5.2.1/src/loslib.c \
 	vender/lua-5.2.1/src/lcode.c vender/lua-5.2.1/src/linit.c \
 	vender/lua-5.2.1/src/lparser.c vender/lua-5.2.1/src/lundump.c \
 	vender/lua-5.2.1/src/lcorolib.c	vender/lua-5.2.1/src/liolib.c \
@@ -82,19 +82,19 @@ FORCE_ARM=-DLITTLE_ENDIAN=1 -DBYTE_ORDER=LITTLE_ENDIAN
 
 include $(CLEAR_VARS)
 LOCAL_MODULE    := gamesupport
-LOCAL_CFLAGS	:= -Werror -Ijni/vender/libogg-1.3.0/include -Ijni/vender/tremor -Ijni/vender/lua-5.2.1/src -Ijni/$(B2D_BASE) -DSFMT_MEXP=607 $(FORCE_ARM)
+LOCAL_CFLAGS	:= -Werror -Ijni/vender/libogg-1.3.0/include -Ijni/vender/tremor -Ijni/vender/lua-5.2.1/src -Ijni/$(B2D_BASE) -DSFMT_MEXP=607 $(FORCE_ARM) -include "android_fopen.h"
 LOCAL_CPPFLAGS	:= -Ijni/vender/Box2D_v2.2.1/
 LOCAL_SRC_FILES := $(B2D_SRC) $(TREMOR_SRC) $(OGG_SRC) $(LUA_SRC) \
-	sfmt/SFMT.c spectra.c stb_image.c
+	sfmt/SFMT.c spectra.c stb_image.c android_fopen.c
 include $(BUILD_STATIC_LIBRARY)
 
 include $(CLEAR_VARS)
 LOCAL_MODULE    := main
-LOCAL_CFLAGS	:= -Werror -Ijni/vender/libogg-1.3.0/include -Ijni/vender/tremor -Ijni/vender/lua-5.2.1/src -Ijni/sfmt -DBUILD_ANDROID
+LOCAL_CFLAGS	:= -Werror -Ijni/vender/libogg-1.3.0/include -Ijni/vender/tremor -Ijni/vender/lua-5.2.1/src -Ijni/sfmt -DBUILD_ANDROID -include "android_fopen.h"
 LOCAL_CPPFLAGS  := -std=c++0x -Wno-invalid-offsetof -Ijni/vender/Box2D_v2.2.1/
 LOCAL_SRC_FILES := $(GAME_SRC) testlib_ouya.cpp audio_ouya.cpp androidmain.cpp
 LOCAL_LDLIBS    := -llog -lGLESv2 -lEGL -landroid
-LOCAL_STATIC_LIBRARIES := gamesupport android_native_app_glue
+LOCAL_STATIC_LIBRARIES := android_native_app_glue gamesupport
 
 include $(BUILD_SHARED_LIBRARY)
 

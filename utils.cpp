@@ -9,7 +9,11 @@ void* fail_exit(const char * message, ...) {
 
   va_list args;
   va_start(args, message);
+#ifdef __ANDROID__
+  __android_log_vprint(ANDROID_LOG_ERROR, "native-activity", message, args);
+#else
   vfprintf(stderr, message, args);
+#endif
   va_end(args);
 
   fprintf(stderr, "\n");
@@ -32,9 +36,8 @@ long timer_elapsed_msecs(Timer timer) {
   return dsecs * 1000 + (dusecs / 1000);
 }
 
-#ifndef __ANDROID__
 long filename_size(const char* filename) {
-  FILE* f = nativeOpen(filename);
+  FILE* f = fopen(filename, "r");
   if(!f) fail_exit("file %s does not exist", filename);
 
   fseek(f, 0, SEEK_END);
@@ -48,39 +51,9 @@ char* filename_slurp(const char* filename) {
   char* data = (char*)malloc(size + 1);
   data[size] = '\0';
 
-  FILE* f = nativeOpen(filename);
+  FILE* f = fopen(filename, "r");
   fread(data, 1, size, f);
   fclose(f);
 
   return data;
 }
-#else
-
-#include <android_native_app_glue.h>
-extern android_app* android_state;
-
-char* filename_slurp(const char* filename) {
-  AAsset* asset = AAssetManager_open(android_state->activity->assetManager, filename, 0);
-  if(asset == NULL) {
-    fail_exit("Asset %s could not be found", filename);
-  }
-
-  off_t nBytes = AAsset_getLength(asset);
-  char* buffer = (char*)malloc(nBytes + 1);
-  off_t read = 0;
-  while(read < nBytes) {
-    int nRead = AAsset_read(asset, &buffer[read], nBytes - read);
-    if(nRead < 0) {
-      fail_exit("Error reading asset %s", filename);
-    } else if(nRead == 0) {
-      break;
-    }
-    read += nRead;
-  }
-  AAsset_close(asset);
-
-  buffer[read] = '\0';
-  return buffer;
-}
-
-#endif

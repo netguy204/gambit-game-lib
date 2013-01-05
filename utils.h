@@ -4,8 +4,6 @@
 #include <stdio.h>
 #include <sys/time.h>
 
-void* fail_exit(const char * message, ...);
-
 typedef struct Timer_ {
   struct timeval val;
 } *Timer;
@@ -30,6 +28,7 @@ char* filename_slurp(const char* filename);
 
 // provided by system specific lib
 FILE* nativeOpen(const char* fname);
+void* fail_exit(const char * message, ...);
 
 
 #ifdef __ANDROID__
@@ -37,7 +36,6 @@ FILE* nativeOpen(const char* fname);
 
 #define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "native-activity", __VA_ARGS__))
 #define LOGW(...) ((void)__android_log_print(ANDROID_LOG_WARN, "native-activity", __VA_ARGS__))
-
 #else
 
 #define LOGI(...) fprintf(stderr, "INFO: " __VA_ARGS__)

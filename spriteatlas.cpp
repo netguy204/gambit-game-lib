@@ -5,6 +5,19 @@
 #include <stdio.h>
 #include <string.h>
 
+#define COORD_SCALE (1<<15)
+
+void read_short(FILE* fh, unsigned short* value) {
+  fread(value, sizeof(unsigned short), 1, fh);
+  *value = ntohs(*value);
+}
+
+void read_fixed(FILE* fh, float* value) {
+  unsigned short fixed_value;
+  read_short(fh, &fixed_value);
+  *value = ((double)fixed_value) / COORD_SCALE;
+}
+
 SpriteAtlas spriteatlas_load(const char* name, const char* imgtype) {
   char datafilename[128];
   char imgfilename[128];
@@ -15,22 +28,28 @@ SpriteAtlas spriteatlas_load(const char* name, const char* imgtype) {
   FILE* datafile = fopen(datafilename, "r");
   if(datafile == NULL) fail_exit("failed to open %s", datafilename);
 
-  fseek(datafile, 0L, SEEK_END);
-  int length = ftell(datafile);
-  fseek(datafile, 0L, SEEK_SET);
+  unsigned short nentries;
+  read_short(datafile, &nentries);
 
-  SpriteAtlas atlas = (SpriteAtlas)malloc(sizeof(struct SpriteAtlas_) + length);
-  atlas->nentries = length / sizeof(struct SpriteAtlasEntry_);
+  SpriteAtlas atlas = (SpriteAtlas)malloc(sizeof(struct SpriteAtlas_) +
+                                          sizeof(struct SpriteAtlasEntry_) * nentries);
+  atlas->nentries = nentries;
 
-  // slurp in the data
-  fread(atlas->entries, sizeof(struct SpriteAtlasEntry_), atlas->nentries, datafile);
-  fclose(datafile);
-
-  // build the backrefs
+  // read the data
   int ii;
   for(ii = 0; ii < atlas->nentries; ++ii) {
-    atlas->entries[ii].atlas = atlas;
+    SpriteAtlasEntry entry = &atlas->entries[ii];
+    entry->atlas = atlas;
+    read_short(datafile, &entry->w);
+    read_short(datafile, &entry->h);
+    read_fixed(datafile, &entry->u0);
+    read_fixed(datafile, &entry->v0);
+    read_fixed(datafile, &entry->u1);
+    read_fixed(datafile, &entry->v1);
+    fread(entry->name, sizeof(entry->name), 1, datafile);
   }
+
+  fclose(datafile);
 
   atlas->image = image_load(imgfilename);
   return atlas;

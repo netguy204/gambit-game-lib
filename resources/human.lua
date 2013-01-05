@@ -1,14 +1,15 @@
-module(..., package.seeall)
+local util = require 'util'
+local bomb = require 'bomb'
+local constant = require 'constant'
 
-require 'util'
-require 'bomb'
+local M = {}
 
-SPEED = 600
-JUMP_SPEED = 1200
-WIDTH = 28
-HEIGHT = 62
+M.SPEED = 600
+M.JUMP_SPEED = 1200
+M.WIDTH = 28
+M.HEIGHT = 62
 
-function rising_edge_trigger(state)
+local function rising_edge_trigger(state)
    trigger = function(input)
       local result = false
       if input ~= state and input then
@@ -22,7 +23,7 @@ end
 
 SELECTABLE_CATEGORY = 4
 
-function is_selectable(go)
+function M.is_selectable(go)
    local comp = go:find_component("CCollidable", nil)
    while comp do
       if comp:category() == SELECTABLE_CATEGORY then
@@ -33,8 +34,8 @@ function is_selectable(go)
    return nil
 end
 
-function make_selectable(go, opts)
-   local old_comp = is_selectable(go)
+function M.make_selectable(go, opts)
+   local old_comp = M.is_selectable(go)
    if old_comp then
       old_comp:delete_me(1)
    end
@@ -43,7 +44,7 @@ function make_selectable(go, opts)
    go:add_component("CCollidable", util.merge_into(defaults, opts))
 end
 
-function input_thread(go, comp)
+local function input_thread(go, comp)
    local fire_pressed = false
    local interrupt_pressed = false
 
@@ -65,7 +66,7 @@ function input_thread(go, comp)
       if new_go then
          -- it's already been established that the thing we have is
          -- selectable, but this lets us get at the dimensions
-         local sc = is_selectable(new_go)
+         local sc = M.is_selectable(new_go)
          new_go:add_component("CTestDisplay", {w=sc:w(),h=sc:h(),a=0.5})
       end
       last_mark = new_go
@@ -77,10 +78,10 @@ function input_thread(go, comp)
          if go:has_message(constant.PLAYER_ACTION) then
             world:play_sound(sounds.action, constant.EVENT)
             local pos = go:pos()
-            pos[2] = pos[2] + HEIGHT
+            pos[2] = pos[2] + M.HEIGHT
 
             local vel = {facing * bomb.THROW_SPEED / 3, bomb.THROW_SPEED}
-            make_selectable(bomb.make(pos, vel), {w=bomb.DIM,h=bomb.DIM})
+            M.make_selectable(bomb.make(pos, vel), {w=bomb.DIM,h=bomb.DIM})
          end
       end
    end
@@ -139,7 +140,7 @@ function input_thread(go, comp)
          local next_mark = world:next_in_cone(last_mark:pos(), last_mark, angle, 0.6)
 
          -- keep searching till we find something selectable
-         while next_mark and not is_selectable(next_mark) do
+         while next_mark and not M.is_selectable(next_mark) do
             next_mark = world:next_in_cone(last_mark:pos(), next_mark, angle, 0.6)
          end
 
@@ -165,7 +166,7 @@ function input_thread(go, comp)
       end
 
       if math.abs(input.leftright) > 0.01 and not fire_pressed then
-         vel[1] = input.leftright * SPEED
+         vel[1] = input.leftright * M.SPEED
          facing = util.sign(input.leftright)
          if facing < 0 then
             sprite:entry(left_art)
@@ -179,7 +180,7 @@ function input_thread(go, comp)
       end
 
       if input.action1 and parent then
-         vel[2] = JUMP_SPEED
+         vel[2] = M.JUMP_SPEED
          go:vel(vel)
       end
 
@@ -201,21 +202,23 @@ function input_thread(go, comp)
    end
 end
 
-function init(pos)
+function M.init(pos)
    player:pos(pos)
    player:vel{0, 0}
-   make_selectable(player, {w=WIDTH,h=HEIGHT})
+   M.make_selectable(player, {w=M.WIDTH,h=M.HEIGHT})
 
    camera:pos{100, 100}
    camera:vel{0, 0}
 
    -- make player collidable
    local art = world:atlas_entry(constant.ATLAS, "guy")
-   player:add_component("CPlatformer", {w=WIDTH, h=HEIGHT, friction=0})
+   player:add_component("CPlatformer", {w=M.WIDTH, h=M.HEIGHT, friction=0})
    player:add_component("CStaticSprite", {entry=art, layer=constant.PLAYER})
-   --player:add_component("CTestDisplay", {w=WIDTH, h=HEIGHT, a=0.5, layer=constant.PLAYER})
+   --player:add_component("CTestDisplay", {w=M.WIDTH, h=M.HEIGHT, a=0.5, layer=constant.PLAYER})
 
    -- link up the camera and input
    world:focus(player)
    player:add_component("CScripted", {update_thread=util.thread(input_thread)})
 end
+
+return M

@@ -1,4 +1,11 @@
 #!/usr/bin/env python
+#
+# Format:
+# num_entrys
+# [ entry: W, H, u0, v0, u1, v1, name ]
+#
+# all big-endian, floating point numbers are converted to fixed point
+# numbers by multiplying by coord_scale
 
 from PIL import Image
 import glob
@@ -6,7 +13,10 @@ import sys
 import os
 import struct
 
-packing = 'Piiffff12s0l'
+packing = '>HHHHHH12s'
+count_packing = '>H'
+
+coord_scale = 2 ** 15
 
 def find_visible_bounds(image, pad=0):
     data = list(image.getdata())
@@ -75,6 +85,8 @@ def mk_sheet(filenames, outbase, tgt_dims, trim):
 
     max_row_h = 0
 
+    outdat.write(struct.pack(count_packing, len(filenames)))
+
     for fname in filenames:
         junk, basename = os.path.split(fname)
         img = Image.open(fname)
@@ -104,12 +116,12 @@ def mk_sheet(filenames, outbase, tgt_dims, trim):
         # finally, insert the image
         tgt.paste(img, (current_x, current_y))
 
-        u0 = float(current_x) / tgt_w
-        v1 = float(current_y) / tgt_h
-        u1 = float(current_x + img_w) / tgt_w
-        v0 = float(current_y + img_h) / tgt_h
+        u0 = (float(current_x) / tgt_w) * coord_scale
+        v1 = (float(current_y) / tgt_h) * coord_scale
+        u1 = (float(current_x + img_w) / tgt_w) * coord_scale
+        v0 = (float(current_y + img_h) / tgt_h) * coord_scale
         pakname, _ = os.path.splitext(basename)
-        struct_tuple = (0, img_w, img_h, u0, v0, u1, v1, pakname)
+        struct_tuple = (img_w, img_h, u0, v0, u1, v1, pakname)
         packed = struct.pack(packing, *struct_tuple)
         outdat.write(packed)
 
@@ -117,6 +129,7 @@ def mk_sheet(filenames, outbase, tgt_dims, trim):
 
     tgt.save(outimagename)
     outdat.close()
+    print "size per entry: %d" % struct.calcsize(packing)
 
 if __name__ == '__main__':
     if len(sys.argv) < 4:

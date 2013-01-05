@@ -1,12 +1,10 @@
-module(..., package.seeall)
+local M = {}
 
-require 'constant'
-
-FALLING = 1
-LANDED = 2
-
-SPEED = 100
-DIM = 36
+local constant = require 'constant'
+local FALLING = 1
+local LANDED = 2
+local SPEED = 100
+local DIM = 36
 
 
 function behavior_thread(go, component)
@@ -59,7 +57,7 @@ function behavior_thread(go, component)
 
 end
 
-function make(pos)
+function M.make(pos)
    local go = world:create_go()
    go:pos(pos)
 
@@ -69,3 +67,5 @@ function make(pos)
    go:add_component("CScripted", {message_thread=util.thread(behavior_thread)})
    return go
 end
+
+return M

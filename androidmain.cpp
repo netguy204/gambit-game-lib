@@ -66,11 +66,14 @@ static int32_t engine_handle_input(struct android_app* app, AInputEvent* event) 
 
 // defined by testlib_ouya.cpp
 #include <unistd.h>
+AAssetManager* android_asset_manager;
 
 void android_main(struct android_app* state) {
   LOGI("Hello, native world!");
   sleep(3);
   android_state = state;
+  android_fopen_set_asset_manager(state->activity->assetManager);
+
   state->onAppCmd = engine_handle_cmd;
   state->onInputEvent = engine_handle_input;
 

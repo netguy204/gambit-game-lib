@@ -1,19 +1,19 @@
-module(..., package.seeall)
+local M = {}
 
-ATLAS = "resources/images_default"
+M.ATLAS = "resources/images_default"
 
 -- messages
-COLLIDING = 0
-TIMER_EXPIRED = 1
-EXPLOSION_NEARBY = 2
-PARENT_CHANGE = 3
+M.COLLIDING = 0
+M.TIMER_EXPIRED = 1
+M.EXPLOSION_NEARBY = 2
+M.PARENT_CHANGE = 3
 
 -- script-only messages
-PLAYER_ACTION = 100
-PLAYER_JUMP = 101
-PLAYER_JUMP_ABORT = 102
+M.PLAYER_ACTION = 100
+M.PLAYER_JUMP = 101
+M.PLAYER_JUMP_ABORT = 102
 
-function __make_ephemeral_counter()
+local function __make_ephemeral_counter()
    next_message = 1000
    local fn = function()
       local message = next_message
@@ -23,23 +23,25 @@ function __make_ephemeral_counter()
    return fn
 end
 
-NEXT_EPHEMERAL_MESSAGE = __make_ephemeral_counter()
+M.NEXT_EPHEMERAL_MESSAGE = __make_ephemeral_counter()
 
 -- layers
 
-BACKERDROP = 0
-BACKDROP = 1
-BACKGROUND = 2
-PLAYER = 3
-FOREGROUND = 4
+M.BACKERDROP = 0
+M.BACKDROP = 1
+M.BACKGROUND = 2
+M.PLAYER = 3
+M.FOREGROUND = 4
 
 -- colorings
-BLACKBODY = 0
-BW = 1
+M.BLACKBODY = 0
+M.BW = 1
 
 -- channels
 
-EVENT = 0
-FOLEY = 1
-AMBIANCE = 2
-STREAM = 3
+M.EVENT = 0
+M.FOLEY = 1
+M.AMBIANCE = 2
+M.STREAM = 3
+
+return M

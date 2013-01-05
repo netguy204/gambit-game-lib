@@ -2,11 +2,11 @@
 
 package.path = package.path .. ';resources/?.lua'
 
-require 'human'
-require 'constant'
-require 'util'
-require 'enemy'
-require 'rect'
+local human = require 'human'
+local constant = require 'constant'
+local util = require 'util'
+local enemy = require 'enemy'
+local rect = require 'rect'
 
 _G.sounds = {explosion=world:get_sound("sounds/Explosion6.ogg", 0.3),
              action=world:get_sound("sounds/Jump20.ogg", 0.2),
