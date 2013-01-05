@@ -16,20 +16,15 @@
 #define glOrthof glOrtho
 
 #else
-#ifdef BUILD_RPI
+#if defined(BUILD_RPI) || defined(BUILD_ANDROID)
 /* Rpi */
 #include "GLES2/gl2.h"
+#include "GLES2/gl2ext.h"
 #include "EGL/egl.h"
 #include "EGL/eglext.h"
 
 #else
-#ifdef BUILD_ANDROID
-#include "GLES2/gl2.h"
-#include "GLES2/gl2ext.h"
-
-#else
 #error "Either BUILD_SDL or BUILD_RPI or BUILD_ANDROID must be defined"
-#endif
 #endif
 #endif
 

@@ -1,3 +1,5 @@
+include Src.mk
+
 B2D_BASE=vender/Box2D_v2.2.1/
 B2D_SRC=\
 	$(wildcard $(B2D_BASE)/Box2D/Collision/*.cpp) \
@@ -7,16 +9,6 @@ B2D_SRC=\
 	$(wildcard $(B2D_BASE)/Box2D/Dynamics/Joints/*.cpp) \
 	$(wildcard $(B2D_BASE)/Box2D/Dynamics/Contacts/*.cpp) \
 	$(wildcard $(B2D_BASE)/Box2D/Rope/*.cpp)
-
-GAME_SRC=\
-	threadlib.cpp memlib.cpp listlib.cpp testlib.cpp \
-	sampler.cpp audio.cpp game.cpp vector.cpp testlib_gl.cpp \
-	rect.cpp controls.cpp steering.cpp spriteatlas.cpp \
-	realmain.cpp tiles.cpp random.cpp \
-	perlin.cpp heapvector.cpp \
-	pathfinder.cpp utils.cpp matrix.cpp ooc.cpp \
-	game_ui.cpp platform.cpp gameobject.cpp color.cpp \
-	soundmgr.cpp
 
 CPP_SRC+=$(GAME_SRC) \
 	$(B2D_SRC)

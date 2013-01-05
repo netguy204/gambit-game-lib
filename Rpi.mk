@@ -15,8 +15,3 @@ include Common.mk
 %.o: %.cpp
 	@rm -f $@
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@ -Wno-deprecated-declarations
-
-# testlib needs c99 enabled for the FOREACH macro to be implementable
-testlib.o: testlib.cpp
-	@rm -f $@
-	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@ -Wno-deprecated-declarations

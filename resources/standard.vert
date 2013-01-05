@@ -1,6 +1,7 @@
+uniform mat4 mvpMatrix;
+
 attribute vec4 vertex;
 attribute vec2 tex_coord0;
-uniform mat4 mvpMatrix;
 
 varying vec2 tex0;
 

@@ -1,5 +1,5 @@
 LOCAL_PATH:= $(call my-dir)
-include jni/Common.mk
+include jni/Src.mk
 
 TREMOR_SRC=\
 	vender/tremor/block.c vender/tremor/mapping0.c vender/tremor/synthesis.c \
@@ -77,18 +77,25 @@ B2D_SRC=\
 	vender/Box2D_v2.2.1/Box2D/Dynamics/Joints/b2WheelJoint.cpp \
 	vender/Box2D_v2.2.1/Box2D/Rope/b2Rope.cpp
 
+# needed for tremor on ARM
+FORCE_ARM=-DLITTLE_ENDIAN=1 -DBYTE_ORDER=LITTLE_ENDIAN
+
 include $(CLEAR_VARS)
 LOCAL_MODULE    := gamesupport
-LOCAL_CFLAGS	:= -Werror -Ijni/vender/libogg-1.3.0/include -Ijni/vender/tremor -Ijni/vender/lua-5.2.1/src -Ijni/$(B2D_BASE) -DSFMT_MEXP=607 -DLITTLE_ENDIAN=1 -DBYTE_ORDER=LITTLE_ENDIAN
+LOCAL_CFLAGS	:= -Werror -Ijni/vender/libogg-1.3.0/include -Ijni/vender/tremor -Ijni/vender/lua-5.2.1/src -Ijni/$(B2D_BASE) -DSFMT_MEXP=607 $(FORCE_ARM)
+LOCAL_CPPFLAGS	:= -Ijni/vender/Box2D_v2.2.1/
 LOCAL_SRC_FILES := $(B2D_SRC) $(TREMOR_SRC) $(OGG_SRC) $(LUA_SRC) \
 	sfmt/SFMT.c spectra.c stb_image.c
 include $(BUILD_STATIC_LIBRARY)
 
 include $(CLEAR_VARS)
-LOCAL_MODULE    := gamejni
-LOCAL_CFLAGS	:= -Werror -Ijni/vender/libogg-1.3.0/include -Ijni/vender/tremor -Ijni/vender/lua-5.2.1/src -Ijni/$(B2D_BASE) -Ijni/sfmt -DBUILD_ANDROID
-LOCAL_CPPFLAGS  := $(CXXFLAGS)
-LOCAL_SRC_FILES := $(GAME_SRC)
-LOCAL_LDLIBS    := -llog -lGLESv2
-LOCAL_STATIC_LIBRARIES := gamesupport
+LOCAL_MODULE    := main
+LOCAL_CFLAGS	:= -Werror -Ijni/vender/libogg-1.3.0/include -Ijni/vender/tremor -Ijni/vender/lua-5.2.1/src -Ijni/sfmt -DBUILD_ANDROID
+LOCAL_CPPFLAGS  := -std=c++0x -Wno-invalid-offsetof -Ijni/vender/Box2D_v2.2.1/
+LOCAL_SRC_FILES := $(GAME_SRC) testlib_ouya.cpp audio_ouya.cpp androidmain.cpp
+LOCAL_LDLIBS    := -llog -lGLESv2 -lEGL -landroid
+LOCAL_STATIC_LIBRARIES := gamesupport android_native_app_glue
+
 include $(BUILD_SHARED_LIBRARY)
+
+$(call import-module,android/native_app_glue)
