@@ -5,6 +5,10 @@
 #include <stdio.h>
 #include <string.h>
 
+#ifndef __APPLE__
+#include <sys/endian.h>
+#endif
+
 #define COORD_SCALE (1<<15)
 
 void read_short(FILE* fh, unsigned short* value) {

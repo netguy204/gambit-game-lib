@@ -1,6 +1,7 @@
 #include "testlib.h"
 #include "testlib_internal.h"
 #include "stb_image.h"
+#include "utils.h"
 
 #include <math.h>
 #include <stdarg.h>
@@ -126,6 +127,8 @@ ImageResource image_load(const char * file) {
   resource->channels = channels;
   resource->data = data;
   image_resources.add_head(resource);
+
+  LOGI("requesting load completion on %s", file);
   renderer_enqueue(renderer_finish_image_load, resource);
 
   return resource;

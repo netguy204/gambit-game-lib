@@ -359,12 +359,7 @@ void game_support_init() {
 
 void game_init() {
   game_support_init();
-
-  //play_vorbis("sounds/DST-2ndBallad.ogg", 0.7);
-  //audio_enqueue(sinsampler_make(audio_current_sample(), SAMPLE_FREQ * 10, C_(1), 8000, 0.0));
-
   init_world();
-
   set_game_step(game_step);
 }
 

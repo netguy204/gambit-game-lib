@@ -5,12 +5,13 @@
 #include "utils.h"
 #include "matrix.h"
 #include "testlib.h"
+#include "utils.h"
 
 #include <math.h>
 #include <stdio.h>
 #include <stdarg.h>
 
-StackAllocator gldata_allocator;
+StackAllocator gldata_allocator = NULL;
 
 static const GLfloat quadCoords[4 * 3] = {
   0.0f, 0.0f, 0.0f,
@@ -41,7 +42,7 @@ void gl_check_(const char * msg) {
     e_msg = "unknown";
   }
 
-  fprintf(stderr, "GL_ERROR: %s => %s\n", msg, e_msg);
+  LOGW("GL_ERROR: %s => %s\n", msg, e_msg);
 }
 
 int renderer_load_shader(const char* src, int kind) {
@@ -61,7 +62,7 @@ int renderer_load_shader(const char* src, int kind) {
     char buffer[1024];
     int length;
     glGetShaderInfoLog(shader, sizeof(buffer), &length, buffer);
-    fail_exit("glCompileShader: %s\n", buffer);
+    fail_exit("glCompileShader: %s, %s\n", buffer, src);
   }
 
   return shader;
@@ -168,19 +169,28 @@ void renderer_init_standard_shader() {
   color_mvp_uniform_location = glGetUniformLocation(program, "mvpMatrix");
 }
 
-void renderer_gl_init() {
-  gldata_allocator = stack_allocator_make(1024 * 1024, "gldata_allocator");
+void renderer_resize(int w, int h) {
+  screen_width = w;
+  screen_height = h;
+  glViewport(0, 0, screen_width, screen_height);
+  matrix_orthographic_proj(&orthographic_projection, 0.0f, screen_width, 0.0f, screen_height,
+                           -1.0f, 1.0f);
+}
+
+void renderer_gl_init(int w, int h) {
+  if(!gldata_allocator) {
+    gldata_allocator = stack_allocator_make(1024 * 1024, "gldata_allocator");
+  }
 
   glEnable(GL_TEXTURE_2D);
   glEnable(GL_BLEND);
-  glBlendEquationSeparate(GL_FUNC_ADD, GL_ONE);
-  glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+  //glBlendEquationSeparate(GL_FUNC_ADD, GL_ONE);
+  //glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
 
   glClearColor(0.8f, 0.8f, 0.8f, 1.0f);
-  glViewport(0, 0, screen_width, screen_height);
-
-  matrix_orthographic_proj(&orthographic_projection, 0.0f, screen_width, 0.0f, screen_height,
-                           -1.0f, 1.0f);
+  renderer_resize(w, h);
 
   renderer_init_standard_shader();
 
@@ -193,10 +203,11 @@ void renderer_gl_shutdown() {
 
 void renderer_begin_frame(void* empty) {
   stack_allocator_freeall(gldata_allocator);
-  glClear(GL_COLOR_BUFFER_BIT);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
 void renderer_finish_image_load(ImageResource resource) {
+  LOGI("finished image load");
   GLuint texture;
   GLenum texture_format;
   GLint num_colors;
@@ -230,15 +241,15 @@ void renderer_finish_image_free(void* texturep) {
 GLuint last_texture = -1;
 
 void spritelist_set_texs_and_verts_gl(int nverts, GLfloat* verts, GLfloat* texs) {
-  glEnableVertexAttribArray(GLPARAM_VERTEX);
-  glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 3 * nverts, verts, GL_DYNAMIC_DRAW);
-  glVertexAttribPointer(GLPARAM_VERTEX, 3, GL_FLOAT, GL_FALSE, 0, 0);
+  gl_check(glEnableVertexAttribArray(GLPARAM_VERTEX));
+  gl_check(glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer));
+  gl_check(glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 3 * nverts, verts, GL_DYNAMIC_DRAW));
+  gl_check(glVertexAttribPointer(GLPARAM_VERTEX, 3, GL_FLOAT, GL_FALSE, 0, 0));
 
-  glEnableVertexAttribArray(GLPARAM_TEXCOORD0);
-  glBindBuffer(GL_ARRAY_BUFFER, texcoord_buffer);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 2 * nverts, texs, GL_DYNAMIC_DRAW);
-  glVertexAttribPointer(GLPARAM_TEXCOORD0, 2, GL_FLOAT, GL_FALSE, 0, 0);
+  gl_check(glEnableVertexAttribArray(GLPARAM_TEXCOORD0));
+  gl_check(glBindBuffer(GL_ARRAY_BUFFER, texcoord_buffer));
+  gl_check(glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 2 * nverts, texs, GL_DYNAMIC_DRAW));
+  gl_check(glVertexAttribPointer(GLPARAM_TEXCOORD0, 2, GL_FLOAT, GL_FALSE, 0, 0));
 }
 
 void basespritelist_render_to_screen(BaseSprite list) {
@@ -310,9 +321,9 @@ void basespritelist_render_to_screen(BaseSprite list) {
     last_texture = list->texture;
   }
 
-  glUniform1i(tex0_uniform_location, 0);
-  glUniformMatrix4fv(mvp_uniform_location, 1, GL_FALSE, orthographic_projection.data);
-  glDrawArrays(GL_TRIANGLES, 0, nverts);
+  gl_check(glUniform1i(tex0_uniform_location, 0));
+  gl_check(glUniformMatrix4fv(mvp_uniform_location, 1, GL_FALSE, orthographic_projection.data));
+  gl_check(glDrawArrays(GL_TRIANGLES, 0, nverts));
 }
 
 int spritelist_set_texs_and_verts(BaseSprite list) {
@@ -395,24 +406,24 @@ int spritelist_set_texs_and_verts(BaseSprite list) {
 void spritelist_render_to_screen(BaseSprite list) {
   if(!list) return;
 
-  glUseProgram(standard_program);
+  gl_check(glUseProgram(standard_program));
 
   int nverts = spritelist_set_texs_and_verts(list);
 
   if(list->texture != last_texture) {
-    glBindTexture(GL_TEXTURE_2D, list->texture);
+    gl_check(glBindTexture(GL_TEXTURE_2D, list->texture));
     last_texture = list->texture;
   }
 
-  glUniform1i(tex0_uniform_location, 0);
-  glUniformMatrix4fv(mvp_uniform_location, 1, GL_FALSE, orthographic_projection.data);
-  glDrawArrays(GL_TRIANGLES, 0, nverts);
+  gl_check(glUniform1i(tex0_uniform_location, 0));
+  gl_check(glUniformMatrix4fv(mvp_uniform_location, 1, GL_FALSE, orthographic_projection.data));
+  gl_check(glDrawArrays(GL_TRIANGLES, 0, nverts));
 }
 
 void spritelist_render_to_screen_colored(BaseSprite list) {
   if(!list) return;
 
-  glUseProgram(standard_color_program);
+  gl_check(glUseProgram(standard_color_program));
 
   int nverts = spritelist_set_texs_and_verts(list);
 
@@ -462,19 +473,19 @@ void spritelist_render_to_screen_colored(BaseSprite list) {
     colors[color_idx++] = sprite->color[3];
   }
 
-  glEnableVertexAttribArray(GLPARAM_OTHER0);
-  glBindBuffer(GL_ARRAY_BUFFER, color_buffer);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 4 * nverts, colors, GL_DYNAMIC_DRAW);
-  glVertexAttribPointer(GLPARAM_OTHER0, 4, GL_FLOAT, GL_FALSE, 0, 0);
+  gl_check(glEnableVertexAttribArray(GLPARAM_OTHER0));
+  gl_check(glBindBuffer(GL_ARRAY_BUFFER, color_buffer));
+  gl_check(glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 4 * nverts, colors, GL_DYNAMIC_DRAW));
+  gl_check(glVertexAttribPointer(GLPARAM_OTHER0, 4, GL_FLOAT, GL_FALSE, 0, 0));
 
   if(list->texture != last_texture) {
-    glBindTexture(GL_TEXTURE_2D, list->texture);
+    gl_check(glBindTexture(GL_TEXTURE_2D, list->texture));
     last_texture = list->texture;
   }
 
-  glUniform1i(color_tex0_uniform_location, 0);
-  glUniformMatrix4fv(color_mvp_uniform_location, 1, GL_FALSE, orthographic_projection.data);
-  glDrawArrays(GL_TRIANGLES, 0, nverts);
+  gl_check(glUniform1i(color_tex0_uniform_location, 0));
+  gl_check(glUniformMatrix4fv(color_mvp_uniform_location, 1, GL_FALSE, orthographic_projection.data));
+  gl_check(glDrawArrays(GL_TRIANGLES, 0, nverts));
 }
 
 
@@ -494,17 +505,17 @@ void rect_render_to_screen(ColoredRect crect) {
     rect->minx, rect->miny, 0
   };
 
-  glUseProgram(solid_program);
+  gl_check(glUseProgram(solid_program));
 
-  glUniformMatrix4fv(mvp_uniform_location, 1, GL_FALSE, orthographic_projection.data);
+  gl_check(glUniformMatrix4fv(mvp_uniform_location, 1, GL_FALSE, orthographic_projection.data));
 
-  glEnableVertexAttribArray(GLPARAM_VERTEX);
-  glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(rect_lines), rect_lines, GL_DYNAMIC_DRAW);
-  glVertexAttribPointer(GLPARAM_VERTEX, 3, GL_FLOAT, GL_FALSE, 0, 0);
+  gl_check(glEnableVertexAttribArray(GLPARAM_VERTEX));
+  gl_check(glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer));
+  gl_check(glBufferData(GL_ARRAY_BUFFER, sizeof(rect_lines), rect_lines, GL_DYNAMIC_DRAW));
+  gl_check(glVertexAttribPointer(GLPARAM_VERTEX, 3, GL_FLOAT, GL_FALSE, 0, 0));
 
-  glUniform4fv(solid_color_location, 1, crect->color);
-  glDrawArrays(GL_LINES, 0, 8);
+  gl_check(glUniform4fv(solid_color_location, 1, crect->color));
+  gl_check(glDrawArrays(GL_LINES, 0, 8));
 }
 
 void filledrect_render_to_screen(ColoredRect crect) {

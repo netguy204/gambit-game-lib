@@ -94,7 +94,7 @@ void renderer_init(void* empty) {
   }
 #endif
 
-  renderer_gl_init();
+  renderer_gl_init(screen_width, screen_height);
 }
 
 void renderer_shutdown(void* empty) {

@@ -39,6 +39,10 @@ void lib_init();
    termination */
 void lib_shutdown();
 
+/* must be called from render thread */
+void process_render_command();
+void renderer_resize(int w, int h);
+
 void begin_frame();
 void* frame_alloc(size_t bytes);
 void end_frame();
@@ -60,8 +64,11 @@ void native_init();
 void inputstate_latest(InputState state);
 long time_millis();
 void sleep_millis(long millis);
-void renderer_gl_init();
+void renderer_gl_init(int w, int h);
 void renderer_gl_shutdown();
+
+/* exported by realmain */
+int loop_once();
 
 /* exported by testlib.c */
 typedef struct Clock_ {

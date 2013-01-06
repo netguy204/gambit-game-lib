@@ -160,7 +160,7 @@ void renderer_init(void* empty) {
   result = eglMakeCurrent(display, surface, surface, context);
   egl_assert(EGL_FALSE != result);
 
-  renderer_gl_init();
+  renderer_gl_init(screen_width, screen_height);
 }
 
 void renderer_shutdown(void* empty) {
