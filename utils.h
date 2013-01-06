@@ -38,8 +38,8 @@ void* fail_exit(const char * message, ...);
 #define LOGW(...) ((void)__android_log_print(ANDROID_LOG_WARN, "native-activity", __VA_ARGS__))
 #else
 
-#define LOGI(...) fprintf(stderr, "INFO: " __VA_ARGS__)
-#define LOGW(...) fprintf(stderr, "WARNING: " __VA_ARGS__)
+#define LOGI(...) fprintf(stderr, "INFO: " __VA_ARGS__); fprintf(stderr, "\n")
+#define LOGW(...) fprintf(stderr, "WARNING: " __VA_ARGS__); fprintf(stderr, "\n")
 
 #endif
 

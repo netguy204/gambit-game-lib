@@ -158,6 +158,7 @@ void Message::operator delete(void* obj) {
 
 Scene::Scene(World* world)
   : world(world) {
+  memset(baseLayers, 0, sizeof(baseLayers));
   memset(layers, 0, sizeof(layers));
   memset(particles, 0, sizeof(particles));
   memset(testRects, 0, sizeof(testRects));
