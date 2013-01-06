@@ -49,8 +49,7 @@ void* game_exec(void* empty) {
 
 JNIEXPORT void JNICALL Java_com_fiftyply_gglppt_GameSurfaceView_nativePause(JNIEnv* env, jobject obj) {
   LOGI("nativePause");
-  void* result;
-  game_running = 0;
+  //game_running = 0;
 }
 
 JNIEXPORT void JNICALL Java_com_fiftyply_gglppt_GameSurfaceView_nativeResume(JNIEnv* env, jobject obj) {

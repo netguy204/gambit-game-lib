@@ -45,7 +45,7 @@ void gl_check_(const char * msg) {
   LOGW("GL_ERROR: %s => %s\n", msg, e_msg);
 }
 
-int renderer_load_shader(const char* src, int kind) {
+int renderer_load_shader(const char* src, GLenum kind) {
   int shader = glCreateShader(kind);
   gl_check_("glCreateShader");
 
@@ -109,8 +109,8 @@ int renderer_link_shader(const char* vertexname, const char* fragmentname, ...) 
 
   int program = glCreateProgram();
 
-  glAttachShader(program, vertex);
-  glAttachShader(program, fragment);
+  gl_check(glAttachShader(program, vertex));
+  gl_check(glAttachShader(program, fragment));
 
   va_list ap;
   va_start(ap, fragmentname);
@@ -119,13 +119,13 @@ int renderer_link_shader(const char* vertexname, const char* fragmentname, ...) 
     if(param == GLPARAM_DONE) break;
 
     const char* name = va_arg(ap, char*);
-    glBindAttribLocation(program, param, name);
+    gl_check(glBindAttribLocation(program, param, name));
   }
 
-  glLinkProgram(program);
+  gl_check(glLinkProgram(program));
 
-  glDeleteShader(vertex);
-  glDeleteShader(fragment);
+  gl_check(glDeleteShader(vertex));
+  gl_check(glDeleteShader(fragment));
   int link_status;
   glGetProgramiv(program, GL_LINK_STATUS, &link_status);
   if(link_status == GL_FALSE) {
@@ -147,9 +147,9 @@ void renderer_init_standard_shader() {
   tex0_uniform_location = glGetUniformLocation(program, "textureUnit0");
   mvp_uniform_location = glGetUniformLocation(program, "mvpMatrix");
 
-  glGenBuffers(1, &vertex_buffer);
-  glGenBuffers(1, &texcoord_buffer);
-  glGenBuffers(1, &color_buffer);
+  gl_check(glGenBuffers(1, &vertex_buffer));
+  gl_check(glGenBuffers(1, &texcoord_buffer));
+  gl_check(glGenBuffers(1, &color_buffer));
 
   program = renderer_link_shader("resources/standard.vert", "resources/solid.frag",
                                  GLPARAM_VERTEX, "vertex",
@@ -191,6 +191,21 @@ void renderer_gl_init(int w, int h) {
 
   glClearColor(0.8f, 0.8f, 0.8f, 1.0f);
   renderer_resize(w, h);
+
+  // build a vao that we'll use for everything
+  GLuint vao;
+#ifdef __APPLE__
+  glGenVertexArraysAPPLE(1, &vao);
+  glBindVertexArrayAPPLE(vao);
+#else
+#ifdef __ANDROID__
+  //glGenVertexArraysOES(1, &vao);
+  //glBindVertexArrayOES(vao);
+#else
+  glGenVertexArrays(1, &vao);
+  glBindVertexArray(vao);
+#endif
+#endif
 
   renderer_init_standard_shader();
 
@@ -317,7 +332,7 @@ void basespritelist_render_to_screen(BaseSprite list) {
   spritelist_set_texs_and_verts_gl(nverts, verts, texs);
 
   if(list->texture != last_texture) {
-    glBindTexture(GL_TEXTURE_2D, list->texture);
+    gl_check(glBindTexture(GL_TEXTURE_2D, list->texture));
     last_texture = list->texture;
   }
 
@@ -530,15 +545,15 @@ void filledrect_render_to_screen(ColoredRect crect) {
     rect->minx, rect->miny, 0
   };
 
-  glUseProgram(solid_program);
+  gl_check(glUseProgram(solid_program));
 
-  glUniformMatrix4fv(mvp_uniform_location, 1, GL_FALSE, orthographic_projection.data);
+  gl_check(glUniformMatrix4fv(solid_mvp_uniform_location, 1, GL_FALSE, orthographic_projection.data));
 
-  glEnableVertexAttribArray(GLPARAM_VERTEX);
-  glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(rect_tris), rect_tris, GL_DYNAMIC_DRAW);
-  glVertexAttribPointer(GLPARAM_VERTEX, 3, GL_FLOAT, GL_FALSE, 0, 0);
+  gl_check(glEnableVertexAttribArray(GLPARAM_VERTEX));
+  gl_check(glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer));
+  gl_check(glBufferData(GL_ARRAY_BUFFER, sizeof(rect_tris), rect_tris, GL_DYNAMIC_DRAW));
+  gl_check(glVertexAttribPointer(GLPARAM_VERTEX, 3, GL_FLOAT, GL_FALSE, 0, 0));
 
-  glUniform4fv(solid_color_location, 1, crect->color);
-  glDrawArrays(GL_TRIANGLES, 0, 6);
+  gl_check(glUniform4fv(solid_color_location, 1, crect->color));
+  gl_check(glDrawArrays(GL_TRIANGLES, 0, 6));
 }
