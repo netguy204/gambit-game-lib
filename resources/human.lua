@@ -214,7 +214,7 @@ function M.init(pos)
    local art = world:atlas_entry(constant.ATLAS, "guy")
    player:add_component("CPlatformer", {w=M.WIDTH, h=M.HEIGHT, friction=0})
    player:add_component("CStaticSprite", {entry=art, layer=constant.PLAYER})
-   player:add_component("CTestDisplay", {w=M.WIDTH, h=M.HEIGHT, a=0.5, layer=constant.PLAYER})
+   --player:add_component("CTestDisplay", {w=M.WIDTH, h=M.HEIGHT, a=0.5, layer=constant.PLAYER})
 
    -- link up the camera and input
    world:focus(player)

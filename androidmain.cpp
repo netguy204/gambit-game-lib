@@ -3,6 +3,7 @@
 #include "game.h"
 #include "android_fopen.h"
 #include "testlib_internal.h"
+#include "audio.h"
 
 #include <jni.h>
 #include <errno.h>
@@ -13,11 +14,13 @@ extern int real_main(int argc, char ** argv);
 
 extern "C" {
   JNIEXPORT void JNICALL Java_com_fiftyply_gglppt_MainActivity_nativeSetAssetManager(JNIEnv* env, jobject obj, jobject assetManager);
+  JNIEXPORT void JNICALL Java_com_fiftyply_gglppt_MainActivity_nativePushControls(JNIEnv* env, jobject obj, float updown, float leftright, int action1, int action2, int action3);
   JNIEXPORT void JNICALL Java_com_fiftyply_gglppt_GameSurfaceView_nativePause(JNIEnv* env, jobject obj);
   JNIEXPORT void JNICALL Java_com_fiftyply_gglppt_GameSurfaceView_nativeResume(JNIEnv* env, jobject obj);
   JNIEXPORT void JNICALL Java_com_fiftyply_gglppt_GameRenderer_nativeInit(JNIEnv* env, jobject obj);
   JNIEXPORT void JNICALL Java_com_fiftyply_gglppt_GameRenderer_nativeResize(JNIEnv* env, jobject obj, int w, int h);
   JNIEXPORT void JNICALL Java_com_fiftyply_gglppt_GameRenderer_nativeRender(JNIEnv* env, jobject obj);
+  JNIEXPORT void JNICALL Java_com_fiftyply_gglppt_AudioThread_nativeFillAudioBuffer(JNIEnv* env, jobject obj, jobject buffer);
   JNIEXPORT jint JNICALL JNI_OnLoad( JavaVM *vm, void *pvt );
 }
 
@@ -32,6 +35,17 @@ JNIEXPORT void JNICALL Java_com_fiftyply_gglppt_MainActivity_nativeSetAssetManag
   AAssetManager* mgr = AAssetManager_fromJava(env, assetManager);
   android_fopen_set_asset_manager(mgr);
 }
+
+/* defined by testlib_ouya.cpp */
+extern InputState_ input_state;
+JNIEXPORT void JNICALL Java_com_fiftyply_gglppt_MainActivity_nativePushControls(JNIEnv* env, jobject obj, float updown, float leftright, int action1, int action2, int action3) {
+  input_state.updown = updown;
+  input_state.leftright = leftright;
+  input_state.action1 = action1;
+  input_state.action2 = action2;
+  input_state.action3 = action3;
+}
+
 
 static pthread_t game_thread;
 static int game_running = 0;
@@ -84,6 +98,12 @@ JNIEXPORT void JNICALL Java_com_fiftyply_gglppt_GameRenderer_nativeRender(JNIEnv
   }
 }
 
+JNIEXPORT void JNICALL Java_com_fiftyply_gglppt_AudioThread_nativeFillAudioBuffer(JNIEnv* env, jobject obj, jobject buffer) {
+  void* bytes = env->GetDirectBufferAddress(buffer);
+  long nBytes = env->GetDirectBufferCapacity(buffer);
+  long nSamples = nBytes / sizeof(int16_t);
+  audio_fill_buffer((int16_t*)bytes, nSamples);
+}
 
 /*
 void android_main(struct android_app* state) {

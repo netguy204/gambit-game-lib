@@ -361,6 +361,7 @@ void game_init() {
   game_support_init();
   init_world();
   set_game_step(game_step);
+  //audio_enqueue(sinsampler_make(audio_current_sample(), SAMPLE_FREQ * 10000, C_(1), 8000, 0.0));
 }
 
 const float enemy_period = 1;

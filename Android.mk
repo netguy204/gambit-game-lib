@@ -78,11 +78,16 @@ B2D_SRC=\
 	vender/Box2D_v2.2.1/Box2D/Rope/b2Rope.cpp
 
 # needed for tremor on ARM
-FORCE_ARM=-DLITTLE_ENDIAN=1 -DBYTE_ORDER=LITTLE_ENDIAN
+#FORCE_ARM=-DLITTLE_ENDIAN=1 -DBYTE_ORDER=LITTLE_ENDIAN
 
 include $(CLEAR_VARS)
 LOCAL_MODULE    := gamesupport
 LOCAL_CFLAGS	:= -Werror -Ijni/vender/libogg-1.3.0/include -Ijni/vender/tremor -Ijni/vender/lua-5.2.1/src -Ijni/$(B2D_BASE) -DSFMT_MEXP=607 $(FORCE_ARM) -include "android_fopen.h"
+
+ifeq ($(TARGET_ARCH),arm)
+LOCAL_CFLAGS+= -D_ARM_ASSEM_
+endif
+
 LOCAL_CPPFLAGS	:= -Ijni/vender/Box2D_v2.2.1/
 LOCAL_SRC_FILES := $(B2D_SRC) $(TREMOR_SRC) $(OGG_SRC) $(LUA_SRC) \
 	sfmt/SFMT.c spectra.c stb_image.c android_fopen.c

@@ -1,6 +1,7 @@
 #include "sampler.h"
 #include "memlib.h"
 #include "config.h"
+#include "utils.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -117,9 +118,10 @@ void oggsampler_fillbuffer(OggSampler sampler) {
       read = sizeof(sampler->buffer);
     } else if(ret < 0) {
       if(ret == OV_EBADLINK) {
-        fprintf(stderr, "corrupt bitsream!\n");
+        LOGW("corrupt bitsream!");
         exit(1);
       }
+      LOGW("unknown error");
     }
     read += ret;
   }
@@ -145,7 +147,7 @@ Sampler oggsampler_make(const char* filename, long start, float volume) {
   OggSampler sampler = (OggSampler)malloc(sizeof(struct OggSampler_));
   sampler->f = fopen(filename, "rb");
   if(ov_open(sampler->f, &sampler->vf, NULL, 0) < 0) {
-    fprintf(stderr, "error opening vorbis file %s\n", filename);
+    LOGW("error opening vorbis file %s\n", filename);
     exit(1);
   }
 
