@@ -10,8 +10,8 @@ static struct InputState_ pstate;
 
 void native_init() {
   memset(&pstate, 0, sizeof(struct InputState_));
-  screen_width = 1360;
-  screen_height = 768;
+  screen_width = 1920;
+  screen_height = 1080;
 }
 
 

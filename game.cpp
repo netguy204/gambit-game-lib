@@ -277,7 +277,7 @@ void CParticleEmitter::update(float dt) {
     if(e->life <= 0) {
       if(active) {
         // re-init dead particles
-        init_entry(e, max_life);
+        init_entry(e, e->life + max_life);
       } else {
         // skip dead particles
         continue;

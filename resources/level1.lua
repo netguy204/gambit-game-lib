@@ -260,16 +260,16 @@ function level_init()
    steam_pipe(room_height, room_height*2, 64*10)
 
    -- outdoors
-   local bottom = grass(-64*20, 128, 0)
-   bottom = rect.union(bottom, grass(64*20, 64*40,0))
+   local bottom = grass(-64*40, 128, 0)
+   bottom = rect.union(bottom, grass(64*20, 64*80,0))
    bottom = rect.union(bottom, dirt(128, 64*20, 0, {layer=constant.BACKDROP}))
-   bottom = rect.union(bottom, wallpaper({-64*20, -64*6, 64*40, -64}, _dirt))
+   bottom = rect.union(bottom, wallpaper({-64*40, -64*10, 64*80, -64}, _dirt))
    bottom = rect.union(bottom, floor(128, 64*20, 0, _wood))
    stage_collidable(bottom)
 
-   wallpaper({-64*20, 0, 64*40, 64*40}, _sky, {layer=constant.BACKERDROP})
+   --wallpaper({-64*20, 0, 64*40, 64*40}, _sky, {layer=constant.BACKERDROP})
 
    -- play music twice
-   local next_sample = world:stream_sound(sounds.music, world:current_sound_sample())
-   world:stream_sound(sounds.music, next_sample)
+   --local next_sample = world:stream_sound(sounds.music, world:current_sound_sample())
+   --world:stream_sound(sounds.music, next_sample)
 end
