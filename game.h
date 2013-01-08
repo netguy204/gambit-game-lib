@@ -73,6 +73,26 @@ class CDrawWallpaper : public Component {
   int layer;
 };
 
+#include "tiles.h"
+
+class CDrawTilemap : public Component {
+ public:
+  OBJECT_PROTO(CDrawTilemap);
+
+  CDrawTilemap(void* go);
+  virtual ~CDrawTilemap();
+
+  virtual void update(float dt);
+
+  void set_map(TileMap map);
+  TileMap get_map();
+
+  Vector_ offset;
+  TileMap map;
+  int w, h;
+  int layer;
+};
+
 struct PEntry {
   Vector_ pos;
   Vector_ vel;

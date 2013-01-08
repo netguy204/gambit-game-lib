@@ -10,8 +10,12 @@ static struct InputState_ pstate;
 
 void native_init() {
   memset(&pstate, 0, sizeof(struct InputState_));
+  /* appears to be the ouya default resolution
   screen_width = 1920;
   screen_height = 1080;
+  */
+  screen_width = 1280;
+  screen_height = 720;
 }
 
 

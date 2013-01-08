@@ -16,15 +16,7 @@ void LCpush_entry(lua_State* L, SpriteAtlasEntry entry) {
   lua_setfield(L, -2, "h");
 }
 
-template<>
-void PropertyTypeImpl<SpriteAtlasEntry>::LCpush_value(Object* obj, lua_State* L) const {
-  SpriteAtlasEntry entry;
-  get_value(obj, &entry);
-  LCpush_entry(L, entry);
-}
-
-template<>
-void PropertyTypeImpl<SpriteAtlasEntry>::LCset_value(Object* obj, lua_State* L, int pos) const {
+SpriteAtlasEntry LCcheck_entry(lua_State* L, int pos) {
   if(!lua_istable(L, pos)) {
     luaL_error(L, "position %d does not contain a table", pos);
   }
@@ -36,6 +28,19 @@ void PropertyTypeImpl<SpriteAtlasEntry>::LCset_value(Object* obj, lua_State* L, 
   }
 
   lua_pop(L, 1);
+  return entry;
+}
+
+template<>
+void PropertyTypeImpl<SpriteAtlasEntry>::LCpush_value(Object* obj, lua_State* L) const {
+  SpriteAtlasEntry entry;
+  get_value(obj, &entry);
+  LCpush_entry(L, entry);
+}
+
+template<>
+void PropertyTypeImpl<SpriteAtlasEntry>::LCset_value(Object* obj, lua_State* L, int pos) const {
+  SpriteAtlasEntry entry = LCcheck_entry(L, pos);
   set_value(obj, &entry);
 }
 
@@ -820,6 +825,27 @@ static int Lobject_tostring(lua_State *L) {
   return 1;
 }
 
+static int Lobject_eq(lua_State* L) {
+  void** objA = (void**)lua_touserdata(L, 1);
+  void** objB = (void**)lua_touserdata(L, 2);
+  if(objA != objB && (objA == NULL || objB == NULL)) {
+    lua_pushboolean(L, 0);
+  } else {
+    lua_pushboolean(L, *objA == *objB);
+  }
+  return 1;
+}
+
+static int Lobject_key(lua_State* L) {
+  void** obj = (void**)lua_touserdata(L, 1);
+  if(obj == NULL) {
+    lua_pushnil(L);
+  } else {
+    lua_pushlightuserdata(L, *obj);
+  }
+  return 1;
+}
+
 void LClink_metatable(lua_State *L, const char* name, const luaL_Reg* table) {
   static const luaL_Reg object_m[] = {
     {"__index", Lobject_index},
@@ -863,6 +889,8 @@ void init_lua(World* world) {
     {"stream_sound", Lworld_stream_sound},
     {"current_sound_sample", Lworld_current_sound_sample},
     {"__tostring", Lobject_tostring},
+    {"__eq", Lobject_eq},
+    {"key", Lobject_key},
     {NULL, NULL}};
 
   LClink_metatable(L, LUT_WORLD, world_m);
@@ -875,12 +903,16 @@ void init_lua(World* world) {
     {"send_message", Lgo_send_message},
     {"broadcast_message", Lgo_broadcast_message},
     {"__tostring", Lobject_tostring},
+    {"__eq", Lobject_eq},
+    {"key", Lobject_key},
     {NULL, NULL}};
 
   LClink_metatable(L, LUT_GO, go_m);
 
   static const luaL_Reg component_m[] = {
     {"__tostring", Lobject_tostring},
+    {"__eq", Lobject_eq},
+    {"key", Lobject_key},
     {NULL, NULL}};
 
   LClink_metatable(L, LUT_COMPONENT, component_m);
@@ -927,6 +959,8 @@ World::~World() {
   }
 
   lua_close(L);
+  clock_free(clock);
+  clock_free(camera_clock);
 }
 
 void World::update(long delta) {

@@ -109,6 +109,8 @@ class Component : public Object {
   int delete_me;
 };
 
+void LCpush_entry(lua_State* L, SpriteAtlasEntry entry);
+SpriteAtlasEntry LCcheck_entry(lua_State* L, int pos);
 void LCpush_component(lua_State *L, Component *comp);
 
 // registers a GO with the collidables section of the world. GO

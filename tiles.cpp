@@ -6,9 +6,11 @@
 #include <stdio.h>
 #include <assert.h>
 
-TileMap tilemap_make(int width, int height, int tw, int th) {
+TileMap tilemap_make(int width, int height, int nSpecs,
+                     int tw, int th) {
   int num_tiles = width * height;
   TileMap map = (TileMap)malloc(sizeof(struct TileMap_) + num_tiles);
+  map->tile_specs = (TileSpec)malloc(sizeof(struct TileSpec_) * nSpecs);
   map->width_IT = width;
   map->height_IT = height;
   map->tile_width_IP = tw;
@@ -19,6 +21,7 @@ TileMap tilemap_make(int width, int height, int tw, int th) {
 }
 
 void tilemap_free(TileMap map) {
+  free(map->tile_specs);
   free(map);
 }
 
@@ -101,7 +104,7 @@ int clamp(int val, int min, int max) {
   return val;
 }
 
-BaseSprite tilemap_spritelist(TileMap map, float x_bl, float y_bl, float wpx, float hpx) {
+BaseSprite tilemap_spritelist(BaseSprite spritelist, TileMap map, float x_bl, float y_bl, float wpx, float hpx) {
   float mx_bl = x_bl - map->x_bl;
   float my_bl = y_bl - map->y_bl;
   float mx_tr = mx_bl + wpx;
@@ -111,8 +114,6 @@ BaseSprite tilemap_spritelist(TileMap map, float x_bl, float y_bl, float wpx, fl
   int ty_bl = clamp(floor(my_bl / map->tile_height_IP), 0, map->height_IT);
   int tx_tr = clamp(ceil(mx_tr / map->tile_width_IP), 0, map->width_IT);
   int ty_tr = clamp(ceil(my_tr / map->tile_height_IP), 0, map->height_IT);
-
-  BaseSprite spritelist = NULL;
 
   int ox = (int)floorf((map->x_bl + tx_bl * map->tile_width_IP) - x_bl);
   int oy = (int)floorf((map->y_bl + ty_bl * map->tile_height_IP) - y_bl);
@@ -130,12 +131,10 @@ BaseSprite tilemap_spritelist(TileMap map, float x_bl, float y_bl, float wpx, fl
       TileSpec spec = &map->tile_specs[tile];
       if((spec->bitmask & TILESPEC_VISIBLE) == 0) continue;
 
-      Sprite sprite = frame_make_sprite();
+      BaseSprite sprite = (BaseSprite)frame_alloc(sizeof(BaseSprite_));
       sprite_fillfromentry(sprite, spec->image);
-      sprite->originX = 0.0f;
-      sprite->originY = 0.0f;
-      sprite->displayX = (float)x;
-      sprite->displayY = (float)y;
+      sprite->displayX = x;
+      sprite->displayY = y;
       sprite_append(spritelist, sprite);
     }
   }
