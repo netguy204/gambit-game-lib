@@ -22,4 +22,20 @@ function M.height(a)
    return a[4] - a[2]
 end
 
+function M.bl(r)
+   return { r[1], r[2] }
+end
+
+function M.br(r)
+   return { r[3], r[2] }
+end
+
+function M.tl(r)
+   return { r[1], r[4] }
+end
+
+function M.tr(r)
+   return { r[3], r[4] }
+end
+
 return M

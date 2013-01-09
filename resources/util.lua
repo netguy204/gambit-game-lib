@@ -1,6 +1,7 @@
 local M = {}
 
 local constant = require 'constant'
+local rect = require 'rect'
 
 function M.printf(...)
    print(string.format(...))
@@ -189,5 +190,22 @@ function M.thread_part(part)
 
    return M.thread(loop)
 end
+
+function M.stage_collidable(r)
+   return stage:add_component("CCollidable", {w=rect.width(r),
+                                              h=rect.height(r),
+                                              offset=rect.center(r)})
+end
+
+function M.stage_drawrect(r)
+   return stage:add_component("CTestDisplay", {w=rect.width(r),
+                                               h=rect.height(r),
+                                               offset=rect.center(r),
+                                               r=util.rand_between(0, 1),
+                                               g=util.rand_between(0, 1),
+                                               b=util.rand_between(0, 1)})
+end
+
+
 
 return M

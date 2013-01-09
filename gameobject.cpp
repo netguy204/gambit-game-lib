@@ -551,12 +551,12 @@ void CScripted::messages_received() {
 void CScripted::resume(LuaThread* thread, int args) {
   int status = lua_resume(thread->state, NULL, args);
   if(status != LUA_YIELD) {
-    free_thread(thread);
-
     if(status != LUA_OK) {
       const char* error = lua_tostring(thread->state, -1);
       fail_exit("lua thread failed: %s", error);
     }
+
+    free_thread(thread);
 
     // when both threads exit, remove ourselves
     if(!message_thread.state && !update_thread.state) {
@@ -939,11 +939,11 @@ void init_lua(World* world) {
 }
 
 World::World(void*p)
-  : L(NULL), scene(this), bWorld(b2Vec2(0, -50)) {
+  : L(NULL), scene(this), bWorld(b2Vec2(0, -50)), focus(NULL) {
   init_lua(this);
 }
 World::World()
-  : L(NULL), scene(this), bWorld(b2Vec2(0, -50)) {
+  : L(NULL), scene(this), bWorld(b2Vec2(0, -50)), focus(NULL) {
   init_lua(this);
 }
 
