@@ -36,6 +36,7 @@ class CTestDisplay : public Component {
 
   virtual void update(float dt);
 
+  Vector_ offset;
   float r, g, b, a, w, h;
   int layer;
 };

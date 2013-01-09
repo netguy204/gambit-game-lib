@@ -77,16 +77,19 @@ OBJECT_PROPERTY(CTestDisplay, b);
 OBJECT_PROPERTY(CTestDisplay, a);
 OBJECT_PROPERTY(CTestDisplay, w);
 OBJECT_PROPERTY(CTestDisplay, h);
+OBJECT_PROPERTY(CTestDisplay, offset);
 OBJECT_PROPERTY(CTestDisplay, layer);
 
 CTestDisplay::CTestDisplay(void* go)
   : Component((GO*)go, PRIORITY_SHOW), r(1.0f), g(0.0f), b(1.0f), a(1.0f),
     w(10), h(10), layer(LAYER_PLAYER) {
+  vector_zero(&offset);
 }
 
 void CTestDisplay::update(float dt) {
   Vector_ pos;
   go->pos(&pos);
+  vector_add(&pos, &pos, &offset);
 
   ColoredRect rect = (ColoredRect)frame_alloc(sizeof(ColoredRect_));
   rect->minx = pos.x - w/2;

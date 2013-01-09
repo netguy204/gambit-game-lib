@@ -19,6 +19,15 @@ function stage_collidable(r)
                                               offset=rect.center(r)})
 end
 
+function stage_rect(r)
+   return stage:add_component("CTestDisplay", {w=rect.width(r),
+                                               h=rect.height(r),
+                                               offset=rect.center(r),
+                                               r=util.rand_between(0, 1),
+                                               g=util.rand_between(0, 1),
+                                               b=util.rand_between(0, 1)})
+end
+
 function floor(minx, maxx, topy, art, opts)
    local midx = (minx + maxx) / 2
    local midy = topy - art.h / 2
@@ -89,6 +98,52 @@ function flip_map(map)
    return new_map
 end
 
+function install_map(map)
+   map = flip_map(map)
+   stage:add_component("CDrawTilemap", {map=map,
+                                        w=screen_width,h=screen_height})
+
+   local tile_rect = function(row, col)
+      return { (col - 1) * map.tile_width,
+               (row - 1) * map.tile_height,
+               col * map.tile_width,
+               row * map.tile_height }
+   end
+
+   local as_index = function(row, col)
+      return (row - 1) * map.width + col
+   end
+
+   local is_solid = function(row, col)
+      local idx = as_index(row, col)
+      local speci = map.tiles[idx]
+      return speci ~= 0 and map.specs[speci].solid
+   end
+
+   -- build the colliders
+   local current_collider = nil;
+   for row=1,map.height do
+      for col=1,map.width do
+         if is_solid(row, col) then
+            local tr = tile_rect(row, col)
+            if current_collider then
+               current_collider = rect.union(current_collider, tr)
+            else
+               current_collider = tr
+            end
+         elseif current_collider then
+            stage_collidable(current_collider)
+            current_collider = nil
+         end
+      end
+
+      if current_collider then
+         stage_collidable(current_collider)
+         current_collider = nil
+      end
+   end
+end
+
 function level_init()
    local _brick = world:atlas_entry(constant.ATLAS, "brick")
    local _spike = world:atlas_entry(constant.ATLAS, "spike")
@@ -108,8 +163,8 @@ function level_init()
       height=8,
       tile_width=64,
       tile_height=64,
-      specs={{image=_brick},
-             {image=_spike},
+      specs={{image=_brick, solid=true},
+             {image=_spike, deadly=true},
              {image=_ladder}},
       tiles={0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0,
              0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0,
@@ -119,7 +174,7 @@ function level_init()
              0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0,
              1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1,
              1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1}}
-   stage:add_component("CDrawTilemap", {map=flip_map(map),
-                                        w=screen_width,h=screen_height})
+
+   install_map(map)
 
 end
