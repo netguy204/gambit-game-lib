@@ -39,7 +39,7 @@ void CTimer::update(float dt) {
   this->time_remaining -= dt;
 
   if(this->time_remaining <= 0) {
-    go->send_message(go->create_message(kind));
+    go->send_message(go->create_message(kind, NULL, 0));
     delete_me = 1;
   }
 }

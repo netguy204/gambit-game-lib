@@ -149,14 +149,6 @@ void PropertyTypeImpl<Message*>::LCset_value(Object* obj, lua_State* L, int pos)
   set_value(obj, &message);
 }
 
-Message::Message(GO* source, int kind, void* data)
-  : source(source), kind(kind), data(data) {
-}
-
-void* Message::operator new(size_t size) {
-  return frame_alloc(size);
-}
-
 void Message::operator delete(void* obj) {
   fail_exit("no need to delete messages");
 }
@@ -382,8 +374,13 @@ void GO::print_description() {
     });
 }
 
-Message* GO::create_message(int kind) {
-  return new Message(this, kind, NULL);
+Message* GO::create_message(int kind, const char* content, size_t nbytes) {
+  Message* msg = (Message*)frame_alloc(sizeof(Message) + nbytes);
+  msg->source = this;
+  msg->kind = kind;
+  msg->nbytes = nbytes;
+  memcpy(msg->content, content, nbytes);
+  return msg;
 }
 
 void GO::send_message(Message* message) {
@@ -751,7 +748,13 @@ static int Lgo_add_component(lua_State *L) {
 static int Lgo_create_message(lua_State *L) {
   GO* go = LCcheck_go(L, 1);
   int kind = luaL_checkinteger(L, 2);
-  Message* message = go->create_message(kind);
+  const char* content = NULL;
+  size_t nbytes = 0;
+  if(lua_isstring(L, 3)) {
+    content = lua_tolstring(L, 3, &nbytes);
+  }
+
+  Message* message = go->create_message(kind, content, nbytes);
   lua_pushlightuserdata(L, message);
   return 1;
 }
@@ -767,8 +770,13 @@ static int Lgo_broadcast_message(lua_State *L) {
   GO* go = LCcheck_go(L, 1);
   float range = luaL_checknumber(L, 2);
   int kind = luaL_checkinteger(L, 3);
+  const char* content = NULL;
+  size_t nbytes = 0;
+  if(lua_isstring(L, 4)) {
+    content = lua_tolstring(L, 4, &nbytes);
+  }
 
-  go->world->broadcast_message(go, range, kind);
+  go->world->broadcast_message(go, range, kind, content, nbytes);
   return 0;
 }
 
@@ -1081,12 +1089,12 @@ float World::get_time_scale() {
   return clock->time_scale;
 }
 
-void World::broadcast_message(GO* sender, float radius, int kind) {
+void World::broadcast_message(GO* sender, float radius, int kind, const char* content, size_t nbytes) {
   Vector_ pos;
   sender->pos(&pos);
 
   world_foreach(this, &pos, radius, [=](GO* go, b2Fixture*) -> int {
-      go->send_message(sender->create_message(kind));
+      go->send_message(sender->create_message(kind, content, nbytes));
       return 0;
     });
 }

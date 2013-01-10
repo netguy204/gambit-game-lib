@@ -70,6 +70,6 @@ void CPlatformer::update(float dt) {
   }
 
   if(parent != old_parent) {
-    go->send_message(go->create_message(MESSAGE_PARENT_CHANGE));
+    go->send_message(go->create_message(MESSAGE_PARENT_CHANGE, NULL, 0));
   }
 }

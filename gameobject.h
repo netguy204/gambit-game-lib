@@ -32,16 +32,13 @@ enum MessageKind {
 
 class Message {
  public:
-  Message(GO* source, int kind, void* data);
-  void* operator new(size_t size);
   void operator delete(void* obj);
 
   struct DLLNode_ node;
   GO* source;
-  void* data;
-  void* data2;
   int kind;
-  int read_count;
+  size_t nbytes;
+  char content[0];
 };
 
 enum RenderLayers {
@@ -193,7 +190,7 @@ class GO : public Object {
   virtual void update(float dt);
   void messages_received();
 
-  Message* create_message(int kind);
+  Message* create_message(int kind, const char* content, size_t nbytes);
   void send_message(Message* message);
 
   float get_gravity_scale();
@@ -256,7 +253,7 @@ class World : public Object {
 
   SpriteAtlas atlas(const char* atlas);
   SpriteAtlasEntry atlas_entry(const char* atlas, const char* entry);
-  void broadcast_message(GO* go, float radius, int kind);
+  void broadcast_message(GO* go, float radius, int kind, const char* content, size_t nbytes);
   GO* next_in_cone(GO* last, Rect bounds, Cone* cone);
   void set_time_scale(float scale);
   float get_time_scale();

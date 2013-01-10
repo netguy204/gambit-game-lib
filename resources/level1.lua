@@ -83,17 +83,26 @@ function flip_map(map)
    return new_map
 end
 
-function index_map(map, row, col)
+function map_index(map, row, col)
    if row < 1 or row > map.height or col < 1 or col > map.width then
+      return nil
+   end
+   return (row - 1) * map.width + col
+end
+
+function index_map(map, row, col)
+   local idx = map_index(map, row, col)
+   if not idx then
       return {}
    end
 
-   local idx = (row - 1) * map.width + col
    local speci = map.tiles[idx]
    if speci == 0 then
-      return {}
+      return {index=idx}
    else
-      return map.specs[speci]
+      local new_table = util.table_copy(map.specs[speci])
+      new_table.index = idx
+      return new_table
    end
 end
 
@@ -162,14 +171,31 @@ local function make_player_thread(map)
 
    local is_touching_kind = function(kind)
       local r = player_rect()
-      return query_map(map, rect.bl(r))[kind] or
-         query_map(map, rect.br(r))[kind] or
-         query_map(map, rect.tl(r))[kind] or
-         query_map(map, rect.tr(r))[kind]
+      local v = query_map(map, rect.bl(r))
+      if v[kind] then
+         return v
+      end
+
+      v = query_map(map, rect.br(r))
+      if v[kind] then
+         return v
+      end
+
+      v = query_map(map, rect.tl(r))
+      if v[kind] then
+         return v
+      end
+
+      v = query_map(map, rect.tr(r))
+      if v[kind] then
+         return v
+      end
+      return false
    end
 
    local function controls(go, comp)
       local climbing = false
+      local have_key = false
 
       while true do
          coroutine.yield()
@@ -205,6 +231,20 @@ local function make_player_thread(map)
          if is_touching_kind('deadly') then
             reset_world()
          end
+
+         local collectable = is_touching_kind('key')
+         if collectable then
+            -- remove the key
+            map.tiles[collectable.index] = 0
+            stage:find_component('CDrawTilemap', nil):map(map)
+            have_key = true
+         end
+
+         if have_key and is_touching_kind('lock') then
+            -- yay! win
+            print("You're such a winner.")
+            reset_world()
+         end
       end
    end
 
@@ -216,6 +256,8 @@ function level_init()
    local _spike = world:atlas_entry(constant.ATLAS, "spike")
    local _dirt = world:atlas_entry(constant.ATLAS, "dirt")
    local _ladder = world:atlas_entry(constant.ATLAS, "ladder")
+   local _key = world:atlas_entry(constant.ATLAS, "key")
+   local _lock = world:atlas_entry(constant.ATLAS, "lock")
 
    local bottom = grass(-64*40, 64*80, 0)
    bottom = rect.union(bottom, wallpaper({-64*40, -64*10, 64*80, -64}, _dirt))
@@ -231,10 +273,12 @@ function level_init()
          specs={{image=_brick, solid=true},
                 {image=_spike, deadly=true},
                 {image=_ladder, climbable=true},
-                {image=_brick, climbable=true, solid=true}},
-         tiles={0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0,
+                {image=_brick, climbable=true, solid=true},
+                {image=_key, key=true},
+                {image=_lock, lock=true}},
+         tiles={0, 3, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0,
                 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0,
-                0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0,
+                0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 6,
                 1, 1, 3, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 3, 1, 1,
                 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0,
                 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0,
