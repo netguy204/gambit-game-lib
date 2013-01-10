@@ -237,6 +237,8 @@ local function make_player_thread(map)
             -- remove the key
             map.tiles[collectable.index] = 0
             stage:find_component('CDrawTilemap', nil):map(map)
+            local _key = world:atlas_entry(constant.ATLAS, "key")
+            go:add_component("CStaticSprite", {entry=_key,offset={0,64}})
             have_key = true
          end
 
