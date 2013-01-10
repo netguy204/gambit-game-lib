@@ -110,9 +110,6 @@ void LCpush_entry(lua_State* L, SpriteAtlasEntry entry);
 SpriteAtlasEntry LCcheck_entry(lua_State* L, int pos);
 void LCpush_component(lua_State *L, Component *comp);
 
-// registers a GO with the collidables section of the world. GO
-// components will get COLLIDED messages letting them known when they
-// hit other GOs that have a collidable component
 class CCollidable : public Component {
  public:
   OBJECT_PROTO(CCollidable);
@@ -128,6 +125,21 @@ class CCollidable : public Component {
   float density;
   int category;
   int mask;
+};
+
+class CSensor : public Component {
+ public:
+  OBJECT_PROTO(CSensor);
+
+  CSensor(void* go);
+  virtual ~CSensor();
+  virtual void init();
+
+  b2Fixture* fixture;
+  Vector_ offset;
+  int kind;
+  float w;
+  float h;
 };
 
 struct LuaThread {
@@ -207,6 +219,10 @@ class GO : public Object {
   Vector_ slow_get_vel();
   void slow_set_pos(Vector_ p);
   void slow_set_vel(Vector_ p);
+
+  // type is the b2BodyType enum
+  void set_body_type(int type);
+  int get_body_type();
 
   Component* find_component(const TypeInfo* info, Component* last);
   void print_description();

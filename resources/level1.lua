@@ -108,7 +108,7 @@ end
 
 function install_map(map)
    stage:add_component("CDrawTilemap", {map=map,
-                                        w=screen_width,h=screen_height})
+                                        w=screen_width*1.5,h=screen_height*1.5})
 
    local tile_rect = function(row, col)
       return { (col - 1) * map.tile_width,
@@ -157,7 +157,7 @@ local function make_player_thread(map)
    local width = 28
    local height = 62
    local speed = 600
-   local jump_speed = 1200
+   local jump_speed = 800
 
    local art = world:atlas_entry(constant.ATLAS, "guy")
    local platformer = player:add_component("CPlatformer", {w=width, h=height})
@@ -205,8 +205,10 @@ local function make_player_thread(map)
 
          if climbing and (not can_climb) then
             climbing = false
+            go:body_type(constant.DYNAMIC)
          elseif (not climbing) and can_climb then
             climbing = true
+            go:body_type(constant.KINEMATIC)
          end
 
          local vel = go:vel()
@@ -269,7 +271,7 @@ function level_init()
    local map = flip_map(
       {
          width=20,
-         height=8,
+         height=16,
          tile_width=64,
          tile_height=64,
          specs={{image=_brick, solid=true},
@@ -278,9 +280,17 @@ function level_init()
                 {image=_brick, climbable=true, solid=true},
                 {image=_key, key=true},
                 {image=_lock, lock=true}},
-         tiles={0, 3, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0,
+         tiles={0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0,
+                1, 1, 3, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 3, 1, 1,
+                0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0,
+                0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0,
+                0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0,
+                1, 3, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 3, 1,
                 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0,
-                0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 6,
+                0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0,
+                0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0,
                 1, 1, 3, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 3, 1, 1,
                 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0,
                 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0,

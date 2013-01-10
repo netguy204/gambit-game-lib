@@ -173,7 +173,9 @@ void renderer_resize(int w, int h) {
   screen_width = w;
   screen_height = h;
   glViewport(0, 0, screen_width, screen_height);
-  matrix_orthographic_proj(&orthographic_projection, 0.0f, screen_width, 0.0f, screen_height,
+  matrix_orthographic_proj(&orthographic_projection,
+                           0.0f, screen_width * 1.5,
+                           0.0f, screen_height * 1.5,
                            -1.0f, 1.0f);
 }
 

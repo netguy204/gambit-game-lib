@@ -217,6 +217,7 @@ OBJECT_IMPL(GO, Object);
 OBJECT_ACCESSOR(GO, gravity_scale, get_gravity_scale, set_gravity_scale);
 OBJECT_ACCESSOR(GO, pos, slow_get_pos, slow_set_pos);
 OBJECT_ACCESSOR(GO, vel, slow_get_vel, slow_set_vel);
+OBJECT_ACCESSOR(GO, body_type, get_body_type, set_body_type);
 OBJECT_PROPERTY(GO, delete_me);
 
 GO::GO(void* _world)
@@ -334,6 +335,14 @@ void GO::slow_set_vel(Vector_ vel) {
   set_vel(&vel);
 }
 
+void GO::set_body_type(int type) {
+  body->SetType((b2BodyType)type);
+}
+
+int GO::get_body_type() {
+  return body->GetType();
+}
+
 Component* GO::find_component(const TypeInfo* info, Component* last) {
   DLLNode node = components.head;
   if(last) {
@@ -440,9 +449,13 @@ CCollidable::~CCollidable() {
 }
 
 void CCollidable::init() {
+  Vector_ pos;
+  go->pos(&pos);
+  vector_add(&pos, &pos, &offset);
+
   b2Vec2 center;
-  center.x = offset.x / BSCALE;
-  center.y = offset.y / BSCALE;
+  center.x = pos.x / BSCALE;
+  center.y = pos.y / BSCALE;
 
   b2PolygonShape shape;
   shape.SetAsBox((w/2)/BSCALE, (h/2)/BSCALE, center, 0);
@@ -452,6 +465,39 @@ void CCollidable::init() {
   fixtureDef.density = density;
   fixtureDef.filter.categoryBits = category;
   fixtureDef.filter.maskBits = mask;
+
+  fixture = go->body->CreateFixture(&fixtureDef);
+}
+
+OBJECT_IMPL(CSensor, Component);
+OBJECT_PROPERTY(CSensor, offset);
+OBJECT_PROPERTY(CSensor, w);
+OBJECT_PROPERTY(CSensor, h);
+
+CSensor::CSensor(void* _go)
+  : Component((GO*)_go, PRIORITY_THINK) {
+  vector_zero(&offset);
+}
+
+CSensor::~CSensor() {
+  go->body->DestroyFixture(fixture);
+}
+
+void CSensor::init() {
+  Vector_ pos;
+  go->pos(&pos);
+  vector_add(&pos, &pos, &offset);
+
+  b2Vec2 center;
+  center.x = pos.x / BSCALE;
+  center.y = pos.y / BSCALE;
+
+  b2PolygonShape shape;
+  shape.SetAsBox((w/2)/BSCALE, (h/2)/BSCALE, center, 0);
+
+  b2FixtureDef fixtureDef;
+  fixtureDef.shape = &shape;
+  fixtureDef.isSensor = true;
 
   fixture = go->body->CreateFixture(&fixtureDef);
 }

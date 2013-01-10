@@ -38,10 +38,14 @@ M.BLACKBODY = 0
 M.BW = 1
 
 -- channels
-
 M.EVENT = 0
 M.FOLEY = 1
 M.AMBIANCE = 2
 M.STREAM = 3
+
+-- body types
+M.STATIC = 0
+M.KINEMATIC = 1
+M.DYNAMIC = 2
 
 return M
