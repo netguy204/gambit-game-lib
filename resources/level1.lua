@@ -7,6 +7,7 @@ local constant = require 'constant'
 local util = require 'util'
 local enemy = require 'enemy'
 local rect = require 'rect'
+local map = require 'map'
 
 _G.sounds = {explosion=world:get_sound("sounds/Explosion6.ogg", 0.3),
              action=world:get_sound("sounds/Jump20.ogg", 0.2),
@@ -67,93 +68,7 @@ function wallpaper(r, art, opts)
    return r
 end
 
--- flips the map so that the top row ends up on the top of the screen
--- like you would expect if you just visualized the map numbers
-function flip_map(map)
-   local new_tiles = {}
-   local ntiles = map.width * map.height
-   for idx=1,ntiles do
-      row = math.floor((idx - 1) / map.width) + 1
-      col = (idx - 1) % map.width + 1
-      new_idx = (map.height - row) * map.width + col
-      new_tiles[idx] = map.tiles[new_idx]
-   end
-   local new_map = util.table_copy(map)
-   new_map.tiles = new_tiles
-   return new_map
-end
-
-function map_index(map, row, col)
-   if row < 1 or row > map.height or col < 1 or col > map.width then
-      return nil
-   end
-   return (row - 1) * map.width + col
-end
-
-function index_map(map, row, col)
-   local idx = map_index(map, row, col)
-   if not idx then
-      return {}
-   end
-
-   local speci = map.tiles[idx]
-   if speci == 0 then
-      return {index=idx}
-   else
-      local new_table = util.table_copy(map.specs[speci])
-      new_table.index = idx
-      return new_table
-   end
-end
-
-function install_map(map)
-   stage:add_component("CDrawTilemap", {map=map,
-                                        w=screen_width*1.5,h=screen_height*1.5})
-
-   local tile_rect = function(row, col)
-      return { (col - 1) * map.tile_width,
-               (row - 1) * map.tile_height,
-               col * map.tile_width,
-               row * map.tile_height }
-   end
-
-   local is_solid = function(row, col)
-      return index_map(map, row, col).solid
-   end
-
-   -- build the colliders
-   local current_collider = nil;
-   for row=1,map.height do
-      for col=1,map.width do
-         if is_solid(row, col) then
-            local tr = tile_rect(row, col)
-            if current_collider then
-               current_collider = rect.union(current_collider, tr)
-            else
-               current_collider = tr
-            end
-         elseif current_collider then
-            util.stage_collidable(current_collider)
-            current_collider = nil
-         end
-      end
-
-      if current_collider then
-         util.stage_collidable(current_collider)
-         current_collider = nil
-      end
-   end
-
-   return map
-end
-
-local function query_map(map, point)
-   local col = math.floor(point[1] / map.tile_width) + 1
-   local row = math.floor(point[2] / map.tile_height) + 1
-   return index_map(map, row, col)
-end
-
-local function make_player_thread(map)
+local function make_player_thread(m)
    local width = 28
    local height = 62
    local speed = 600
@@ -171,26 +86,7 @@ local function make_player_thread(map)
 
    local is_touching_kind = function(kind)
       local r = player_rect()
-      local v = query_map(map, rect.bl(r))
-      if v[kind] then
-         return v
-      end
-
-      v = query_map(map, rect.br(r))
-      if v[kind] then
-         return v
-      end
-
-      v = query_map(map, rect.tl(r))
-      if v[kind] then
-         return v
-      end
-
-      v = query_map(map, rect.tr(r))
-      if v[kind] then
-         return v
-      end
-      return false
+      return m:query_rect_corners(r, kind)
    end
 
    local function add_antigrav_force(go)
@@ -236,8 +132,9 @@ local function make_player_thread(map)
          local collectable = is_touching_kind('key')
          if collectable then
             -- remove the key
-            map.tiles[collectable.index] = 0
-            stage:find_component('CDrawTilemap', nil):map(map)
+            m.tiles[collectable.index] = 0
+            m:update_visuals()
+            -- attach it to our head
             local _key = world:atlas_entry(constant.ATLAS, "key")
             go:add_component("CStaticSprite", {entry=_key,offset={0,64}})
             have_key = true
@@ -257,13 +154,14 @@ function level_init()
    local _brick = world:atlas_entry(constant.ATLAS, "brick")
    local _tile1 = world:atlas_entry(constant.ATLAS, "tile1")
    local _spike = world:atlas_entry(constant.ATLAS, "spike")
+   local _side_spike = world:atlas_entry(constant.ATLAS, "side_spike")
    local _dirt = world:atlas_entry(constant.ATLAS, "dirt")
    local _ladder = world:atlas_entry(constant.ATLAS, "ladder")
    local _key = world:atlas_entry(constant.ATLAS, "key")
    local _lock = world:atlas_entry(constant.ATLAS, "lock")
 
    -- tilemap test
-   local map = flip_map(
+   local m = map.create(
       {
          width=20,
          height=16,
@@ -273,7 +171,8 @@ function level_init()
                 {image=_spike, deadly=true},
                 {image=_ladder, climbable=true},
                 {image=_key, key=true},
-                {image=_lock, lock=true}},
+                {image=_lock, lock=true},
+                {image=_side_spike, deadly=true}},
          tiles={0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0,
@@ -292,9 +191,10 @@ function level_init()
                 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1}
       })
 
-   map = install_map(map)
+   m:update_visuals()
+   m:update_colliders()
 
-   player:add_component("CScripted", {update_thread=util.thread(make_player_thread(map))})
+   player:add_component("CScripted", {update_thread=util.thread(make_player_thread(m))})
    player:pos{32, 170}
 
 end
