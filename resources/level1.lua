@@ -8,6 +8,7 @@ local util = require 'util'
 local enemy = require 'enemy'
 local rect = require 'rect'
 local map = require 'map'
+local vector = require 'vector'
 
 _G.sounds = {explosion=world:get_sound("sounds/Explosion6.ogg", 0.3),
              action=world:get_sound("sounds/Jump20.ogg", 0.2),
@@ -68,6 +69,43 @@ function wallpaper(r, art, opts)
    return r
 end
 
+local function make_platform_thread(lower, upper, speed)
+   local vel = (upper - lower):norm() * speed
+   local dest = upper
+   local other = lower
+
+   -- we do all the position updates manually
+   local thread = function(go, comp)
+      go:body_type(constant.KINEMATIC)
+      go:pos(lower)
+      go:vel(vel)
+
+      while true do
+         coroutine.yield()
+
+         local pos = go:pos()
+
+         -- past our destination?
+         if vel:dot(dest - pos) < 0 then
+            -- bounce back the appropriate distance and reverse
+            -- velocity
+            local overshoot = (dest - pos)
+            pos = dest + overshoot
+
+            vel = vel * -1
+            local temp = dest
+            dest = other
+            other = temp
+
+            go:pos(pos)
+            go:vel(vel)
+         end
+      end
+   end
+
+   return thread
+end
+
 local function make_player_thread(m)
    local width = 28
    local height = 62
@@ -105,8 +143,7 @@ local function make_player_thread(m)
          coroutine.yield()
          local input = world:input_state()
          local can_climb = is_touching_kind('climbable')
-         local vel = go:vel()
-         --print("can_climb", can_climb, "climbing", climbing)
+         local vel = vector.new(go:vel())
 
          vel[1] = speed * input.leftright
          if can_climb then
@@ -114,8 +151,16 @@ local function make_player_thread(m)
             vel[2] = speed * input.updown
          end
 
-         if input.action1 and platformer:parent() then
+         local parent = platformer:parent()
+         if input.action1 and parent then
             vel[2] = jump_speed
+         end
+
+         if parent then
+            local pvel = vector.new(parent:vel())
+            if pvel:length() > 0 then
+               vel = vel + pvel
+            end
          end
 
          go:vel(vel)
@@ -159,6 +204,7 @@ function level_init()
    local _ladder = world:atlas_entry(constant.ATLAS, "ladder")
    local _key = world:atlas_entry(constant.ATLAS, "key")
    local _lock = world:atlas_entry(constant.ATLAS, "lock")
+   local _platform = world:atlas_entry(constant.ATLAS, "platform")
 
    -- tilemap test
    local m = map.create(
@@ -197,4 +243,10 @@ function level_init()
    player:add_component("CScripted", {update_thread=util.thread(make_player_thread(m))})
    player:pos{32, 170}
 
+   local start = vector.new(m:center(5, 6))
+   local stop = vector.new(m:center(5, 12))
+   local platform = world:create_go()
+   platform:add_component("CStaticSprite", {entry=_platform})
+   platform:add_component("CScripted", {update_thread=util.thread(make_platform_thread(start, stop, 100))})
+   platform:add_component("CCollidable", {w=64, h=16})
 end

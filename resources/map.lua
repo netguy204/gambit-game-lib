@@ -48,6 +48,13 @@ function M.fetch(map, row, col)
    end
 end
 
+function M.center(map, row, col)
+   local x_bl = map.tile_width * (col - 1)
+   local y_bl = map.tile_height * (row - 1)
+   return {x_bl + map.tile_width / 2,
+           y_bl + map.tile_height / 2}
+end
+
 function M.query(map, point)
    local col = math.floor(point[1] / map.tile_width) + 1
    local row = math.floor(point[2] / map.tile_height) + 1
