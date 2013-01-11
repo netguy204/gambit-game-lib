@@ -255,15 +255,12 @@ end
 
 function level_init()
    local _brick = world:atlas_entry(constant.ATLAS, "brick")
+   local _tile1 = world:atlas_entry(constant.ATLAS, "tile1")
    local _spike = world:atlas_entry(constant.ATLAS, "spike")
    local _dirt = world:atlas_entry(constant.ATLAS, "dirt")
    local _ladder = world:atlas_entry(constant.ATLAS, "ladder")
    local _key = world:atlas_entry(constant.ATLAS, "key")
    local _lock = world:atlas_entry(constant.ATLAS, "lock")
-
-   local bottom = grass(-64*40, 64*80, 0)
-   bottom = rect.union(bottom, wallpaper({-64*40, -64*10, 64*80, -64}, _dirt))
-   util.stage_collidable(bottom)
 
    -- tilemap test
    local map = flip_map(
@@ -272,15 +269,14 @@ function level_init()
          height=16,
          tile_width=64,
          tile_height=64,
-         specs={{image=_brick, solid=true},
+         specs={{image=_tile1, solid=true},
                 {image=_spike, deadly=true},
                 {image=_ladder, climbable=true},
-                {image=_brick, climbable=true, solid=true},
                 {image=_key, key=true},
                 {image=_lock, lock=true}},
          tiles={0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0,
+                4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0,
                 1, 1, 3, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 3, 1, 1,
                 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0,
                 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0,

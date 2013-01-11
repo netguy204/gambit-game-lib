@@ -190,9 +190,9 @@ void renderer_gl_init(int w, int h) {
 
   //glBlendEquationSeparate(GL_FUNC_ADD, GL_ONE);
   //glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
-  float r = 82.0f / 255.0f;
-  float g = 84.0f / 255.0f;
-  float b = 94.0f / 255.0f;
+  float r = 240.0f / 255.0f;
+  float g = 240.0f / 255.0f;
+  float b = 225.0f / 255.0f;
   glClearColor(r, g, b, 1.0f);
   renderer_resize(w, h);
 
