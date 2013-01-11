@@ -31,6 +31,29 @@ SpriteAtlasEntry LCcheck_entry(lua_State* L, int pos) {
   return entry;
 }
 
+void LCpush_message(lua_State *L, Message* msg) {
+  lua_newtable(L);
+  LCpush_go(L, msg->source);
+  lua_setfield(L, -2, "source");
+  lua_pushlstring(L, msg->content, msg->nbytes);
+  lua_setfield(L, -2, "content");
+  lua_pushlightuserdata(L, msg);
+  lua_setfield(L, -2, "message");
+}
+
+Message* LCcheck_message(lua_State *L, int pos) {
+  if(!lua_istable(L, pos)) {
+    luaL_error(L, "expected message, got non-message-table");
+  }
+  lua_getfield(L, pos, "message");
+  Message* result = (Message*)lua_touserdata(L, -1);
+  lua_pop(L, 1);
+  if(!result) {
+    luaL_error(L, "`message' field of message-table was not set");
+  }
+  return result;
+}
+
 template<>
 void PropertyTypeImpl<SpriteAtlasEntry>::LCpush_value(Object* obj, lua_State* L) const {
   SpriteAtlasEntry entry;
@@ -142,15 +165,9 @@ void PropertyTypeImpl<InputState>::LCpush_value(Object* obj, lua_State* L) const
   lua_settable(L, -3);
 }
 
-template<>
-void PropertyTypeImpl<Message*>::LCset_value(Object* obj, lua_State* L, int pos) const {
-  Message* message = (Message*)lua_touserdata(L, pos);
-  luaL_argcheck(L, message != NULL, pos, "`Message' expected");
-  set_value(obj, &message);
-}
-
 void Message::operator delete(void* obj) {
   fail_exit("no need to delete messages");
+  // this is because messages must be fully stack allocated
 }
 
 Scene::Scene(World* world)
@@ -218,6 +235,7 @@ OBJECT_ACCESSOR(GO, gravity_scale, get_gravity_scale, set_gravity_scale);
 OBJECT_ACCESSOR(GO, pos, slow_get_pos, slow_set_pos);
 OBJECT_ACCESSOR(GO, vel, slow_get_vel, slow_set_vel);
 OBJECT_ACCESSOR(GO, body_type, get_body_type, set_body_type);
+OBJECT_ACCESSOR(GO, active, get_active, set_active);
 OBJECT_PROPERTY(GO, delete_me);
 
 GO::GO(void* _world)
@@ -341,6 +359,14 @@ void GO::set_body_type(int type) {
 
 int GO::get_body_type() {
   return body->GetType();
+}
+
+void GO::set_active(int val) {
+  body->SetActive(val);
+}
+
+int GO::get_active() {
+  return body->IsActive();
 }
 
 Component* GO::find_component(const TypeInfo* info, Component* last) {
@@ -500,6 +526,27 @@ void CSensor::init() {
   fixtureDef.isSensor = true;
 
   fixture = go->body->CreateFixture(&fixtureDef);
+  fixture->SetUserData(this);
+}
+
+void CSensor::update(float dt) {
+  b2ContactEdge* node = go->body->GetContactList();
+
+  while(node) {
+    if(node->contact->IsTouching()) {
+      GO* other = NULL;
+      if(node->contact->GetFixtureA() == fixture) {
+        other = (GO*)node->contact->GetFixtureB()->GetBody()->GetUserData();
+      } else if(node->contact->GetFixtureB() == fixture) {
+        other = (GO*)node->contact->GetFixtureA()->GetBody()->GetUserData();
+      }
+
+      if(other) {
+        go->send_message(other->create_message(kind, NULL, 0));
+      }
+    }
+    node = node->next;
+  }
 }
 
 LuaThread::LuaThread()
@@ -801,13 +848,13 @@ static int Lgo_create_message(lua_State *L) {
   }
 
   Message* message = go->create_message(kind, content, nbytes);
-  lua_pushlightuserdata(L, message);
+  LCpush_message(L, message);
   return 1;
 }
 
 static int Lgo_send_message(lua_State *L) {
   GO* go = LCcheck_go(L, 1);
-  Message* message = (Message*)lua_touserdata(L, 2);
+  Message* message = LCcheck_message(L, 2);
   go->send_message(message);
   return 0;
 }
@@ -840,7 +887,7 @@ static int Lgo_has_message(lua_State *L) {
     });
 
   if(found) {
-    LCpush_go(L, found->source);
+    LCpush_message(L, found);
   } else {
     lua_pushnil(L);
   }

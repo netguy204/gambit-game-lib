@@ -201,20 +201,28 @@ local function make_player_thread(map)
          coroutine.yield()
          local input = world:input_state()
          local can_climb = is_touching_kind('climbable')
+         local vel = go:vel()
          --print("can_climb", can_climb, "climbing", climbing)
 
          if climbing and (not can_climb) then
             climbing = false
+            vel[2] = 0
             go:body_type(constant.DYNAMIC)
          elseif (not climbing) and can_climb then
             climbing = true
             go:body_type(constant.KINEMATIC)
          end
 
-         local vel = go:vel()
          vel[1] = speed * input.leftright
          if climbing then
-            vel[2] = speed * input.updown
+            if is_touching_kind('solid') then
+               -- flip off the climb to fix the violation
+               clibing = false
+               go:body_type(constant.DYNAMIC)
+               vel[2] = 0
+            else
+               vel[2] = speed * input.updown
+            end
          elseif can_climb then
             vel[2] = 0
          end

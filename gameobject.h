@@ -134,10 +134,12 @@ class CSensor : public Component {
   CSensor(void* go);
   virtual ~CSensor();
   virtual void init();
+  virtual void update(float dt);
 
   b2Fixture* fixture;
   Vector_ offset;
   int kind;
+
   float w;
   float h;
 };
@@ -223,6 +225,9 @@ class GO : public Object {
   // type is the b2BodyType enum
   void set_body_type(int type);
   int get_body_type();
+
+  void set_active(int val);
+  int get_active();
 
   Component* find_component(const TypeInfo* info, Component* last);
   void print_description();
