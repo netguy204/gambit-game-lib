@@ -278,7 +278,8 @@ class World : public Object {
   GO* next_in_cone(GO* last, Rect bounds, Cone* cone);
   void set_time_scale(float scale);
   float get_time_scale();
-
+  void set_gravity(Vector_ vector);
+  Vector_ get_gravity();
   GO* create_go();
 
   GO* player;

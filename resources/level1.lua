@@ -193,6 +193,14 @@ local function make_player_thread(map)
       return false
    end
 
+   local function add_antigrav_force(go)
+      local mass = go:mass() * go:gravity_scale()
+      local grav = world:gravity()
+      grav[1] = grav[1] * -mass
+      grav[2] = grav[2] * -mass
+      go:apply_force(grav)
+   end
+
    local function controls(go, comp)
       local climbing = false
       local have_key = false
@@ -204,34 +212,16 @@ local function make_player_thread(map)
          local vel = go:vel()
          --print("can_climb", can_climb, "climbing", climbing)
 
-         if climbing and (not can_climb) then
-            climbing = false
-            vel[2] = 0
-            go:body_type(constant.DYNAMIC)
-         elseif (not climbing) and can_climb then
-            climbing = true
-            go:body_type(constant.KINEMATIC)
-         end
-
          vel[1] = speed * input.leftright
-         if climbing then
-            if is_touching_kind('solid') then
-               -- flip off the climb to fix the violation
-               clibing = false
-               go:body_type(constant.DYNAMIC)
-               vel[2] = 0
-            else
-               vel[2] = speed * input.updown
-            end
-         elseif can_climb then
-            vel[2] = 0
+         if can_climb then
+            add_antigrav_force(go)
+            vel[2] = speed * input.updown
          end
 
          if input.action1 and platformer:parent() then
             vel[2] = jump_speed
          end
 
-         --print("vel", vel[1], vel[2])
          go:vel(vel)
 
          if input.action3 then
@@ -239,6 +229,7 @@ local function make_player_thread(map)
          end
 
          if is_touching_kind('deadly') then
+            print("A failure. Sad.")
             reset_world()
          end
 
@@ -253,7 +244,6 @@ local function make_player_thread(map)
          end
 
          if have_key and is_touching_kind('lock') then
-            -- yay! win
             print("You're such a winner.")
             reset_world()
          end

@@ -895,6 +895,26 @@ static int Lgo_has_message(lua_State *L) {
   return 1;
 }
 
+static int Lgo_apply_force(lua_State* L) {
+  Vector_ force;
+
+  GO* go = LCcheck_go(L, 1);
+  LCcheck_vector(L, 2, &force);
+
+  b2Vec2 bForce;
+  bForce.x = force.x / BSCALE;
+  bForce.y = force.y / BSCALE;
+
+  go->body->ApplyForceToCenter(bForce);
+  return 0;
+}
+
+static int Lgo_mass(lua_State* L) {
+  GO* go = LCcheck_go(L, 1);
+  lua_pushnumber(L, go->body->GetMass());
+  return 1;
+}
+
 static int Lobject_mutate(lua_State* L) {
   const char* name = luaL_checkstring(L, lua_upvalueindex(1));
   Object* obj = LCcheck_object(L, 1);
@@ -968,6 +988,7 @@ OBJECT_PROPERTY(World, input_state);
 OBJECT_PROPERTY(World, focus);
 OBJECT_PROPERTY(World, dt);
 OBJECT_ACCESSOR(World, time_scale, get_time_scale, set_time_scale);
+OBJECT_ACCESSOR(World, gravity, get_gravity, set_gravity);
 
 void init_lua(World* world) {
   world->clock = clock_make();
@@ -1003,6 +1024,8 @@ void init_lua(World* world) {
     {"create_message", Lgo_create_message},
     {"send_message", Lgo_send_message},
     {"broadcast_message", Lgo_broadcast_message},
+    {"apply_force", Lgo_apply_force},
+    {"mass", Lgo_mass},
     {"__tostring", Lobject_tostring},
     {"__eq", Lobject_eq},
     {"key", Lobject_key},
@@ -1180,6 +1203,22 @@ void World::set_time_scale(float scale) {
 
 float World::get_time_scale() {
   return clock->time_scale;
+}
+
+void World::set_gravity(Vector_ vector) {
+  b2Vec2 bVector;
+  bVector.x = vector.x / BSCALE;
+  bVector.y = vector.y / BSCALE;
+
+  bWorld.SetGravity(bVector);
+}
+
+Vector_ World::get_gravity() {
+  b2Vec2 bVector = bWorld.GetGravity();
+  Vector_ vector;
+  vector.x = bVector.x * BSCALE;
+  vector.y = bVector.y * BSCALE;
+  return vector;
 }
 
 void World::broadcast_message(GO* sender, float radius, int kind, const char* content, size_t nbytes) {
