@@ -9,18 +9,6 @@ M.JUMP_SPEED = 1200
 M.WIDTH = 28
 M.HEIGHT = 62
 
-local function rising_edge_trigger(state)
-   trigger = function(input)
-      local result = false
-      if input ~= state and input then
-         result = true
-      end
-      state = input
-      return result
-   end
-   return trigger
-end
-
 SELECTABLE_CATEGORY = 4
 
 function M.is_selectable(go)
@@ -56,7 +44,7 @@ local function input_thread(go, comp)
    local sprite = go:find_component("CStaticSprite", nil)
 
    local last_mark = nil
-   local select_trigger = rising_edge_trigger(false)
+   local select_trigger = util.rising_edge_trigger(false)
    local select_triggered = false
 
    local set_mark = function(new_go)

@@ -175,6 +175,17 @@ function M.stage_drawrect(r)
                                                b=util.rand_between(0, 1)})
 end
 
+function M.rising_edge_trigger(state)
+   trigger = function(input)
+      local result = false
+      if input ~= state and input then
+         result = true
+      end
+      state = input
+      return result
+   end
+   return trigger
+end
 
 
 return M

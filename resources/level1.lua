@@ -69,7 +69,7 @@ function wallpaper(r, art, opts)
    return r
 end
 
-local function make_platform_thread(lower, upper, speed)
+local function add_platform_thread(platform, lower, upper, speed)
    local vel = (upper - lower):norm() * speed
    local dest = upper
    local other = lower
@@ -103,7 +103,118 @@ local function make_platform_thread(lower, upper, speed)
       end
    end
 
-   return thread
+   thread = util.thread(thread)
+   platform:add_component("CScripted", {update_thread=thread})
+   platform:add_component("CCollidable", {w=64, h=16, mask=255})
+end
+
+-- message sent by player to touching things when action key is
+-- pressed
+local ACTIVATE = constant.NEXT_EPHEMERAL_MESSAGE()
+
+-- message sent by switch to the bridge
+local ACTIVATE_BRIDGE = constant.NEXT_EPHEMERAL_MESSAGE()
+
+local function add_bridge_thread(go, steps)
+   local extent = 1
+   local speed_sps = 4
+   local target = 1
+   local dir = -1
+
+
+   -- sync view and collisions with the current extent of the bridge
+   local _art = world:atlas_entry(constant.ATLAS, 'blue_tile')
+   local wallpaper = nil
+   local collider = nil
+
+   local update_components = function()
+      local w = math.floor(extent) * _art.w
+      local offset_x = w / 2 - _art.w / 2
+      local offset = {offset_x, 0}
+      if not wallpaper then
+         wallpaper = go:add_component('CDrawWallpaper', {entry=_art, w=w, h=_art.h, offset=offset})
+      else
+         wallpaper:w(_art.w * extent)
+         wallpaper:offset(offset)
+      end
+
+      if collider then
+         collider:delete_me(1)
+      end
+      collider = go:add_component('CCollidable', {w=w, h=_art.h, offset=offset})
+   end
+
+   update_components()
+
+   local expand_thread_running = false
+
+   local expand_thread = function(go, comp)
+      expand_thread_running = true
+      while true do
+         coroutine.yield()
+         local dt = world:dt()
+         local old_extent = extent
+         extent = extent + speed_sps * dt * dir
+         if math.floor(extent) ~= math.floor(old_extent) then
+            update_components()
+         end
+
+         -- if we reach our target then stop the update thread
+         if math.floor(extent) == target then
+            extent = target
+            expand_thread_running = false
+            update_components()
+            return
+         end
+      end
+   end
+
+   local message_thread = function(go, comp)
+      while true do
+         coroutine.yield()
+         if go:has_message(ACTIVATE_BRIDGE) then
+            -- flip the target and activate the thread if necessary
+            if target == 1 then
+               target = steps
+            else
+               target = 1
+            end
+            dir = dir * -1
+
+            if not expand_thread_running then
+               comp:update_thread(util.thread(expand_thread))
+            end
+         end
+      end
+   end
+
+   local thread = util.thread(message_thread)
+   return go:add_component("CScripted", {message_thread=thread})
+end
+
+
+local function add_switch_thread(go, target)
+   local _current = world:atlas_entry(constant.ATLAS, "switch")
+   local _other = world:atlas_entry(constant.ATLAS, "/xswitch")
+
+   local sprite = go:add_component('CStaticSprite', {entry=_current})
+   local message_thread = function(go, comp)
+      while true do
+         coroutine.yield()
+         if go:has_message(ACTIVATE) then
+            target:send_message(go:create_message(ACTIVATE_BRIDGE))
+
+            -- swap the switch image
+            sprite:entry(_other)
+            local temp = _current
+            _current = _other
+            _other = temp
+         end
+      end
+   end
+
+   go:add_component('CScripted', {message_thread=util.thread(message_thread)})
+   go:add_component('CSensor', {w=_current.w, h=_current.h})
 end
 
 local function make_player_thread(m)
@@ -135,6 +246,8 @@ local function make_player_thread(m)
       go:apply_force(grav)
    end
 
+   local activate_trigger = util.rising_edge_trigger(false)
+
    local function controls(go, comp)
       local climbing = false
       local have_key = false
@@ -154,6 +267,10 @@ local function make_player_thread(m)
          local parent = platformer:parent()
          if input.action1 and parent then
             vel[2] = jump_speed
+         end
+
+         if activate_trigger(input.action2) then
+            go:broadcast_message(width, ACTIVATE)
          end
 
          if parent then
@@ -221,18 +338,18 @@ function level_init()
                 {image=_side_spike, deadly=true}},
          tiles={0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0,
+                4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 1, 1, 3, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 3, 1, 1,
                 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0,
                 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0,
                 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0,
-                1, 3, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 3, 1,
-                0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0,
-                0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0,
-                0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0,
+                1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 3, 1,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0,
                 1, 1, 3, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 3, 1, 1,
                 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0,
-                0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0,
+                5, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0,
                 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1,
                 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1}
       })
@@ -241,12 +358,21 @@ function level_init()
    m:update_colliders()
 
    player:add_component("CScripted", {update_thread=util.thread(make_player_thread(m))})
-   player:pos{32, 170}
+   player:pos(m:center(3,17))
 
+   -- place the moving platform
    local start = vector.new(m:center(5, 6))
    local stop = vector.new(m:center(5, 12))
    local platform = world:create_go()
    platform:add_component("CStaticSprite", {entry=_platform})
-   platform:add_component("CScripted", {update_thread=util.thread(make_platform_thread(start, stop, 100))})
-   platform:add_component("CCollidable", {w=64, h=16})
+   add_platform_thread(platform, start, stop, 100)
+
+   -- place the bridge and switch
+   local bridge = world:create_go()
+   bridge:pos(m:center(9,5))
+   add_bridge_thread(bridge, 10)
+
+   local switch = world:create_go()
+   switch:pos(m:center(10, 15))
+   add_switch_thread(switch, bridge)
 end

@@ -14,6 +14,11 @@ function M.center(a)
            (a[2] + a[4]) / 2}
 end
 
+function M.centered(p, w, h)
+   return { p[1] - w/2, p[2] - h/2,
+            p[1] + w/2, p[2] + h/2 }
+end
+
 function M.width(a)
    return a[3] - a[1]
 end

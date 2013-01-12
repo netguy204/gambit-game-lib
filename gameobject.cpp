@@ -475,13 +475,9 @@ CCollidable::~CCollidable() {
 }
 
 void CCollidable::init() {
-  Vector_ pos;
-  go->pos(&pos);
-  vector_add(&pos, &pos, &offset);
-
   b2Vec2 center;
-  center.x = pos.x / BSCALE;
-  center.y = pos.y / BSCALE;
+  center.x = offset.x / BSCALE;
+  center.y = offset.y / BSCALE;
 
   b2PolygonShape shape;
   shape.SetAsBox((w/2)/BSCALE, (h/2)/BSCALE, center, 0);
@@ -493,6 +489,7 @@ void CCollidable::init() {
   fixtureDef.filter.maskBits = mask;
 
   fixture = go->body->CreateFixture(&fixtureDef);
+  fixture->SetUserData(this);
 }
 
 OBJECT_IMPL(CSensor, Component);
@@ -510,13 +507,9 @@ CSensor::~CSensor() {
 }
 
 void CSensor::init() {
-  Vector_ pos;
-  go->pos(&pos);
-  vector_add(&pos, &pos, &offset);
-
   b2Vec2 center;
-  center.x = pos.x / BSCALE;
-  center.y = pos.y / BSCALE;
+  center.x = offset.x / BSCALE;
+  center.y = offset.y / BSCALE;
 
   b2PolygonShape shape;
   shape.SetAsBox((w/2)/BSCALE, (h/2)/BSCALE, center, 0);

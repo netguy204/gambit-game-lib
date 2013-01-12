@@ -84,8 +84,8 @@ def mk_sheet(filenames, outbase, tgt_dims, trim):
     pad = 1
 
     max_row_h = 0
-
-    outdat.write(struct.pack(count_packing, len(filenames)))
+    nentries = len(filenames) * 2 # for flips
+    outdat.write(struct.pack(count_packing, nentries))
 
     for fname in filenames:
         junk, basename = os.path.split(fname)
@@ -121,7 +121,13 @@ def mk_sheet(filenames, outbase, tgt_dims, trim):
         u1 = (float(current_x + img_w) / tgt_w) * coord_scale
         v0 = (float(current_y + img_h) / tgt_h) * coord_scale
         pakname, _ = os.path.splitext(basename)
+
         struct_tuple = (img_w, img_h, u0, v0, u1, v1, pakname)
+        packed = struct.pack(packing, *struct_tuple)
+        outdat.write(packed)
+
+        # flipped in the x direction
+        struct_tuple = (img_w, img_h, u1, v0, u0, v1, "/x" + pakname)
         packed = struct.pack(packing, *struct_tuple)
         outdat.write(packed)
 
@@ -129,6 +135,7 @@ def mk_sheet(filenames, outbase, tgt_dims, trim):
 
     tgt.save(outimagename)
     outdat.close()
+    print "%d entries" % nentries
     print "size per entry: %d" % struct.calcsize(packing)
 
 if __name__ == '__main__':
