@@ -14,7 +14,10 @@ class CPlatformer : public Component {
   virtual void init();
   virtual void update(float dt);
 
-  b2Fixture* fixture;
+  b2Fixture* top_fixture;
+  b2Fixture* box_fixture;
+  b2Fixture* bottom_fixture;
+
   GO* parent;
 
   float w;
