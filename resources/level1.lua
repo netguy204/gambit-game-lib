@@ -69,7 +69,7 @@ function wallpaper(r, art, opts)
    return r
 end
 
-local function add_platform_thread(platform, lower, upper, speed)
+local function add_platformness(platform, lower, upper, speed)
    local vel = (upper - lower):norm() * speed
    local dest = upper
    local other = lower
@@ -118,7 +118,7 @@ local ACTIVATE = constant.NEXT_EPHEMERAL_MESSAGE()
 -- message sent by switch to the bridge
 local ACTIVATE_BRIDGE = constant.NEXT_EPHEMERAL_MESSAGE()
 
-local function add_collectable_thread(go, w, h, collector, message)
+local function add_collectableness(go, w, h, collector, message)
    local message_thread = function(go, comp)
       while true do
          coroutine.yield()
@@ -134,7 +134,7 @@ local function add_collectable_thread(go, w, h, collector, message)
    go:add_component('CScripted', {message_thread=util.thread(message_thread)})
 end
 
-local function add_bridge_thread(go, steps)
+local function add_bridgeness(go, steps)
    local extent = 1
    local speed_sps = 4
    local target = 1
@@ -213,7 +213,7 @@ local function add_bridge_thread(go, steps)
 end
 
 
-local function add_switch_thread(go, target)
+local function add_switchness(go, target)
    local _current = world:atlas_entry(constant.ATLAS, "switch")
    local _other = world:atlas_entry(constant.ATLAS, "/xswitch")
 
@@ -237,7 +237,7 @@ local function add_switch_thread(go, target)
    go:add_component('CSensor', {w=_current.w, h=_current.h})
 end
 
-local function add_player_thread(player, m)
+local function add_playerness(player, m)
    local width = 28
    local height = 62
    local speed = 600
@@ -379,28 +379,28 @@ function level_init()
    m:update_colliders()
 
    player:pos(m:center(3,17))
-   add_player_thread(player, m)
+   add_playerness(player, m)
 
    -- add the key
    local key = world:create_go()
    key:pos(m:center(14, 1))
    key:add_component('CPlatformer', {w=_key.w,h=_key.h})
    key:add_component('CStaticSprite', {entry=_key})
-   add_collectable_thread(key, _key.w, _key.h, player, COLLECTED)
+   add_collectableness(key, _key.w, _key.h, player, COLLECTED)
 
    -- place the moving platform
    local start = vector.new(m:center(5, 6))
    local stop = vector.new(m:center(5, 12))
    local platform = world:create_go()
    platform:add_component("CStaticSprite", {entry=_platform})
-   add_platform_thread(platform, start, stop, 100)
+   add_platformness(platform, start, stop, 100)
 
    -- place the bridge and switch
    local bridge = world:create_go()
    bridge:pos(m:center(9,5))
-   add_bridge_thread(bridge, 10)
+   add_bridgeness(bridge, 10)
 
    local switch = world:create_go()
    switch:pos(m:center(10, 15))
-   add_switch_thread(switch, bridge)
+   add_switchness(switch, bridge)
 end
