@@ -134,6 +134,16 @@ local function add_collectableness(go, w, h, collector, message)
    go:add_component('CScripted', {message_thread=util.thread(message_thread)})
 end
 
+local function spawn_key(pos, vel)
+   local _key = world:atlas_entry(constant.ATLAS, "key")
+   local key = world:create_go()
+   key:add_component('CPlatformer', {w=_key.w, h=_key.h, friction=100})
+   key:add_component('CStaticSprite', {entry=_key})
+   key:pos(pos)
+   key:vel(vel)
+   add_collectableness(key, _key.w, _key.h, player, COLLECTED)
+end
+
 local function add_bridgeness(go, steps)
    local extent = 1
    local speed_sps = 4
@@ -244,6 +254,7 @@ local function add_playerness(player, m)
    local jump_speed = 800
 
    local art = world:atlas_entry(constant.ATLAS, "guy")
+   local _key = world:atlas_entry(constant.ATLAS, "key")
    local platformer = player:add_component("CPlatformer", {w=width, h=height})
    player:add_component("CStaticSprite", {entry=art, layer=constant.PLAYER})
 
@@ -259,15 +270,17 @@ local function add_playerness(player, m)
    end
 
    local activate_trigger = util.rising_edge_trigger(false)
+   local jump_trigger = util.rising_edge_trigger(false)
+
    local climbing = false
-   local have_key = false
+   local have_key = nil
    local facing = 1
 
    local function controls(go, comp)
       while true do
          coroutine.yield()
          local input = world:input_state()
-         local can_climb = is_touching_kind('climbable')
+         local can_climb = is_touching_kind('climbable') and (not have_key)
          local vel = vector.new(go:vel())
 
          if input.leftright < -0.01 then
@@ -283,11 +296,21 @@ local function add_playerness(player, m)
          end
 
          local parent = platformer:parent()
-         if input.action1 and parent then
-            vel[2] = jump_speed
+         if jump_trigger(input.action1) then
+            if have_key then
+               -- throw
+               local pos = vector.new(go:pos())
+               pos = pos + {0, _key.h + 1}
+               local vel = {jump_speed * facing * 0.5, jump_speed * 1.5}
+               spawn_key(pos, vel)
+               have_key:delete_me(1)
+               have_key = nil
+            elseif parent then
+               vel[2] = jump_speed
+            end
          end
 
-         if activate_trigger(input.action2) then
+         if (not have_key) and activate_trigger(input.action2) then
             go:broadcast_message(width, ACTIVATE)
          end
 
@@ -321,9 +344,7 @@ local function add_playerness(player, m)
          coroutine.yield()
          if go:has_message(COLLECTED) then
             -- attach it to our head
-            local _key = world:atlas_entry(constant.ATLAS, "key")
-            go:add_component("CStaticSprite", {entry=_key,offset={0,64}})
-            have_key = true
+            have_key = go:add_component("CStaticSprite", {entry=_key,offset={0,64}})
          end
       end
    end
@@ -340,7 +361,6 @@ function level_init()
    local _side_spike = world:atlas_entry(constant.ATLAS, "side_spike")
    local _dirt = world:atlas_entry(constant.ATLAS, "dirt")
    local _ladder = world:atlas_entry(constant.ATLAS, "ladder")
-   local _key = world:atlas_entry(constant.ATLAS, "key")
    local _lock = world:atlas_entry(constant.ATLAS, "lock")
    local _platform = world:atlas_entry(constant.ATLAS, "platform")
 
@@ -354,23 +374,22 @@ function level_init()
          specs={{image=_tile1, solid=true},
                 {image=_spike, deadly=true},
                 {image=_ladder, climbable=true},
-                {image=_key, key=true},
                 {image=_lock, lock=true},
                 {image=_side_spike, deadly=true}},
-         tiles={0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6,
-                0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6,
-                0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6,
-                1, 1, 3, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6,
-                0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6,
-                0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6,
-                0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6,
+         tiles={0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5,
+                0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5,
+                0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5,
+                1, 1, 3, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5,
+                0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5,
+                0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5,
+                0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5,
                 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 3, 1,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0,
                 1, 1, 3, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 3, 1, 1,
                 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0,
-                5, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0,
+                4, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0,
                 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1,
                 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1}
       })
@@ -381,12 +400,8 @@ function level_init()
    player:pos(m:center(3,17))
    add_playerness(player, m)
 
-   -- add the key
-   local key = world:create_go()
-   key:pos(m:center(14, 1))
-   key:add_component('CPlatformer', {w=_key.w,h=_key.h})
-   key:add_component('CStaticSprite', {entry=_key})
-   add_collectableness(key, _key.w, _key.h, player, COLLECTED)
+   -- Add the key
+   spawn_key(m:center(14, 1), {0, 0})
 
    -- place the moving platform
    local start = vector.new(m:center(5, 6))
