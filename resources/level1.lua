@@ -294,6 +294,8 @@ local function add_playerness(player, m)
             util.add_antigrav_force(go)
             if (not have_key) then
                vel[2] = speed * input.updown
+            else
+               vel[2] = 0
             end
          end
 
