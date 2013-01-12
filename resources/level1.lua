@@ -280,7 +280,7 @@ local function add_playerness(player, m)
       while true do
          coroutine.yield()
          local input = world:input_state()
-         local can_climb = is_touching_kind('climbable') and (not have_key)
+         local can_climb = is_touching_kind('climbable')
          local vel = vector.new(go:vel())
 
          if input.leftright < -0.01 then
@@ -292,7 +292,9 @@ local function add_playerness(player, m)
          vel[1] = speed * input.leftright
          if can_climb then
             util.add_antigrav_force(go)
-            vel[2] = speed * input.updown
+            if (not have_key) then
+               vel[2] = speed * input.updown
+            end
          end
 
          local parent = platformer:parent()

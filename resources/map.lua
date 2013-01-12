@@ -89,9 +89,7 @@ function M.update_visuals(map)
    if map.draw_component then
       map.draw_component:map(map)
    else
-      -- 1.5 is a magic special number that accounts for the scaling
-      -- applied to our orthogonal transform in C
-      local params = {map=map, w=screen_width*1.5,h=screen_height*1.5}
+      local params = {map=map, w=screen_width,h=screen_height}
       map.draw_component = stage:add_component("CDrawTilemap", params)
    end
 end

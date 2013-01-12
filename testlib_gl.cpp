@@ -173,9 +173,12 @@ void renderer_resize(int w, int h) {
   screen_width = w;
   screen_height = h;
   glViewport(0, 0, screen_width, screen_height);
+  // now force the resolution that will be running on the ouya
+  screen_width = 1920;
+  screen_height = 1080;
   matrix_orthographic_proj(&orthographic_projection,
-                           0.0f, screen_width * 1.5,
-                           0.0f, screen_height * 1.5,
+                           0.0f, screen_width,
+                           0.0f, screen_height,
                            -1.0f, 1.0f);
 }
 

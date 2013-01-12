@@ -5,8 +5,12 @@
 #include <stdio.h>
 #include <string.h>
 
-#ifndef __APPLE__
+#ifdef __ANDROID__
 #include <sys/endian.h>
+#else
+#ifndef __APPLE__
+#include <arpa/inet.h>
+#endif
 #endif
 
 #define COORD_SCALE (1<<15)
