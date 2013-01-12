@@ -187,5 +187,13 @@ function M.rising_edge_trigger(state)
    return trigger
 end
 
+function M.add_antigrav_force(go)
+   local mass = go:mass() * go:gravity_scale()
+   local grav = world:gravity()
+   grav[1] = grav[1] * -mass
+   grav[2] = grav[2] * -mass
+   go:apply_force(grav)
+end
+
 
 return M

@@ -498,7 +498,7 @@ OBJECT_PROPERTY(CSensor, w);
 OBJECT_PROPERTY(CSensor, h);
 
 CSensor::CSensor(void* _go)
-  : Component((GO*)_go, PRIORITY_THINK) {
+  : Component((GO*)_go, PRIORITY_THINK), kind(MESSAGE_COLLIDING) {
   vector_zero(&offset);
 }
 

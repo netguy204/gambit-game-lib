@@ -108,12 +108,31 @@ local function add_platform_thread(platform, lower, upper, speed)
    platform:add_component("CCollidable", {w=64, h=16, mask=255})
 end
 
+-- sent to the player when they bump into something that's collectable
+local COLLECTED = constant.NEXT_EPHEMERAL_MESSAGE()
+
 -- message sent by player to touching things when action key is
 -- pressed
 local ACTIVATE = constant.NEXT_EPHEMERAL_MESSAGE()
 
 -- message sent by switch to the bridge
 local ACTIVATE_BRIDGE = constant.NEXT_EPHEMERAL_MESSAGE()
+
+local function add_collectable_thread(go, w, h, collector, message)
+   local message_thread = function(go, comp)
+      while true do
+         coroutine.yield()
+         local msg = go:has_message(constant.COLLIDING)
+         if msg and msg.source == collector then
+            collector:send_message(go:create_message(message))
+            go:delete_me(1)
+         end
+      end
+   end
+
+   go:add_component('CSensor', {w=w,h=h})
+   go:add_component('CScripted', {message_thread=util.thread(message_thread)})
+end
 
 local function add_bridge_thread(go, steps)
    local extent = 1
@@ -132,7 +151,8 @@ local function add_bridge_thread(go, steps)
       local offset_x = w / 2 - _art.w / 2
       local offset = {offset_x, 0}
       if not wallpaper then
-         wallpaper = go:add_component('CDrawWallpaper', {entry=_art, w=w, h=_art.h, offset=offset})
+         wallpaper = go:add_component('CDrawWallpaper', {entry=_art, w=w, h=_art.h,
+                                                         offset=offset})
       else
          wallpaper:w(_art.w * extent)
          wallpaper:offset(offset)
@@ -217,7 +237,7 @@ local function add_switch_thread(go, target)
    go:add_component('CSensor', {w=_current.w, h=_current.h})
 end
 
-local function make_player_thread(m)
+local function add_player_thread(player, m)
    local width = 28
    local height = 62
    local speed = 600
@@ -238,29 +258,27 @@ local function make_player_thread(m)
       return m:query_rect_corners(r, kind)
    end
 
-   local function add_antigrav_force(go)
-      local mass = go:mass() * go:gravity_scale()
-      local grav = world:gravity()
-      grav[1] = grav[1] * -mass
-      grav[2] = grav[2] * -mass
-      go:apply_force(grav)
-   end
-
    local activate_trigger = util.rising_edge_trigger(false)
+   local climbing = false
+   local have_key = false
+   local facing = 1
 
    local function controls(go, comp)
-      local climbing = false
-      local have_key = false
-
       while true do
          coroutine.yield()
          local input = world:input_state()
          local can_climb = is_touching_kind('climbable')
          local vel = vector.new(go:vel())
 
+         if input.leftright < -0.01 then
+            facing = -1
+         elseif input.leftright > 0.01 then
+            facing = 1
+         end
+
          vel[1] = speed * input.leftright
          if can_climb then
-            add_antigrav_force(go)
+            util.add_antigrav_force(go)
             vel[2] = speed * input.updown
          end
 
@@ -291,17 +309,6 @@ local function make_player_thread(m)
             reset_world()
          end
 
-         local collectable = is_touching_kind('key')
-         if collectable then
-            -- remove the key
-            m.tiles[collectable.index] = 0
-            m:update_visuals()
-            -- attach it to our head
-            local _key = world:atlas_entry(constant.ATLAS, "key")
-            go:add_component("CStaticSprite", {entry=_key,offset={0,64}})
-            have_key = true
-         end
-
          if have_key and is_touching_kind('lock') then
             print("You're such a winner.")
             reset_world()
@@ -309,6 +316,20 @@ local function make_player_thread(m)
       end
    end
 
+   local messages = function(go, comp)
+      while true do
+         coroutine.yield()
+         if go:has_message(COLLECTED) then
+            -- attach it to our head
+            local _key = world:atlas_entry(constant.ATLAS, "key")
+            go:add_component("CStaticSprite", {entry=_key,offset={0,64}})
+            have_key = true
+         end
+      end
+   end
+
+   player:add_component('CScripted', {update_thread=util.thread(controls),
+                                      message_thread=util.thread(messages)})
    return controls
 end
 
@@ -336,13 +357,13 @@ function level_init()
                 {image=_key, key=true},
                 {image=_lock, lock=true},
                 {image=_side_spike, deadly=true}},
-         tiles={0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                1, 1, 3, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 3, 1, 1,
-                0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0,
-                0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0,
-                0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0,
+         tiles={0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6,
+                0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6,
+                0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6,
+                1, 1, 3, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6,
+                0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6,
+                0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6,
+                0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6,
                 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 3, 1,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0,
@@ -357,8 +378,15 @@ function level_init()
    m:update_visuals()
    m:update_colliders()
 
-   player:add_component("CScripted", {update_thread=util.thread(make_player_thread(m))})
    player:pos(m:center(3,17))
+   add_player_thread(player, m)
+
+   -- add the key
+   local key = world:create_go()
+   key:pos(m:center(14, 1))
+   key:add_component('CPlatformer', {w=_key.w,h=_key.h})
+   key:add_component('CStaticSprite', {entry=_key})
+   add_collectable_thread(key, _key.w, _key.h, player, COLLECTED)
 
    -- place the moving platform
    local start = vector.new(m:center(5, 6))
