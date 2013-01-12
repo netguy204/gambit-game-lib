@@ -146,7 +146,7 @@ end
 
 local function add_bridgeness(go, steps)
    local extent = 1
-   local speed_sps = 4
+   local speed_sps = 5
    local target = 1
    local dir = -1
 
@@ -164,7 +164,7 @@ local function add_bridgeness(go, steps)
          wallpaper = go:add_component('CDrawWallpaper', {entry=_art, w=w, h=_art.h,
                                                          offset=offset})
       else
-         wallpaper:w(_art.w * extent)
+         wallpaper:w(w)
          wallpaper:offset(offset)
       end
 
