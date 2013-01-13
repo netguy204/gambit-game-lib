@@ -177,8 +177,8 @@ void renderer_resize(int w, int h) {
   screen_width = 1920;
   screen_height = 1080;
   matrix_orthographic_proj(&orthographic_projection,
-                           0.0f, screen_width,
-                           0.0f, screen_height,
+                           -64.0f, screen_width,
+                           -64.0f, screen_height,
                            -1.0f, 1.0f);
 }
 

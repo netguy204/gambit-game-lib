@@ -83,15 +83,12 @@ B2D_SRC=\
 include $(CLEAR_VARS)
 LOCAL_MODULE    := gamesupport
 LOCAL_CFLAGS	:= -Werror -Ijni/vender/libogg-1.3.0/include -Ijni/vender/tremor -Ijni/vender/lua-5.2.1/src -Ijni/$(B2D_BASE) -DSFMT_MEXP=607 $(FORCE_ARM) -include "android_fopen.h"
-
-ifeq ($(TARGET_ARCH),arm)
 LOCAL_CFLAGS+= -D_ARM_ASSEM_
-endif
 
 LOCAL_CPPFLAGS	:= -Ijni/vender/Box2D_v2.2.1/
 LOCAL_SRC_FILES := $(B2D_SRC) $(TREMOR_SRC) $(OGG_SRC) $(LUA_SRC) \
 	sfmt/SFMT.c spectra.c stb_image.c android_fopen.c
-#LOCAL_ARM_NEON	:= true
+LOCAL_ARM_NEON	:= true
 include $(BUILD_STATIC_LIBRARY)
 
 include $(CLEAR_VARS)
@@ -100,7 +97,7 @@ LOCAL_CFLAGS	:= -Werror -Ijni/vender/libogg-1.3.0/include -Ijni/vender/tremor -I
 LOCAL_CPPFLAGS  := -std=c++0x -Wno-invalid-offsetof -Ijni/vender/Box2D_v2.2.1/
 LOCAL_SRC_FILES := $(GAME_SRC) testlib_ouya.cpp audio_ouya.cpp androidmain.cpp
 LOCAL_LDLIBS    := -llog -lGLESv2 -lEGL -landroid
-#LOCAL_ARM_NEON	:= true
+LOCAL_ARM_NEON	:= true
 LOCAL_STATIC_LIBRARIES := gamesupport
 
 include $(BUILD_SHARED_LIBRARY)
