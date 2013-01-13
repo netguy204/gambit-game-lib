@@ -12,6 +12,7 @@ struct KeyFrameElement {
   float scale_y;
   float x;
   float y;
+  short spin;
 };
 
 struct Timeline {
@@ -52,6 +53,6 @@ void spriter_free(Entity* ent);
 Animation* spriter_find(Entity* entity, const char* name);
 
 BaseSprite spriter_append(BaseSprite list, Animation* animation,
-                          Vector pos, float anim_time);
+                          Vector pos, unsigned short anim_time_ms);
 
 #endif

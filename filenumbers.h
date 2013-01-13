@@ -5,6 +5,8 @@
 
 void read_ushort(FILE* fh, unsigned short* value);
 
+void read_short(FILE* fh, short* value);
+
 // a normalized fixed number works best for values between 0 and 1
 void read_norm_fixed(FILE* fh, float* value);
 

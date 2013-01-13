@@ -74,9 +74,9 @@ def extract_dict(node, keys, defaults):
     return result
 
 def timelines(res, dom):
-    result = {}
+    result = []
     for tlxml in elements(dom, 'timeline'):
-        tl = {}
+        tl = []
         for keyxml in elements(tlxml, 'key'):
             subframe = []
             for objxml in elements(keyxml, 'object'):
@@ -86,13 +86,14 @@ def timelines(res, dom):
                 values = extract_dict(
                     objxml,
                     ['x', 'y', 'pivot_x', 'pivot_y',
-                     'angle', 'scale_x', 'scale_y'],
+                     'angle', 'scale_x', 'scale_y', 'spin'],
                     {'x': '0', 'y': '0', 'pivot_x': '0', 'pivot_y': '1',
-                     'angle': '0', 'scale_x': '1', 'scale_y': '1'})
+                     'angle': '0', 'scale_x': '1', 'scale_y': '1',
+                     'spin': '1'})
                 values['file'], _ = os.path.splitext(fname)
                 subframe.append(values)
-            tl[attr(keyxml, 'id')] = subframe
-        result[attr(tlxml, 'id')] = tl
+            tl.append(subframe)
+        result.append(tl)
     return result
 
 def write_ent(f, ent):
@@ -114,9 +115,9 @@ def write_ent(f, ent):
                 util.write_short(f, int(el['key']))
 
         util.write_short(f, len(a['timelines']))
-        for tlid, tl in a['timelines'].items():
+        for tl in a['timelines']:
             util.write_short(f, len(tl))
-            for elid, els in tl.items():
+            for els in tl:
                 assert(len(els) == 1)
                 el = els[0]
                 util.write_fstring(f, el['file'])
@@ -127,6 +128,7 @@ def write_ent(f, ent):
                 util.write_float(f, float(el['scale_y']))
                 util.write_float(f, float(el['x']))
                 util.write_float(f, float(el['y']))
+                util.write_short(f, int(el['spin']))
 
 if __name__ == '__main__':
     fname = '/Users/btaylor/Downloads/lever/lever.scml'
