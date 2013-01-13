@@ -17,16 +17,30 @@ Entity* spriter_load(const char* compiled_spriter, SpriteAtlas atlas) {
     read_ushort(cs, &anim->length_ms);
     read_ushort(cs, &anim->looping);
     read_ushort(cs, &anim->nframes);
-    anim->frames = (KeyFrame*)malloc(sizeof(KeyFrame) * anim->nframes);
+    anim->frames = (MasterKey*)malloc(sizeof(MasterKey) * anim->nframes);
 
     for(int fidx = 0; fidx < anim->nframes; ++fidx) {
-      KeyFrame* frame = &anim->frames[fidx];
+      MasterKey* frame = &anim->frames[fidx];
       read_ushort(cs, &frame->time_ms);
-      read_ushort(cs, &frame->nelements);
-      frame->elements = (KeyFrameElement*)malloc(sizeof(KeyFrameElement) * frame->nelements);
+      read_ushort(cs, &frame->nrefs);
+      frame->refs = (MasterElementRef*)malloc(sizeof(MasterElementRef) * frame->nrefs);
 
-      for(int eidx = 0; eidx < frame->nelements; ++eidx) {
-        KeyFrameElement* el = &frame->elements[eidx];
+      for(int ridx = 0; ridx < frame->nrefs; ++ridx) {
+        MasterElementRef* ref = &frame->refs[ridx];
+        read_ushort(cs, &ref->timeline_idx);
+        read_ushort(cs, &ref->keyframe_idx);
+      }
+    }
+
+    read_ushort(cs, &anim->ntimelines);
+    anim->timelines = (Timeline*)malloc(sizeof(Timeline) * anim->ntimelines);
+    for(int tidx = 0; tidx < anim->ntimelines; ++tidx) {
+      Timeline* tl = &anim->timelines[tidx];
+      read_ushort(cs, &tl->nelements);
+      tl->elements = (KeyFrameElement*)malloc(sizeof(KeyFrameElement) * tl->nelements);
+
+      for(int eidx = 0; eidx < tl->nelements; ++eidx) {
+        KeyFrameElement* el = &tl->elements[eidx];
         char entry_name[MAX_ENTRY_NAME];
         fread(entry_name, sizeof(entry_name), 1, cs);
         el->entry = spriteatlas_find(atlas, entry_name);
@@ -47,10 +61,16 @@ void spriter_free(Entity* ent) {
   for(int aidx = 0; aidx < ent->nanimations; ++aidx) {
     Animation* anim = &ent->animations[aidx];
     for(int fidx = 0; fidx < anim->nframes; ++fidx) {
-      KeyFrame* frame = &anim->frames[fidx];
-      free(frame->elements);
+      MasterKey* frame = &anim->frames[fidx];
+      free(frame->refs);
     }
     free(anim->frames);
+
+    for(int tidx = 0; tidx < anim->ntimelines; ++tidx) {
+      Timeline* tl = &anim->timelines[tidx];
+      free(tl->elements);
+    }
+    free(anim->timelines);
   }
 
   free(ent->animations);

@@ -51,7 +51,7 @@ def animation(res, dom):
         for obj in elements(key, 'object_ref'):
             keyid = attr(obj, 'key')
             tlid = attr(obj, 'timeline')
-            frame.extend(tls[tlid][keyid])
+            frame.append({'timeline': tlid, 'key': keyid})
 
         keyframes.append({'time': time,
                           'elements': frame})
@@ -59,7 +59,8 @@ def animation(res, dom):
     result = {
         'length': attr(dom, 'length'),
         'looping': attr(dom, 'looping'),
-        'keyframes': keyframes
+        'keyframes': keyframes,
+        'timelines': tls
         }
     return result
 
@@ -109,6 +110,15 @@ def write_ent(f, ent):
             util.write_short(f, len(frame['elements']))
 
             for el in frame['elements']:
+                util.write_short(f, int(el['timeline']))
+                util.write_short(f, int(el['key']))
+
+        util.write_short(f, len(a['timelines']))
+        for tlid, tl in a['timelines'].items():
+            util.write_short(f, len(tl))
+            for elid, els in tl.items():
+                assert(len(els) == 1)
+                el = els[0]
                 util.write_fstring(f, el['file'])
                 util.write_float(f, float(el['angle']) * math.pi / 180.0)
                 util.write_float(f, float(el['pivot_x']))

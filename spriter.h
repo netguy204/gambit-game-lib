@@ -14,10 +14,20 @@ struct KeyFrameElement {
   float y;
 };
 
-struct KeyFrame {
-  unsigned short time_ms;
+struct Timeline {
   unsigned short nelements;
   KeyFrameElement* elements;
+};
+
+struct MasterElementRef {
+  unsigned short timeline_idx;
+  unsigned short keyframe_idx;
+};
+
+struct MasterKey {
+  unsigned short time_ms;
+  unsigned short nrefs;
+  MasterElementRef* refs;
 };
 
 struct Animation {
@@ -25,7 +35,10 @@ struct Animation {
   unsigned short length_ms;
   unsigned short looping;
   unsigned short nframes;
-  KeyFrame* frames;
+  MasterKey* frames;
+
+  unsigned short ntimelines;
+  Timeline* timelines;
 };
 
 struct Entity {
