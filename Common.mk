@@ -42,6 +42,9 @@ $(BIN): $(EXE_OBJS) $(LUA_LIB)
 test_bin: $(C_OBJS) testlib_test.o
 	$(CXX) $(CXXFLAGS) -o $@ $(C_OBJS) testlib_test.o $(LDFLAGS)
 
+spriter_test: $(C_OBJS) spriter_test.o
+	$(CXX) $(CXXFLAGS) -o $@ $(C_OBJS) spriter_test.o $(LDFLAGS)
+
 test: test_bin
 	./test_bin
 
@@ -55,7 +58,9 @@ C_TOOL_OBJS=$(C_OBJS)
 BUILD_WITH_XML=$(CXX) $(CXXFLAGS) -o $@ $< $(C_TOOL_OBJS) $(LDFLAGS)
 
 SPRITE_PSDS=$(wildcard sprites/*.psd)
-SPRITE_PNGS=$(patsubst %.psd, %.png, $(SPRITE_PSDS))
+SPRITE_PNGS_FROM_PSD=$(patsubst %.psd, %.png, $(SPRITE_PSDS))
+SPRITE_PNGS_FROM_PNG=$(wildcard sprites/*.png)
+SPRITE_PNGS=$(sort $(SPRITE_PNGS_FROM_PNG) $(SPRITE_PNGS_FROM_PSD))
 
 %.png: %.psd
 	osascript tools/psdconvert.scpt $(PWD)/$< $(PWD)/$@

@@ -15,59 +15,6 @@ _G.sounds = {explosion=world:get_sound("sounds/Explosion6.ogg", 0.3),
              door=world:get_sound("sounds/door1.ogg", 0.2),
              music="sounds/DST-2ndBallad.ogg"}
 
-function floor(minx, maxx, topy, art, opts)
-   local midx = (minx + maxx) / 2
-   local midy = topy - art.h / 2
-   local w = maxx - minx
-
-   local defaults = {entry=art, w=w, h=art.h,
-                     layer=constant.BACKGROUND,
-                     offset={midx, midy}}
-
-   stage:add_component("CDrawWallpaper", util.merge_into(defaults, opts))
-   return {minx, topy - art.h, maxx, topy}
-end
-
-function wall(miny, maxy, midx, art, opts)
-   local midy = (miny + maxy) / 2
-   local h = maxy - miny
-
-   local defaults = {entry=art, h=h, w=art.w,
-                     layer=constant.BACKGROUND,
-                     offset={midx, midy}}
-
-   stage:add_component("CDrawWallpaper", util.merge_into(defaults, opts))
-   return {midx - art.w/2, miny, midx + art.w/2, maxy}
-end
-
-function round_to(val, nearest)
-   return nearest * math.floor(val/nearest)
-end
-
-function dirt(minx, maxx, y, opts)
-   local _dirt = world:atlas_entry(constant.ATLAS, "dirt")
-   return floor(round_to(minx, _dirt.w), round_to(maxx, _dirt.w), y, _dirt, opts)
-end
-
-function grass(minx, maxx, y)
-   local _grass = world:atlas_entry(constant.ATLAS, "grass")
-   local base = dirt(minx, maxx, y)
-   floor(round_to(minx, _grass.w), round_to(maxx, _grass.w),
-         y + _grass.h/2, _grass,
-         {layer=constant.FOREGROUND})
-
-   return base
-end
-
-function wallpaper(r, art, opts)
-   local defaults = {w=rect.width(r),
-                     h=rect.height(r),
-                     offset=rect.center(r),
-                     entry=art}
-
-   stage:add_component("CDrawWallpaper", util.merge_into(defaults, opts))
-   return r
-end
 
 local function add_platformness(platform, lower, upper, speed)
    local vel = (upper - lower):norm() * speed
@@ -386,7 +333,7 @@ function level_init()
    local _ladder = world:atlas_entry(constant.ATLAS, "ladder")
    local _lock = world:atlas_entry(constant.ATLAS, "lock")
    local _platform = world:atlas_entry(constant.ATLAS, "platform")
-
+   local _platform_support = world:atlas_entry(constant.ATLAS, "platform-support")
    -- tilemap test
    local m = map.create(
       {
@@ -398,7 +345,8 @@ function level_init()
                 {image=_spike, deadly=true},
                 {image=_ladder, climbable=true},
                 {image=_lock, lock=true},
-                {image=_side_spike, deadly=true}},
+                {image=_side_spike, deadly=true},
+                {image=_platform_support}},
          tiles={0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5,
                 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5,
                 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5,
@@ -410,7 +358,7 @@ function level_init()
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0,
-                1, 1, 3, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 3, 1, 1,
+                1, 1, 3, 1, 1, 1, 6, 6, 6, 6, 6, 6, 1, 1, 1, 1, 1, 3, 1, 1,
                 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0,
                 4, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0,
                 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1,

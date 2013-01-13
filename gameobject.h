@@ -54,8 +54,14 @@ class World;
 
 class Scene {
  public:
+  // base layers are interpreted as if they contain only basesprite
+  // representations (no rotation, color, or shifted origin)
   BaseSprite baseLayers[LAYER_MAX];
+
+  // layers must include rotation
   BaseSprite layers[LAYER_MAX];
+
+  // particles must also include color
   BaseSprite particles[LAYER_MAX];
   ColoredRect testRects[LAYER_MAX];
 

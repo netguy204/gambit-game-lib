@@ -1,28 +1,10 @@
 #include "spriteatlas.h"
+#include "filenumbers.h"
 #include "testlib.h"
 #include "utils.h"
 
 #include <stdio.h>
 #include <string.h>
-
-#ifdef __ANDROID__
-#include <sys/endian.h>
-#else
-#include <arpa/inet.h>
-#endif
-
-#define COORD_SCALE (1<<15)
-
-void read_short(FILE* fh, unsigned short* value) {
-  fread(value, sizeof(unsigned short), 1, fh);
-  *value = ntohs(*value);
-}
-
-void read_fixed(FILE* fh, float* value) {
-  unsigned short fixed_value;
-  read_short(fh, &fixed_value);
-  *value = ((double)fixed_value) / COORD_SCALE;
-}
 
 SpriteAtlas spriteatlas_load(const char* name, const char* imgtype) {
   char datafilename[128];
@@ -35,7 +17,7 @@ SpriteAtlas spriteatlas_load(const char* name, const char* imgtype) {
   if(datafile == NULL) fail_exit("failed to open %s", datafilename);
 
   unsigned short nentries;
-  read_short(datafile, &nentries);
+  read_ushort(datafile, &nentries);
 
   SpriteAtlas atlas = (SpriteAtlas)malloc(sizeof(struct SpriteAtlas_) +
                                           sizeof(struct SpriteAtlasEntry_) * nentries);
@@ -46,12 +28,12 @@ SpriteAtlas spriteatlas_load(const char* name, const char* imgtype) {
   for(ii = 0; ii < atlas->nentries; ++ii) {
     SpriteAtlasEntry entry = &atlas->entries[ii];
     entry->atlas = atlas;
-    read_short(datafile, &entry->w);
-    read_short(datafile, &entry->h);
-    read_fixed(datafile, &entry->u0);
-    read_fixed(datafile, &entry->v0);
-    read_fixed(datafile, &entry->u1);
-    read_fixed(datafile, &entry->v1);
+    read_ushort(datafile, &entry->w);
+    read_ushort(datafile, &entry->h);
+    read_norm_fixed(datafile, &entry->u0);
+    read_norm_fixed(datafile, &entry->v0);
+    read_norm_fixed(datafile, &entry->u1);
+    read_norm_fixed(datafile, &entry->v1);
     fread(entry->name, sizeof(entry->name), 1, datafile);
   }
 

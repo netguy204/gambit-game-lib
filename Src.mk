@@ -6,4 +6,4 @@ GAME_SRC=\
 	perlin.cpp heapvector.cpp \
 	pathfinder.cpp utils.cpp matrix.cpp ooc.cpp \
 	game_ui.cpp platform.cpp gameobject.cpp color.cpp \
-	soundmgr.cpp
+	soundmgr.cpp filenumbers.cpp spriter.cpp
