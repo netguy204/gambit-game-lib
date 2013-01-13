@@ -247,6 +247,25 @@ local function add_switchness(go, target)
    go:add_component('CSensor', {w=_current.w, h=_current.h})
 end
 
+local function add_springness(go, velocity)
+   local _art = world:atlas_entry(constant.ATLAS, "spring")
+   local sprite = go:add_component('CStaticSprite', {entry=_art})
+   local messages = function(go, comp)
+      while true do
+         coroutine.yield()
+         local msg = go:has_message(constant.COLLIDING)
+         if msg then
+            local obj = msg.source
+            local vel = obj:vel()
+            vel[2] = velocity
+            obj:vel(vel)
+         end
+      end
+   end
+   go:add_component('CSensor', {w=_art.w, h=_art.h})
+   go:add_component('CScripted', {message_thread=util.thread(messages)})
+end
+
 local function add_playerness(player, m)
    local width = 28
    local height = 62
@@ -255,7 +274,7 @@ local function add_playerness(player, m)
 
    local art = world:atlas_entry(constant.ATLAS, "guy")
    local _key = world:atlas_entry(constant.ATLAS, "key")
-   local platformer = player:add_component("CPlatformer", {w=width, h=height})
+   local platformer = player:add_component("CPlatformer", {w=width, h=height, friction=0})
    player:add_component("CStaticSprite", {entry=art, layer=constant.PLAYER})
 
    local player_rect = function()
@@ -391,7 +410,7 @@ function level_init()
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0,
-                1, 1, 3, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 3, 1, 1,
+                1, 1, 3, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 3, 1, 1,
                 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0,
                 4, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0,
                 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1,
@@ -408,7 +427,7 @@ function level_init()
    spawn_key(m:center(14, 1), {0, 0})
 
    -- place the moving platform
-   local start = vector.new(m:center(5, 6))
+   local start = vector.new(m:center(5, 7))
    local stop = vector.new(m:center(5, 12))
    local platform = world:create_go()
    platform:add_component("CStaticSprite", {entry=_platform})
@@ -422,4 +441,8 @@ function level_init()
    local switch = world:create_go()
    switch:pos(m:center(10, 15))
    add_switchness(switch, bridge)
+
+   local spring = world:create_go()
+   spring:pos(m:center(6,6))
+   add_springness(spring, 1200)
 end
