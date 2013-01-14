@@ -173,7 +173,8 @@ end
 local function add_switchness(go, target)
    local _anim = world:animation("resources/lever.cs", constant.ATLAS, "First Animation")
    local next_dir = 1
-   local sprite = go:add_component('CSpriterSprite', {animation=_anim, time_scale=0})
+   local sprite = go:add_component('CSpriterSprite', {animation=_anim, time_scale=0,
+                                                      offset={0,-32}})
    local anim_running = false
    local switch_complete = constant.NEXT_EPHEMERAL_MESSAGE()
 

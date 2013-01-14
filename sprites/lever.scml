@@ -6,7 +6,7 @@
         <file id="2" name="handle.png" width="18" height="18"/>
     </folder>
     <entity id="0" name="">
-        <animation id="0" name="First Animation" length="1000" looping="false">
+        <animation id="0" name="First Animation" length="315" looping="false">
             <mainline>
                 <key id="0">
                     <object_ref id="0" timeline="0" key="0" z_index="0"/>
