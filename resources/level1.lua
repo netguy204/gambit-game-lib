@@ -410,5 +410,5 @@ function level_init()
    stage:add_component('CStaticSprite', {entry=_background,
                                          offset={_background.w/2 - 32,
                                                  _background.h/2 - 32},
-                                         layer=constant.BACKERDROP})
+                                         layer=constant.BACKDROP})
 end

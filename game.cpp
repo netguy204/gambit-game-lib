@@ -111,7 +111,7 @@ OBJECT_PROPERTY(CStaticSprite, layer);
 OBJECT_PROPERTY(CStaticSprite, offset);
 
 CStaticSprite::CStaticSprite(void* go)
-  : Component((GO*)go, PRIORITY_SHOW), entry(NULL), layer(LAYER_BACKGROUND) {
+  : Component((GO*)go, PRIORITY_SHOW), entry(NULL), layer(LAYER_PLAYER) {
   vector_zero(&offset);
 }
 
@@ -169,7 +169,7 @@ OBJECT_PROPERTY(CDrawWallpaper, style);
 OBJECT_PROPERTY(CDrawWallpaper, layer);
 
 CDrawWallpaper::CDrawWallpaper(void* _go)
-  : Component((GO*)_go, PRIORITY_SHOW), style(WALLPAPER_TILE), layer(LAYER_BACKDROP) {
+  : Component((GO*)_go, PRIORITY_SHOW), style(WALLPAPER_TILE), layer(LAYER_BACKGROUND) {
   vector_zero(&offset);
 }
 
@@ -321,7 +321,8 @@ OBJECT_PROPERTY(CDrawTilemap, h);
 OBJECT_PROPERTY(CDrawTilemap, layer);
 
 CDrawTilemap::CDrawTilemap(void* _go)
-  : Component((GO*)_go, PRIORITY_SHOW), map(NULL), layer(LAYER_BACKDROP), w(300), h(300) {
+  : Component((GO*)_go, PRIORITY_SHOW), map(NULL), layer(LAYER_BACKGROUND),
+    w(300), h(300) {
   vector_zero(&offset);
 }
 
