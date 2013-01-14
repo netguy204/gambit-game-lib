@@ -14,32 +14,58 @@ SpriteAtlas spriteatlas_load(const char* name, const char* imgtype) {
   snprintf(imgfilename, sizeof(imgfilename), "%s.%s", name, imgtype);
 
   FILE* datafile = fopen(datafilename, "r");
-  if(datafile == NULL) fail_exit("failed to open %s", datafilename);
+  SpriteAtlas atlas = NULL;
 
-  unsigned short nentries;
-  read_ushort(datafile, &nentries);
+  if(datafile == NULL) {
+    // assume this is a single sprite image
+    atlas = (SpriteAtlas)malloc(sizeof(SpriteAtlas_) + sizeof(SpriteAtlasEntry_));
+    atlas->nentries = 1;
+    atlas->image = image_load(imgfilename);
 
-  SpriteAtlas atlas = (SpriteAtlas)malloc(sizeof(struct SpriteAtlas_) +
-                                          sizeof(struct SpriteAtlasEntry_) * nentries);
-  atlas->nentries = nentries;
-
-  // read the data
-  int ii;
-  for(ii = 0; ii < atlas->nentries; ++ii) {
-    SpriteAtlasEntry entry = &atlas->entries[ii];
+    SpriteAtlasEntry entry = &atlas->entries[0];
     entry->atlas = atlas;
-    read_ushort(datafile, &entry->w);
-    read_ushort(datafile, &entry->h);
-    read_norm_fixed(datafile, &entry->u0);
-    read_norm_fixed(datafile, &entry->v0);
-    read_norm_fixed(datafile, &entry->u1);
-    read_norm_fixed(datafile, &entry->v1);
-    fread(entry->name, sizeof(entry->name), 1, datafile);
+    entry->w = atlas->image->w;
+    entry->h = atlas->image->h;
+    entry->u0 = 0;
+    entry->u1 = 1;
+    entry->v0 = 0;
+    entry->v1 = 1;
+
+    // get the name after the last slash
+    const char* basename = strrchr(name, '/');
+    if(basename) {
+      ++basename;
+    } else {
+      basename = name;
+    }
+
+    strncpy(entry->name, basename, sizeof(entry->name));
+  } else {
+    unsigned short nentries;
+    read_ushort(datafile, &nentries);
+
+    atlas = (SpriteAtlas)malloc(sizeof(SpriteAtlas_) +
+                                sizeof(SpriteAtlasEntry_) * nentries);
+    atlas->nentries = nentries;
+    atlas->image = image_load(imgfilename);
+
+    // read the data
+    int ii;
+    for(ii = 0; ii < atlas->nentries; ++ii) {
+      SpriteAtlasEntry entry = &atlas->entries[ii];
+      entry->atlas = atlas;
+      read_ushort(datafile, &entry->w);
+      read_ushort(datafile, &entry->h);
+      read_norm_fixed(datafile, &entry->u0);
+      read_norm_fixed(datafile, &entry->v0);
+      read_norm_fixed(datafile, &entry->u1);
+      read_norm_fixed(datafile, &entry->v1);
+      fread(entry->name, sizeof(entry->name), 1, datafile);
+    }
+
+    fclose(datafile);
   }
 
-  fclose(datafile);
-
-  atlas->image = image_load(imgfilename);
   return atlas;
 }
 

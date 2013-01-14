@@ -404,4 +404,11 @@ function level_init()
    local spring = world:create_go()
    spring:pos(m:center(6,6))
    add_springness(spring, 1200)
+
+   -- add the background
+   local _background = world:atlas_entry('resources/sunrise_grad', 'sunrise_grad')
+   stage:add_component('CStaticSprite', {entry=_background,
+                                         offset={_background.w/2 - 32,
+                                                 _background.h/2 - 32},
+                                         layer=constant.BACKERDROP})
 end
