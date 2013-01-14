@@ -54,6 +54,44 @@ Message* LCcheck_message(lua_State *L, int pos) {
   return result;
 }
 
+static void LCpush_animation(lua_State *L, Animation* anim) {
+  lua_newtable(L);
+  lua_pushnumber(L, anim->length_ms / 1000.0);
+  lua_setfield(L, -2, "length");
+  lua_pushboolean(L, anim->looping);
+  lua_setfield(L, -2, "looping");
+  lua_pushlightuserdata(L, anim);
+  lua_setfield(L, -2, "animation");
+}
+
+static Animation* LCcheck_animation(lua_State *L, int pos) {
+  if(!lua_istable(L, pos)) {
+    luaL_error(L, "no animation-table at %d", pos);
+  }
+
+  lua_getfield(L, pos, "animation");
+  Animation* anim = (Animation*)lua_touserdata(L, -1);
+  lua_pop(L, 1);
+
+  if(!anim) {
+    luaL_error(L, "animation-table did not contain `animation' field at %d", pos);
+  }
+  return anim;
+}
+
+template<>
+void PropertyTypeImpl<Animation*>::LCpush_value(Object* obj, lua_State* L) const {
+  Animation* anim;
+  get_value(obj, &anim);
+  LCpush_animation(L, anim);
+}
+
+template<>
+void PropertyTypeImpl<Animation*>::LCset_value(Object* obj, lua_State* L, int pos) const {
+  Animation* anim = LCcheck_animation(L, pos);
+  set_value(obj, &anim);
+}
+
 template<>
 void PropertyTypeImpl<SpriteAtlasEntry>::LCpush_value(Object* obj, lua_State* L) const {
   SpriteAtlasEntry entry;
@@ -719,6 +757,17 @@ static int Lworld_atlas_entry(lua_State *L) {
   return 1;
 }
 
+static int Lworld_animation(lua_State *L) {
+  World* world = LCcheck_world(L, 1);
+  const char* scml_file = luaL_checkstring(L, 2);
+  const char* atlas_name = luaL_checkstring(L, 3);
+  const char* anim_name = luaL_checkstring(L, 4);
+  SpriteAtlas atlas = world->atlas(atlas_name);
+  Animation* anim = world->animation(scml_file, atlas, anim_name);
+  LCpush_animation(L, anim);
+  return 1;
+}
+
 // world, center, last_go, look angle, cone angle
 static int Lworld_next_in_cone(lua_State *L) {
   Cone cone;
@@ -998,6 +1047,7 @@ void init_lua(World* world) {
   static const luaL_Reg world_m[] = {
     {"create_go", Lworld_create_go},
     {"atlas_entry", Lworld_atlas_entry},
+    {"animation", Lworld_animation},
     {"next_in_cone", Lworld_next_in_cone},
     {"get_sound", Lworld_get_sound},
     {"play_sound", Lworld_play_sound},
@@ -1072,7 +1122,14 @@ World::~World() {
 
   for(NameToAtlas::iterator iter = name_to_atlas.begin();
       iter != name_to_atlas.end(); ++iter) {
+    free((char*)iter->first);
     spriteatlas_free(iter->second);
+  }
+
+  for(NameToEntity::iterator iter = name_to_entity.begin();
+      iter != name_to_entity.end(); ++iter) {
+    free((char*)iter->first);
+    spriter_free(iter->second);
   }
 
   lua_close(L);
@@ -1188,6 +1245,24 @@ SpriteAtlas World::atlas(const char* atlas_name) {
 
 SpriteAtlasEntry World::atlas_entry(const char* atlas_name, const char* entry) {
   return spriteatlas_find(atlas(atlas_name), entry);
+}
+
+Entity* World::scml_entity(const char* filename, SpriteAtlas atlas) {
+  NameToEntity::iterator iter = name_to_entity.find(filename);
+  Entity* entity;
+
+  if(iter == name_to_entity.end()) {
+    entity = spriter_load(filename, atlas);
+    name_to_entity.insert(std::make_pair(strdup(filename), entity));
+  } else {
+    entity = iter->second;
+  }
+
+  return entity;
+}
+
+Animation* World::animation(const char* filename, SpriteAtlas atlas, const char* anim) {
+  return spriter_find(scml_entity(filename, atlas), anim);
 }
 
 void World::set_time_scale(float scale) {

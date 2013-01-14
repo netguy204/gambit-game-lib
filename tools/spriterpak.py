@@ -5,6 +5,7 @@ import json
 import os.path
 import util
 import math
+import sys
 
 def attr(dom, name):
     return dom.getAttribute(name)
@@ -131,7 +132,13 @@ def write_ent(f, ent):
                 util.write_short(f, int(el['spin']))
 
 if __name__ == '__main__':
-    fname = '/Users/btaylor/Downloads/lever/lever.scml'
+    if len(sys.argv) != 3:
+        print 'usage: %s input output' % (sys.argv[0])
+        exit(1)
+
+    fname = sys.argv[1]
+    outname = sys.argv[2]
+
     with open(fname) as f:
         dom = xml.dom.minidom.parse(f)
 
@@ -143,8 +150,8 @@ if __name__ == '__main__':
 
     ent = ents.itervalues().next()
 
-    print json.dumps(ent, sort_keys=True,
-                     indent=4, separators=(',', ': '))
+    #print json.dumps(ent, sort_keys=True,
+    #                 indent=4, separators=(',', ': '))
 
-    with open("out", "w") as f:
+    with open(outname, "w") as f:
         write_ent(f, ent)

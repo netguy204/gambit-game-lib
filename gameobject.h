@@ -6,6 +6,7 @@
 #include "spriteatlas.h"
 #include "ooc.h"
 #include "soundmgr.h"
+#include "spriter.h"
 
 #include <lua.hpp>
 #include <Box2D/Box2D.h>
@@ -258,6 +259,7 @@ GO* LCcheck_go(lua_State *L, int pos);
 void LCpush_vector(lua_State *L, Vector vector);
 
 typedef std::map<const char*, SpriteAtlas, cmp_str> NameToAtlas;
+typedef std::map<const char*, Entity*, cmp_str> NameToEntity;
 
 struct Cone {
   Vector_ point;
@@ -280,6 +282,10 @@ class World : public Object {
 
   SpriteAtlas atlas(const char* atlas);
   SpriteAtlasEntry atlas_entry(const char* atlas, const char* entry);
+
+  Entity* scml_entity(const char* filename, SpriteAtlas atlas);
+  Animation* animation(const char* scml, SpriteAtlas atlas, const char* anim);
+
   void broadcast_message(GO* go, float radius, int kind, const char* content, size_t nbytes);
   GO* next_in_cone(GO* last, Rect bounds, Cone* cone);
   void set_time_scale(float scale);
@@ -311,6 +317,7 @@ class World : public Object {
   DLL_DECLARE(Component, world_node) components;
 
   NameToAtlas name_to_atlas;
+  NameToEntity name_to_entity;
 };
 
 int LCpush_world(lua_State *L, World* world);

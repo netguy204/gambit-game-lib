@@ -171,27 +171,37 @@ end
 
 
 local function add_switchness(go, target)
-   local _current = world:atlas_entry(constant.ATLAS, "switch")
-   local _other = world:atlas_entry(constant.ATLAS, "/xswitch")
+   local _anim = world:animation("resources/lever.cs", constant.ATLAS, "First Animation")
+   local next_dir = 1
+   local sprite = go:add_component('CSpriterSprite', {animation=_anim, time_scale=0})
+   local anim_running = false
+   local switch_complete = constant.NEXT_EPHEMERAL_MESSAGE()
 
-   local sprite = go:add_component('CStaticSprite', {entry=_current})
    local message_thread = function(go, comp)
       while true do
          coroutine.yield()
-         if go:has_message(ACTIVATE) then
-            target:send_message(go:create_message(ACTIVATE_BRIDGE))
+         if not anim_running and go:has_message(ACTIVATE) then
+            sprite:time_scale(next_dir)
+            anim_running = true
+            next_dir = -next_dir
 
-            -- swap the switch image
-            sprite:entry(_other)
-            local temp = _current
-            _current = _other
-            _other = temp
+            -- register for the completion message
+            go:add_component('CTimer', {time_remaining=_anim.length, kind=switch_complete})
+         elseif anim_running and go:has_message(switch_complete) then
+            anim_running = false
+            sprite:time_scale(0)
+            if next_dir == 1 then
+               sprite:current_time(0)
+            else
+               sprite:current_time(_anim.length)
+            end
+            target:send_message(go:create_message(ACTIVATE_BRIDGE))
          end
       end
    end
 
    go:add_component('CScripted', {message_thread=util.thread(message_thread)})
-   go:add_component('CSensor', {w=_current.w, h=_current.h})
+   go:add_component('CSensor', {w=32, h=32})
 end
 
 local function add_springness(go, velocity)

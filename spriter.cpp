@@ -179,7 +179,7 @@ BaseSprite spriter_append(BaseSprite list, Animation* anim,
   // now, using the list in the before key, we start tweening and
   // drawing
   MasterKey* master = &anim->frames[idx_before];
-  for(int ii = 0; ii < master->nrefs; ++ii) {
+  for(int ii = master->nrefs - 1; ii >= 0; --ii) {
     int tl_idx = master->refs[ii].timeline_idx;
     Timeline* tl = &anim->timelines[tl_idx];
     KeyFrameElement* before = &tl->elements[idx_before];
@@ -193,8 +193,7 @@ BaseSprite spriter_append(BaseSprite list, Animation* anim,
     sprite->angle = clerp(before->angle, after->angle, before->spin, s);
     sprite->originX = lerp(before->pivot_x, after->pivot_x, s);
     sprite->originY = lerp(before->pivot_y, after->pivot_y, s);
-    sprite->next = list;
-    list = sprite;
+    sprite_append(list, sprite);
   }
 
   return list;

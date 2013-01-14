@@ -10,6 +10,7 @@
 #include "game_ui.h"
 #include "color.h"
 #include "utils.h"
+#include "spriter.h"
 
 #include "config.h"
 
@@ -127,6 +128,36 @@ void CStaticSprite::update(float dt) {
   sprite->originY = 0.5;
 
   scene()->addRelative(&scene()->layers[layer], sprite);
+}
+
+OBJECT_IMPL(CSpriterSprite, Component);
+OBJECT_PROPERTY(CSpriterSprite, animation);
+OBJECT_PROPERTY(CSpriterSprite, offset);
+OBJECT_PROPERTY(CSpriterSprite, layer);
+OBJECT_PROPERTY(CSpriterSprite, current_time);
+OBJECT_PROPERTY(CSpriterSprite, time_scale);
+
+CSpriterSprite::CSpriterSprite(void* _go)
+  : Component((GO*)_go, PRIORITY_SHOW), animation(NULL), layer(LAYER_BACKGROUND),
+    current_time(0), time_scale(1) {
+  vector_zero(&offset);
+}
+
+void CSpriterSprite::update(float dt) {
+  if(!animation) return;
+
+  Vector_ pos, cpos;
+  go->pos(&pos);
+  camera()->pos(&cpos);
+
+  vector_add(&pos, &pos, &offset);
+  vector_sub(&pos, &pos, &cpos);
+
+  BaseSprite list = scene()->layers[layer];
+  list = spriter_append(list, animation, &pos, current_time * 1000);
+  scene()->layers[layer] = list;
+
+  current_time += dt * time_scale;
 }
 
 OBJECT_IMPL(CDrawWallpaper, Component);

@@ -54,6 +54,21 @@ class CStaticSprite : public Component {
   int layer;
 };
 
+class CSpriterSprite : public Component {
+ public:
+  OBJECT_PROTO(CSpriterSprite);
+
+  CSpriterSprite(void* go);
+
+  virtual void update(float dt);
+
+  Animation* animation;
+  Vector_ offset;
+  int layer;
+  float current_time;
+  float time_scale;
+};
+
 enum WallpaperStyle {
   WALLPAPER_SCALE,
   WALLPAPER_TILE,

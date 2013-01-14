@@ -62,8 +62,14 @@ SPRITE_PNGS_FROM_PSD=$(patsubst %.psd, %.png, $(SPRITE_PSDS))
 SPRITE_PNGS_FROM_PNG=$(wildcard sprites/*.png)
 SPRITE_PNGS=$(sort $(SPRITE_PNGS_FROM_PNG) $(SPRITE_PNGS_FROM_PSD))
 
+SPRITER_SCML=$(wildcard sprites/*.scml)
+SPRITER_CS=$(patsubst sprites/%.scml, resources/%.cs, $(SPRITER_SCML))
+
 %.png: %.psd
 	osascript tools/psdconvert.scpt $(PWD)/$< $(PWD)/$@
+
+resources/%.cs: sprites/%.scml
+	python tools/spriterpak.py $< $@
 
 pngs: $(SPRITE_PNGS)
 
@@ -72,7 +78,7 @@ RESOURCE_FILES=resources/images_default.png resources/images_default.dat
 $(RESOURCE_FILES):
 	python tools/spritepak.py sprites/trim.txt resources/images_default $(SPRITE_PNGS)
 
-resources: $(RESOURCE_FILES)
+resources: $(RESOURCE_FILES) $(SPRITER_CS)
 
 items_bin: items_bin.o $(C_TOOL_OBJS)
 	$(BUILD_WITH_XML)
