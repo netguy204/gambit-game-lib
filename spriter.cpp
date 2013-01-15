@@ -226,9 +226,6 @@ BaseSprite spriter_append(BaseSprite list, Animation* anim,
     Sprite sprite = frame_make_sprite();
     KeyFrameElement* end_before = &anim->timelines[ref->timeline_idx].elements[idx_before];
     sprite_fillfromentry(sprite, end_before->entry);
-    sprite->displayX = pos->x;
-    sprite->displayY = pos->y;
-    sprite->angle = 0;
     sprite->originX = 0;
     sprite->originY = 0;
 
@@ -246,6 +243,9 @@ BaseSprite spriter_append(BaseSprite list, Animation* anim,
     float pscale_x = 1.0f;
     float pscale_y = 1.0f;
     float pangle = 0.0f;
+    float px = pos->x;
+    float py = pos->y;
+
     for(int ii = last_stack_idx; ii < timeline_stack_size; ++ii) {
       int tl_idx = timeline_stack[ii];
       Timeline* tl = &anim->timelines[tl_idx];
@@ -258,23 +258,24 @@ BaseSprite spriter_append(BaseSprite list, Animation* anim,
       float y = lerp(before->y, after->y, s) * pscale_y;
 
       bool flipped = (pscale_x < 0) || (pscale_y < 0);
-      rotate_point(x, y, pangle,
-                   sprite->displayX, sprite->displayY, flipped);
-      sprite->displayX = x;
-      sprite->displayY = y;
-      sprite->w *= scale_x;
-      sprite->h *= scale_y;
-      sprite->angle += angle;
-
-      // origin doesn't compose
-      if(ii == (timeline_stack_size - 1)) {
-        sprite->originX = lerp(before->pivot_x, after->pivot_x, s);
-        sprite->originY = lerp(before->pivot_y, after->pivot_y, s);
-      }
+      rotate_point(x, y, pangle, px, py, flipped);
+      px = x;
+      py = y;
 
       pscale_x *= scale_x;
       pscale_y *= scale_y;
       pangle += angle;
+
+      // now we're at the leaf node
+      if(ii == (timeline_stack_size - 1)) {
+        sprite->originX = lerp(before->pivot_x, after->pivot_x, s);
+        sprite->originY = lerp(before->pivot_y, after->pivot_y, s);
+        sprite->w *= pscale_x;
+        sprite->h *= pscale_y;
+        sprite->angle = pangle;
+        sprite->displayX = px;
+        sprite->displayY = py;
+      }
     }
 
     sprite_append(list, sprite);
