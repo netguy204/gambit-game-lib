@@ -181,8 +181,8 @@ if __name__ == '__main__':
 
     ent = ents.itervalues().next()
 
-    print json.dumps(ent, sort_keys=True,
-                     indent=4, separators=(',', ': '))
+    #print json.dumps(ent, sort_keys=True,
+    #                 indent=4, separators=(',', ': '))
 
     with open(outname, "w") as f:
         write_ent(f, ent)
