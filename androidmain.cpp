@@ -85,6 +85,7 @@ JNIEXPORT void JNICALL Java_com_fiftyply_gglppt_GameRenderer_nativeResize(JNIEnv
 int end_of_frame = 0;
 
 void signal_render_complete(void* _allocator) {
+  renderer_end_frame();
   StackAllocator allocator = (StackAllocator)_allocator;
   render_reply_queue->enqueue(allocator);
   end_of_frame = 1;

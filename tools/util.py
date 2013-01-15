@@ -1,7 +1,7 @@
 import struct
 
 norm_coord_scale = 2 ** 15
-coord_scale = 2 ** 7
+coord_scale = 2 ** 6
 
 short_packing = '>h'
 fstring_packing = '12s'

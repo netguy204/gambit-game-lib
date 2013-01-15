@@ -57,28 +57,45 @@ $(LUA_LIB):
 C_TOOL_OBJS=$(C_OBJS)
 BUILD_WITH_XML=$(CXX) $(CXXFLAGS) -o $@ $< $(C_TOOL_OBJS) $(LDFLAGS)
 
+# plain (non-tile) sprites whose ordering and dimensions don't matter
 SPRITE_PSDS=$(wildcard sprites/*.psd)
 SPRITE_PNGS_FROM_PSD=$(patsubst %.psd, %.png, $(SPRITE_PSDS))
 SPRITE_PNGS_FROM_PNG=$(wildcard sprites/*.png)
 SPRITE_PNGS=$(sort $(SPRITE_PNGS_FROM_PNG) $(SPRITE_PNGS_FROM_PSD))
 
-SPRITER_SCML=$(wildcard sprites/*.scml)
-SPRITER_CS=$(patsubst sprites/%.scml, resources/%.cs, $(SPRITER_SCML))
-
 %.png: %.psd
 	osascript tools/psdconvert.scpt $(PWD)/$< $(PWD)/$@
-
-resources/%.cs: sprites/%.scml
-	python tools/spriterpak.py $< $@
-
-pngs: $(SPRITE_PNGS)
 
 RESOURCE_FILES=resources/images_default.png resources/images_default.dat
 
 $(RESOURCE_FILES):
 	python tools/spritepak.py sprites/trim.txt resources/images_default $(SPRITE_PNGS)
 
-resources: $(RESOURCE_FILES) $(SPRITER_CS)
+# compiled spriter
+SPRITER_SCML=$(wildcard sprites/*.scml)
+SPRITER_CS=$(patsubst sprites/%.scml, resources/%.cs, $(SPRITER_SCML))
+
+resources/%.cs: sprites/%.scml
+	python tools/spriterpak.py $< $@
+
+
+# tiles (must all be the same dimension and must maintain order or
+# tiled will get unhappy
+TILE_NAMEFILE=tiles/order.txt
+TILE_NAMES=$(shell cat $(TILE_NAMEFILE))
+TILE_PSDS=$(patsubst %, tiles/%.psd, $(TILE_NAMES))
+TILE_PNGS=$(patsubst %.psd, %.png, $(TILE_PSDS))
+
+testest:
+	@echo $(TILE_NAMES)
+
+pngs: $(SPRITE_PNGS) $(TILE_PNGS)
+
+TILE_RESOURCES=resources/tiles.png resources/tiles.dat
+$(TILE_RESOURCES): $(TILE_NAMEFILE)
+	python tools/spritepak.py sprites/trim.txt resources/tiles $(TILE_PNGS)
+
+resources: $(RESOURCE_FILES) $(SPRITER_CS) $(TILE_RESOURCES)
 
 items_bin: items_bin.o $(C_TOOL_OBJS)
 	$(BUILD_WITH_XML)
@@ -89,7 +106,7 @@ sfmt/SFMT.o: sfmt/SFMT.c
 GAME_OBJS=$(patsubst %.cpp,%.o,$(GAME_SRC))
 
 clean:
-	rm -rf $(GAME_OBJS) $(BIN) buildatlas test items_bin $(RESOURCE_FILES)
+	rm -rf $(GAME_OBJS) $(BIN) buildatlas test items_bin $(RESOURCE_FILES) $(TILE_RESOURCES) resources/*.cs
 
 distclean: clean
 	rm -rf $(C_OBJS)

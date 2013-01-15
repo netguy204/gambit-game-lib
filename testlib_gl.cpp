@@ -98,6 +98,9 @@ GLuint standard_color_program;
 GLuint color_tex0_uniform_location;
 GLuint color_mvp_uniform_location;
 
+GLuint screen_buffer;
+GLuint screen_texture;
+
 int renderer_link_shader(const char* vertexname, const char* fragmentname, ...) {
   char* vertex_source = filename_slurp(vertexname);
   char* fragment_source = filename_slurp(fragmentname);
@@ -150,6 +153,8 @@ void renderer_init_standard_shader() {
   gl_check(glGenBuffers(1, &vertex_buffer));
   gl_check(glGenBuffers(1, &texcoord_buffer));
   gl_check(glGenBuffers(1, &color_buffer));
+  gl_check(glGenBuffers(1, &screen_buffer));
+  gl_check(glGenTextures(1, &screen_texture));
 
   program = renderer_link_shader("resources/standard.vert", "resources/solid.frag",
                                  GLPARAM_VERTEX, "vertex",
@@ -226,6 +231,18 @@ void renderer_gl_shutdown() {
 void renderer_begin_frame(void* empty) {
   stack_allocator_freeall(gldata_allocator);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+}
+
+void renderer_end_frame() {
+  /*
+  // render into a buffer
+  glBindBuffer(GL_PIXEL_PACK_BUFFER, screen_buffer);
+  glReadPixels(0, 0, screen_width, screen_height,
+               GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, 0);
+  glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
+
+  // put that into a texture
+  */
 }
 
 void renderer_finish_image_load(ImageResource resource) {

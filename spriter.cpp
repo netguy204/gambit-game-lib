@@ -24,6 +24,7 @@ Entity* spriter_load(const char* compiled_spriter, SpriteAtlas atlas) {
     for(int fidx = 0; fidx < anim->nframes; ++fidx) {
       MasterKey* frame = &anim->frames[fidx];
       read_ushort(cs, &frame->time_ms);
+
       read_ushort(cs, &frame->nrefs);
       frame->refs = (MasterElementRef*)malloc(sizeof(MasterElementRef) * frame->nrefs);
 
@@ -31,6 +32,17 @@ Entity* spriter_load(const char* compiled_spriter, SpriteAtlas atlas) {
         MasterElementRef* ref = &frame->refs[ridx];
         read_ushort(cs, &ref->timeline_idx);
         read_ushort(cs, &ref->keyframe_idx);
+        read_short(cs, &ref->parent_idx);
+      }
+
+      read_ushort(cs, &frame->nbones);
+      frame->bones = (MasterElementRef*)malloc(sizeof(MasterElementRef) * frame->nbones);
+
+      for(int ridx = 0; ridx < frame->nbones; ++ridx) {
+        MasterElementRef* ref = &frame->bones[ridx];
+        read_ushort(cs, &ref->timeline_idx);
+        read_ushort(cs, &ref->keyframe_idx);
+        read_short(cs, &ref->parent_idx);
       }
     }
 
@@ -45,7 +57,12 @@ Entity* spriter_load(const char* compiled_spriter, SpriteAtlas atlas) {
         KeyFrameElement* el = &tl->elements[eidx];
         char entry_name[MAX_ENTRY_NAME];
         fread(entry_name, sizeof(entry_name), 1, cs);
-        el->entry = spriteatlas_find(atlas, entry_name);
+        if(entry_name[0] != '\0') {
+          el->entry = spriteatlas_find(atlas, entry_name);
+        } else {
+          // must be a bone
+          el->entry = NULL;
+        }
         read_fixed(cs, &el->angle);
         read_fixed(cs, &el->pivot_x);
         read_fixed(cs, &el->pivot_y);
@@ -115,6 +132,23 @@ float clerp(float a, float b, int d, float s) {
   }
 }
 
+// from http://code.google.com/p/scml-pp/source/browse/trunk/source/SCMLpp.cpp line 2490
+static void rotate_point(float& x, float& y, float angle, float origin_x, float origin_y, bool flipped)
+{
+  if(flipped)
+    angle = -angle;
+
+  float s = sin(angle*M_PI/180);
+  float c = cos(angle*M_PI/180);
+  float xnew = (x * c) - (y * s);
+  float ynew = (x * s) + (y * c);
+  xnew += origin_x;
+  ynew += origin_y;
+
+  x = xnew;
+  y = ynew;
+}
+
 BaseSprite spriter_append(BaseSprite list, Animation* anim,
                           Vector pos, unsigned short anim_time_ms) {
   // clamp or restrict the animation time
@@ -176,23 +210,73 @@ BaseSprite spriter_append(BaseSprite list, Animation* anim,
     s = ((double)(anim_time_ms - before_t)) / ((double)dt);
   }
 
+  MasterKey* master = &anim->frames[idx_before];
+
+  // build a transform stack that is as big as the bone heirarchy
+  // could possibly be deap
+  int* timeline_stack = (int*)frame_alloc(sizeof(int) * master->nrefs);
+  int timeline_stack_size = master->nrefs;
+
   // now, using the list in the before key, we start tweening and
   // drawing
-  MasterKey* master = &anim->frames[idx_before];
   for(int ii = master->nrefs - 1; ii >= 0; --ii) {
-    int tl_idx = master->refs[ii].timeline_idx;
-    Timeline* tl = &anim->timelines[tl_idx];
-    KeyFrameElement* before = &tl->elements[idx_before];
-    KeyFrameElement* after = &tl->elements[idx_after];
+    MasterElementRef* ref = &master->refs[ii];
+
+    // create the sprite
     Sprite sprite = frame_make_sprite();
-    sprite_fillfromentry(sprite, before->entry);
-    sprite->displayX = pos->x + lerp(before->x, after->x, s);
-    sprite->displayY = pos->y + lerp(before->y, after->y, s);
-    sprite->w *= lerp(before->scale_x, after->scale_x, s);
-    sprite->h *= lerp(before->scale_y, after->scale_y, s);
-    sprite->angle = clerp(before->angle, after->angle, before->spin, s);
-    sprite->originX = lerp(before->pivot_x, after->pivot_x, s);
-    sprite->originY = lerp(before->pivot_y, after->pivot_y, s);
+    KeyFrameElement* end_before = &anim->timelines[ref->timeline_idx].elements[idx_before];
+    sprite_fillfromentry(sprite, end_before->entry);
+    sprite->displayX = pos->x;
+    sprite->displayY = pos->y;
+    sprite->angle = 0;
+    sprite->originX = 0;
+    sprite->originY = 0;
+
+    // fill out the list of timelines we need to step through to
+    // follow the bone heirarchy
+    int last_stack_idx = timeline_stack_size - 1;
+    timeline_stack[last_stack_idx] = ref->timeline_idx;
+    while(ref->parent_idx >= 0) {
+      ref = &master->bones[ref->parent_idx];
+      timeline_stack[--last_stack_idx] = ref->timeline_idx;
+    }
+
+    // now walk from root to end following the bone heirarchy and
+    // composing the transforms
+    float pscale_x = 1.0f;
+    float pscale_y = 1.0f;
+    float pangle = 0.0f;
+    for(int ii = last_stack_idx; ii < timeline_stack_size; ++ii) {
+      int tl_idx = timeline_stack[ii];
+      Timeline* tl = &anim->timelines[tl_idx];
+      KeyFrameElement* before = &tl->elements[idx_before];
+      KeyFrameElement* after = &tl->elements[idx_after];
+      float scale_x = lerp(before->scale_x, after->scale_x, s);
+      float scale_y = lerp(before->scale_y, after->scale_y, s);
+      float angle = clerp(before->angle, after->angle, before->spin, s);
+      float x = lerp(before->x, after->x, s) * pscale_x;
+      float y = lerp(before->y, after->y, s) * pscale_y;
+
+      bool flipped = (pscale_x < 0) || (pscale_y < 0);
+      rotate_point(x, y, pangle,
+                   sprite->displayX, sprite->displayY, flipped);
+      sprite->displayX = x;
+      sprite->displayY = y;
+      sprite->w *= scale_x;
+      sprite->h *= scale_y;
+      sprite->angle += angle;
+
+      // origin doesn't compose
+      if(ii == (timeline_stack_size - 1)) {
+        sprite->originX = lerp(before->pivot_x, after->pivot_x, s);
+        sprite->originY = lerp(before->pivot_y, after->pivot_y, s);
+      }
+
+      pscale_x *= scale_x;
+      pscale_y *= scale_y;
+      pangle += angle;
+    }
+
     sprite_append(list, sprite);
   }
 

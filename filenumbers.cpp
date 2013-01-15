@@ -7,7 +7,7 @@
 #endif
 
 #define NORM_COORD_SCALE (1 << 15)
-#define COORD_SCALE (1 << 7)
+#define COORD_SCALE (1 << 6)
 
 void read_ushort(FILE* fh, unsigned short* value) {
   fread(value, sizeof(unsigned short), 1, fh);

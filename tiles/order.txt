@@ -1,0 +1,5 @@
+brick
+ladder
+side_spike
+spike
+tile1

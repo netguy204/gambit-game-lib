@@ -43,19 +43,32 @@ def animation(res, dom):
     keyframes = []
 
     for key in elements(main, 'key'):
-        frame = []
         if key.hasAttribute('time'):
             time = attr(key, 'time')
         else:
             time = "0"
 
-        for obj in elements(key, 'object_ref'):
+        def extract_ref(obj):
             keyid = attr(obj, 'key')
             tlid = attr(obj, 'timeline')
-            frame.append({'timeline': tlid, 'key': keyid})
+            if obj.hasAttribute('parent'):
+                parent = attr(obj, 'parent')
+            else:
+                parent = "-1"
+            return {'timeline': tlid, 'key': keyid,
+                    'parent': parent}
+
+        bones = []
+        for obj in elements(key, 'bone_ref'):
+            bones.append(extract_ref(obj))
+
+        frame = []
+        for obj in elements(key, 'object_ref'):
+            frame.append(extract_ref(obj))
 
         keyframes.append({'time': time,
-                          'elements': frame})
+                          'elements': frame,
+                          'bones': bones})
 
     result = {
         'length': attr(dom, 'length'),
@@ -80,21 +93,32 @@ def timelines(res, dom):
         tl = []
         for keyxml in elements(tlxml, 'key'):
             subframe = []
-            for objxml in elements(keyxml, 'object'):
-                key = resource_key(attr(objxml, 'folder'),
-                                   attr(objxml, 'file'))
-                fname = res[key]
+            for objxml in keyxml.childNodes:
+                if objxml.nodeType == objxml.TEXT_NODE:
+                    continue
+
+                if objxml.hasAttribute('folder'):
+                    key = resource_key(attr(objxml, 'folder'),
+                                       attr(objxml, 'file'))
+                    fname = res[key]
+                else:
+                    fname = ''
+
                 values = extract_dict(
                     objxml,
                     ['x', 'y', 'pivot_x', 'pivot_y',
-                     'angle', 'scale_x', 'scale_y', 'spin'],
+                     'angle', 'scale_x', 'scale_y'],
                     {'x': '0', 'y': '0', 'pivot_x': '0', 'pivot_y': '1',
-                     'angle': '0', 'scale_x': '1', 'scale_y': '1',
-                     'spin': '1'})
+                     'angle': '0', 'scale_x': '1', 'scale_y': '1'})
+                if keyxml.hasAttribute('spin'):
+                    values['spin'] = attr(keyxml, 'spin')
+                else:
+                    values['spin'] = "1"
+
                 values['file'], _ = os.path.splitext(fname)
                 subframe.append(values)
-            tl.append(subframe)
-        result.append(tl)
+            if subframe: tl.append(subframe)
+        if tl: result.append(tl)
     return result
 
 def write_ent(f, ent):
@@ -104,16 +128,23 @@ def write_ent(f, ent):
     for aname, a in ent.items():
         util.write_fstring(f, aname)
         util.write_short(f, int(a['length']))
-        util.write_short(f, int(a['looping'] == 'true'))
+        util.write_short(f, int(a['looping'] != 'false'))
         util.write_short(f, len(a['keyframes']))
 
         for frame in a['keyframes']:
             util.write_short(f, int(frame['time']))
-            util.write_short(f, len(frame['elements']))
 
+            util.write_short(f, len(frame['elements']))
             for el in frame['elements']:
                 util.write_short(f, int(el['timeline']))
                 util.write_short(f, int(el['key']))
+                util.write_short(f, int(el['parent']))
+
+            util.write_short(f, len(frame['bones']))
+            for el in frame['bones']:
+                util.write_short(f, int(el['timeline']))
+                util.write_short(f, int(el['key']))
+                util.write_short(f, int(el['parent']))
 
         util.write_short(f, len(a['timelines']))
         for tl in a['timelines']:
@@ -150,8 +181,8 @@ if __name__ == '__main__':
 
     ent = ents.itervalues().next()
 
-    #print json.dumps(ent, sort_keys=True,
-    #                 indent=4, separators=(',', ': '))
+    print json.dumps(ent, sort_keys=True,
+                     indent=4, separators=(',', ': '))
 
     with open(outname, "w") as f:
         write_ent(f, ent)
