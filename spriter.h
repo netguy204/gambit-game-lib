@@ -58,7 +58,7 @@ void spriter_free(Entity* ent);
 
 Animation* spriter_find(Entity* entity, const char* name);
 
-BaseSprite spriter_append(BaseSprite list, Animation* animation,
-                          Vector pos, unsigned short anim_time_ms);
+BaseSprite spriter_append(BaseSprite list, Animation* animation, Vector pos,
+                          float scale_x, float scale_y,  unsigned short anim_time_ms);
 
 #endif

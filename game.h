@@ -67,6 +67,8 @@ class CSpriterSprite : public Component {
   int layer;
   float current_time;
   float time_scale;
+  float scale_x;
+  float scale_y;
 };
 
 enum WallpaperStyle {

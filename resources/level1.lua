@@ -234,9 +234,8 @@ local function add_playerness(player, m)
    local _key = world:atlas_entry(constant.ATLAS, "key")
    local platformer = player:add_component("CPlatformer", {w=width, h=height, friction=0})
    --player:add_component("CStaticSprite", {entry=art, layer=constant.PLAYER})
-   local anim = world:animation('resources/mal.cs', constant.ATLAS, 'First Animation')
-   player:add_component('CSpriterSprite', {animation=anim,
-                                           offset={0,-32}})
+   local _anim = world:animation('resources/mal.cs', constant.ATLAS, 'First Animation')
+   local anim = player:add_component('CSpriterSprite', {animation=_anim, offset={0,-32}})
 
    local player_rect = function()
       local pos = player:pos()
@@ -262,11 +261,21 @@ local function add_playerness(player, m)
          local input = world:input_state()
          local can_climb = is_touching_kind('climbable')
          local vel = vector.new(go:vel())
+         local moving = false
 
          if input.leftright < -0.01 then
             facing = -1
+            moving = true
          elseif input.leftright > 0.01 then
             facing = 1
+            moving = true
+         end
+
+         if moving then
+            anim:time_scale(1)
+            anim:scale_x(facing)
+         else
+            anim:time_scale(0)
          end
 
          vel[1] = speed * input.leftright
@@ -328,7 +337,7 @@ local function add_playerness(player, m)
          coroutine.yield()
          if go:has_message(COLLECTED) then
             -- attach it to our head
-            have_key = go:add_component("CStaticSprite", {entry=_key,offset={0,64}})
+            have_key = go:add_component("CStaticSprite", {entry=_key,offset={0,102}})
          end
       end
    end

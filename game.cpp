@@ -136,10 +136,12 @@ OBJECT_PROPERTY(CSpriterSprite, offset);
 OBJECT_PROPERTY(CSpriterSprite, layer);
 OBJECT_PROPERTY(CSpriterSprite, current_time);
 OBJECT_PROPERTY(CSpriterSprite, time_scale);
+OBJECT_PROPERTY(CSpriterSprite, scale_x);
+OBJECT_PROPERTY(CSpriterSprite, scale_y);
 
 CSpriterSprite::CSpriterSprite(void* _go)
   : Component((GO*)_go, PRIORITY_SHOW), animation(NULL), layer(LAYER_BACKGROUND),
-    current_time(0), time_scale(1) {
+    current_time(0), time_scale(1), scale_x(1), scale_y(1) {
   vector_zero(&offset);
 }
 
@@ -154,7 +156,7 @@ void CSpriterSprite::update(float dt) {
   vector_sub(&pos, &pos, &cpos);
 
   BaseSprite list = scene()->layers[layer];
-  list = spriter_append(list, animation, &pos, current_time * 1000);
+  list = spriter_append(list, animation, &pos, scale_x, scale_y, current_time * 1000);
   scene()->layers[layer] = list;
 
   current_time += dt * time_scale;

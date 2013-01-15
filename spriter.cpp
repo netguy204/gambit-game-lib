@@ -149,8 +149,8 @@ static void rotate_point(float& x, float& y, float angle, float origin_x, float 
   y = ynew;
 }
 
-BaseSprite spriter_append(BaseSprite list, Animation* anim,
-                          Vector pos, unsigned short anim_time_ms) {
+BaseSprite spriter_append(BaseSprite list, Animation* anim, Vector pos,
+                          float sx, float sy, unsigned short anim_time_ms) {
   // clamp or restrict the animation time
   if(anim->looping) {
     anim_time_ms = anim_time_ms % anim->length_ms;
@@ -240,8 +240,8 @@ BaseSprite spriter_append(BaseSprite list, Animation* anim,
 
     // now walk from root to end following the bone heirarchy and
     // composing the transforms
-    float pscale_x = 1.0f;
-    float pscale_y = 1.0f;
+    float pscale_x = sx;
+    float pscale_y = sy;
     float pangle = 0.0f;
     float px = pos->x;
     float py = pos->y;
@@ -257,7 +257,7 @@ BaseSprite spriter_append(BaseSprite list, Animation* anim,
       float x = lerp(before->x, after->x, s) * pscale_x;
       float y = lerp(before->y, after->y, s) * pscale_y;
 
-      bool flipped = (pscale_x < 0) || (pscale_y < 0);
+      bool flipped = (pscale_x < 0) != (pscale_y < 0);
       rotate_point(x, y, pangle, px, py, flipped);
       px = x;
       py = y;
@@ -272,7 +272,11 @@ BaseSprite spriter_append(BaseSprite list, Animation* anim,
         sprite->originY = lerp(before->pivot_y, after->pivot_y, s);
         sprite->w *= pscale_x;
         sprite->h *= pscale_y;
-        sprite->angle = pangle;
+        if(flipped) {
+          sprite->angle = -pangle;
+        } else {
+          sprite->angle = pangle;
+        }
         sprite->displayX = px;
         sprite->displayY = py;
       }
