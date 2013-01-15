@@ -235,7 +235,8 @@ local function add_playerness(player, m)
    local platformer = player:add_component("CPlatformer", {w=width, h=height, friction=0})
    --player:add_component("CStaticSprite", {entry=art, layer=constant.PLAYER})
    local anim = world:animation('resources/mal.cs', constant.ATLAS, 'First Animation')
-   player:add_component('CSpriterSprite', {animation=anim})
+   player:add_component('CSpriterSprite', {animation=anim,
+                                           offset={0,-32}})
 
    local player_rect = function()
       local pos = player:pos()

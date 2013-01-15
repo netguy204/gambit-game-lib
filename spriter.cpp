@@ -138,8 +138,8 @@ static void rotate_point(float& x, float& y, float angle, float origin_x, float 
   if(flipped)
     angle = -angle;
 
-  float s = sin(angle*M_PI/180);
-  float c = cos(angle*M_PI/180);
+  float s = sin(angle);
+  float c = cos(angle);
   float xnew = (x * c) - (y * s);
   float ynew = (x * s) + (y * c);
   xnew += origin_x;
