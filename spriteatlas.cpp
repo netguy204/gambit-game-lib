@@ -28,8 +28,8 @@ SpriteAtlas spriteatlas_load(const char* name, const char* imgtype) {
     entry->h = atlas->image->h;
     entry->u0 = 0;
     entry->u1 = 1;
-    entry->v0 = 0;
-    entry->v1 = 1;
+    entry->v0 = 1;
+    entry->v1 = 0;
 
     // get the name after the last slash
     const char* basename = strrchr(name, '/');

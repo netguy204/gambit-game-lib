@@ -234,8 +234,10 @@ local function add_playerness(player, m)
    local _key = world:atlas_entry(constant.ATLAS, "key")
    local platformer = player:add_component("CPlatformer", {w=width, h=height, friction=0})
    --player:add_component("CStaticSprite", {entry=art, layer=constant.PLAYER})
-   local _anim = world:animation('resources/mal.cs', constant.ATLAS, 'First Animation')
-   local anim = player:add_component('CSpriterSprite', {animation=_anim, offset={0,-32}})
+   local _walk_anim = world:animation('resources/mal.cs', constant.ATLAS, 'First Animation')
+   local _idle_anim = world:animation('resources/mal_idle.cs', constant.ATLAS, 'First Animation')
+
+   local anim = player:add_component('CSpriterSprite', {animation=_idle_anim, offset={0,-32}})
 
    local player_rect = function()
       local pos = player:pos()
@@ -274,8 +276,10 @@ local function add_playerness(player, m)
          if moving then
             anim:time_scale(1)
             anim:scale_x(facing)
+            anim:animation(_walk_anim)
          else
             anim:time_scale(0)
+            anim:animation(_idle_anim)
          end
 
          vel[1] = speed * input.leftright
